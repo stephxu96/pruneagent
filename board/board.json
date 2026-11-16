@@ -104,8 +104,8 @@
       "deps": [],
       "done_when": "CI runs an empty test suite",
       "gpu": "",
-      "status": "doing",
-      "notes": ""
+      "status": "done",
+      "notes": "[2026-11-16] Repo github.com/stephxu96/pruneagent; uv + Python 3.12; 8 smoke tests; CI green (run 43925161031)"
     },
     {
       "id": "0.2",
@@ -119,7 +119,7 @@
       "done_when": "Same notebook runs on T4 and A100",
       "gpu": "",
       "status": "todo",
-      "notes": ""
+      "notes": "[2026-11-16] Deferred: Colab only needed for 1.7B work and T4 speed; 0.4's T4 half waits on it"
     },
     {
       "id": "0.3",
@@ -132,8 +132,8 @@
       ],
       "done_when": "Cached files hashed in the manifest",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "done",
+      "notes": "[2026-11-16] pruneagent data: C4 128×2048 (seed 0, Wanda procedure), WikiText-2 val 262,337 / test 299,078 tokens; rebuild byte-identical; manifest in git"
     },
     {
       "id": "0.4",

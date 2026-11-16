@@ -11,9 +11,15 @@ dist/
 checkpoints/
 outputs/
 runs/
-data_cache/
+data_cache/*
+!data_cache/manifest.json
 *.safetensors
 *.sqlite
+
+# Secrets (LLM API keys, Hugging Face tokens)
+.env
+.env.*
+!.env.example
 
 # Board temp file
 board/board.json.tmp
