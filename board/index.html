@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PruneAgent Board</title>
+<style>
+:root {
+  --bg: #f6f6f3; --surface: #ffffff; --surface-2: #efefea; --border: #dcdcd4;
+  --text: #1d1d1b; --muted: #6b6b63; --accent: #2f5fd0; --accent-soft: #e5ecfb;
+  --ok: #1f7a4a; --ok-soft: #e1f2e8; --warn: #a15c00; --warn-soft: #fbefdc;
+  --bad: #b3261e; --bad-soft: #fbe4e2; --gate: #6b3fb8; --gate-soft: #efe8fa;
+  --shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 1px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615; --surface: #1f1f1d; --surface-2: #2a2a27; --border: #3a3a36;
+    --text: #ececE6; --muted: #a2a299; --accent: #7fa2f5; --accent-soft: #23304d;
+    --ok: #6fcf97; --ok-soft: #1d3326; --warn: #f2b45a; --warn-soft: #3a2c16;
+    --bad: #f28b82; --bad-soft: #3b1f1d; --gate: #b79cf0; --gate-soft: #2d2440;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+button, input, select, textarea { font: inherit; color: inherit; }
+header { padding: 16px 20px 8px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; }
+h1 { font-size: 18px; margin: 0; }
+.today { color: var(--muted); }
+.today b { color: var(--text); }
+#status { margin-left: auto; color: var(--muted); font-size: 12px; }
+#status.err { color: var(--bad); }
+.banner { margin: 0 20px 8px; padding: 8px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); display: none; gap: 12px; align-items: center; }
+.banner.show { display: flex; }
+.banner button { margin-left: auto; }
+
+.phases { display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: 8px; padding: 8px 20px; overflow-x: auto; }
+.phase { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; text-align: left; box-shadow: var(--shadow); }
+.phase[aria-pressed="true"] { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+.phase.current { background: var(--accent-soft); }
+.phase .pname { font-weight: 600; }
+.phase .pdays { color: var(--muted); font-size: 12px; }
+.bar { height: 6px; background: var(--surface-2); border-radius: 3px; margin: 8px 0 6px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--ok); }
+.phase .pfoot { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 20px; align-items: center; }
+.toolbar input[type=search] { flex: 1 1 200px; max-width: 320px; }
+input, select, textarea { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+button { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+@media (prefers-color-scheme: dark) { button.primary { color: #10131a; } }
+button.danger { color: var(--bad); }
+label.chk { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+
+.board { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 12px; padding: 8px 20px 20px; }
+.col { background: var(--surface-2); border-radius: 10px; padding: 10px; min-height: 200px; display: flex; flex-direction: column; gap: 8px; }
+.col.over { outline: 2px dashed var(--accent); }
+.col h2 { font-size: 13px; margin: 0 0 2px; display: flex; justify-content: space-between; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; cursor: grab; box-shadow: var(--shadow); }
+.card:focus-visible { outline: 2px solid var(--accent); }
+.card.gate { border-left: 4px solid var(--gate); }
+.card.waiting { border-style: dashed; }
+.card.flag { border-color: var(--warn); }
+.ctop { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.cid { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.ctitle { margin: 4px 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.chip.owner-steph { background: var(--accent-soft); color: var(--accent); }
+.chip.gpu { background: var(--warn-soft); color: var(--warn); }
+.chip.gate { background: var(--gate-soft); color: var(--gate); }
+.chip.wait { background: var(--bad-soft); color: var(--bad); }
+.chip.go { background: var(--ok-soft); color: var(--ok); }
+
+.budget { padding: 0 20px 28px; }
+.budget h2 { font-size: 15px; margin: 8px 0; }
+.budget table { border-collapse: collapse; width: 100%; max-width: 760px; background: var(--surface); border-radius: 8px; overflow: hidden; }
+.budget th, .budget td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: right; font-variant-numeric: tabular-nums; }
+.budget th:first-child, .budget td:first-child { text-align: left; }
+.budget input { width: 80px; text-align: right; padding: 3px 6px; }
+.budget tfoot td { font-weight: 600; }
+.over-cap { color: var(--bad); }
+
+dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); width: min(680px, calc(100vw - 32px)); padding: 0; }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+dialog form { padding: 18px 20px; display: grid; gap: 10px; }
+dialog h3 { margin: 0; font-size: 16px; }
+.row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.field { display: grid; gap: 4px; }
+.field > span { font-size: 12px; color: var(--muted); }
+textarea { min-height: 64px; resize: vertical; }
+.checks { width: 100%; border-collapse: collapse; font-size: 13px; }
+.checks th, .checks td { text-align: left; padding: 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.checks input { width: 100%; }
+.dlg-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.dlg-actions .danger { margin-right: auto; }
+.hint { font-size: 12px; color: var(--muted); }
+
+@media (max-width: 900px) {
+  .board { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+  header, .toolbar, .phases, .board, .budget { padding-left: 16px; padding-right: 16px; }
+  .board { grid-template-columns: 1fr; }
+  .row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">PruneAgent board</h1>
+  <span class="today" id="today"></span>
+  <span id="status">Loading…</span>
+</header>
+<div class="banner" id="conflict">
+  <span>The board changed on disk (another tab or <code>cli.py</code>). Your last change was not saved.</span>
+  <button type="button" id="reload">Reload board</button>
+</div>
+
+<nav class="phases" id="phases" aria-label="Phases"></nav>
+
+<div class="toolbar">
+  <input type="search" id="q" placeholder="Search tasks…" aria-label="Search tasks">
+  <select id="owner" aria-label="Owner">
+    <option value="all">All owners</option>
+    <option>Steph</option><option>Coding agent</option><option>Steph + agent</option>
+  </select>
+  <label class="chk"><input type="checkbox" id="hideDone"> Hide done</label>
+  <label class="chk"><input type="checkbox" id="readyOnly"> Ready to start only</label>
+  <button type="button" class="primary" id="add">Add task</button>
+</div>
+
+<main class="board" id="board"></main>
+
+<section class="budget">
+  <h2>Budget</h2>
+  <table>
+    <thead><tr><th>Phase</th><th>Compute units: plan</th><th>used</th><th>LLM $: plan</th><th>used</th></tr></thead>
+    <tbody id="budgetBody"></tbody>
+    <tfoot id="budgetFoot"></tfoot>
+  </table>
+  <p class="hint">Early warning from the work plan: more than 50 compute units used by the end of phase 2 means T4 only from then on.</p>
+</section>
+
+<dialog id="dlg">
+  <form method="dialog" id="form">
+    <h3 id="dlgTitle"></h3>
+    <label class="field"><span>Title</span><input name="title" required></label>
+    <div class="row">
+      <label class="field"><span>Status</span><select name="status"></select></label>
+      <label class="field"><span>Owner</span><select name="owner"><option>Steph</option><option>Coding agent</option><option>Steph + agent</option></select></label>
+      <label class="field"><span>Phase</span><select name="phase"></select></label>
+    </div>
+    <div class="row">
+      <label class="field"><span>Depends on (comma-separated ids)</span><input name="deps"></label>
+      <label class="field"><span>GPU</span><input name="gpu" placeholder="T4, A100, Mac…"></label>
+      <span></span>
+    </div>
+    <label class="field"><span>Done when</span><input name="done_when"></label>
+    <div id="checksWrap"></div>
+    <label class="field"><span>Notes</span><textarea name="notes"></textarea></label>
+    <div class="dlg-actions">
+      <button type="button" class="danger" id="del">Delete</button>
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button value="save" class="primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const COLS = [["todo", "To do"], ["doing", "In progress"], ["blocked", "Blocked"], ["done", "Done"]];
+const DAY = 86400000;
+let board = null, etag = null, busy = false, editing = null;
+const ui = { phase: null, owner: "all", q: "", hideDone: false, readyOnly: false };
+try { Object.assign(ui, JSON.parse(localStorage.getItem("pa-board-ui") || "{}")); } catch (e) {}
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function sortKey(id) {
+  const m = /^G(\d+)$/.exec(id);
+  if (m) return [Number(m[1]), 1e6];
+  const [a, b] = id.split(".").map(Number);
+  return [a, b || 0];
+}
+const byKey = (x, y) => { const a = sortKey(x.id), b = sortKey(y.id); return a[0] - b[0] || a[1] - b[1]; };
+
+function dayNumber() {
+  const [y, m, d] = board.start_date.split("-").map(Number);
+  const start = new Date(y, m - 1, d), now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((today - start) / DAY) + 1;
+}
+function cardMap() { return Object.fromEntries(board.cards.map((c) => [c.id, c])); }
+function waitingOn(c, map) { return (c.deps || []).filter((d) => map[d] && map[d].status !== "done"); }
+
+function setStatus(text, err) { const s = $("#status"); s.textContent = text; s.classList.toggle("err", !!err); }
+
+async function load() {
+  const r = await fetch("/api/board");
+  etag = r.headers.get("ETag");
+  board = await r.json();
+  $("#conflict").classList.remove("show");
+  render();
+  setStatus("Saved to board/board.json");
+}
+
+async function save() {
+  busy = true; setStatus("Saving…");
+  try {
+    const r = await fetch("/api/board", {
+      method: "PUT", headers: { "Content-Type": "application/json", "If-Match": etag },
+      body: JSON.stringify(board),
+    });
+    if (r.status === 409) { $("#conflict").classList.add("show"); setStatus("Not saved", true); return; }
+    if (!r.ok) throw new Error(r.status);
+    etag = r.headers.get("ETag");
+    setStatus("Saved to board/board.json");
+  } catch (e) { setStatus("Save failed: is server.py running?", true); }
+  finally { busy = false; }
+}
+
+async function poll() {
+  if (busy || $("#dlg").open || $("#conflict").classList.contains("show")) return;
+  if (document.activeElement && document.activeElement.closest(".budget")) return;
+  try {
+    const r = await fetch("/api/board");
+    const tag = r.headers.get("ETag");
+    if (tag && tag !== etag) { etag = tag; board = await r.json(); render(); setStatus("Updated from disk"); }
+  } catch (e) { setStatus("Server not reachable", true); }
+}
+
+function persistUI() { try { localStorage.setItem("pa-board-ui", JSON.stringify(ui)); } catch (e) {} }
+
+function render() {
+  const map = cardMap(), dn = dayNumber();
+  $("#title").textContent = board.title + " board";
+  const cur = board.phases.find((p) => p.start && dn >= p.start && dn <= p.end);
+  $("#today").innerHTML = dn < 1 ? `Starts in <b>${1 - dn}</b> day${dn === 0 ? "" : "s"}`
+    : dn > board.total_days ? `<b>D${dn}</b>: past the planned ${board.total_days} days`
+    : `<b>D${dn}</b> of ${board.total_days}${cur ? ` · Phase ${cur.id}: ${esc(cur.name)}` : ""}`;
+
+  $("#phases").innerHTML = board.phases.map((p) => {
+    const cs = board.cards.filter((c) => c.phase === p.id);
+    const done = cs.filter((c) => c.status === "done").length;
+    const gate = cs.find((c) => c.type === "gate");
+    const pct = cs.length ? Math.round((100 * done) / cs.length) : 0;
+    const days = p.start ? (p.start === p.end ? `D${p.start}` : `D${p.start}–D${p.end}`) : "If buffer allows";
+    const late = p.end && dn > p.end && done < cs.length;
+    return `<button type="button" class="phase${cur && cur.id === p.id ? " current" : ""}" data-phase="${p.id}" aria-pressed="${ui.phase === p.id}">
+      <div class="pname">${p.id}. ${esc(p.name)}</div>
+      <div class="pdays">${days}${late ? ` · <span class="over-cap">behind</span>` : ""}</div>
+      <div class="bar"><span style="width:${pct}%"></span></div>
+      <div class="pfoot"><span>${done}/${cs.length} done</span><span>${gate ? esc(gate.id) + ": " + (gate.status === "done" ? "passed" : "open") : ""}</span></div>
+    </button>`;
+  }).join("");
+
+  const q = ui.q.trim().toLowerCase();
+  const visible = board.cards.filter((c) =>
+    (ui.phase === null || c.phase === ui.phase) &&
+    (ui.owner === "all" || c.owner === ui.owner) &&
+    (!ui.hideDone || c.status !== "done") &&
+    (!ui.readyOnly || (c.status === "todo" && waitingOn(c, map).length === 0)) &&
+    (!q || (c.id + " " + c.title + " " + (c.notes || "") + " " + (c.done_when || "")).toLowerCase().includes(q))
+  ).sort(byKey);
+
+  $("#board").innerHTML = COLS.map(([key, label]) => {
+    const cs = visible.filter((c) => c.status === key);
+    return `<section class="col" data-col="${key}" aria-label="${label}">
+      <h2><span>${label}</span><span>${cs.length}</span></h2>
+      ${cs.map((c) => cardHTML(c, map)).join("")}
+    </section>`;
+  }).join("");
+
+  renderBudget();
+}
+
+function cardHTML(c, map) {
+  const wait = c.status !== "done" ? waitingOn(c, map) : [];
+  const flag = wait.length && c.status === "doing";
+  const chips = [];
+  if (c.type === "gate") {
+    const n = c.checks.length, go = c.checks.filter((k) => k.result === "go").length, fb = c.checks.filter((k) => k.result === "fallback").length;
+    chips.push(`<span class="chip gate">Gate · ${go} go${fb ? `, ${fb} fallback` : ""} / ${n}</span>`);
+  }
+  chips.push(`<span class="chip${c.owner === "Steph" ? " owner-steph" : ""}">${esc(c.owner)}</span>`);
+  if (c.gpu) chips.push(`<span class="chip gpu">${esc(c.gpu)}</span>`);
+  if (wait.length) chips.push(`<span class="chip wait" title="Not done yet">Waiting on ${esc(wait.join(", "))}</span>`);
+  return `<article class="card${c.type === "gate" ? " gate" : ""}${wait.length ? " waiting" : ""}${flag ? " flag" : ""}" draggable="true" tabindex="0" data-id="${esc(c.id)}"
+      aria-label="${esc(c.id)} ${esc(c.title)}">
+    <div class="ctop"><span class="cid">${esc(c.id)}</span><span>Phase ${c.phase}</span>${c.notes ? "<span>· notes</span>" : ""}</div>
+    <div class="ctitle">${esc(c.title)}</div>
+    <div class="chips">${chips.join("")}</div>
+  </article>`;
+}
+
+function renderBudget() {
+  const names = Object.fromEntries(board.phases.map((p) => [p.id, p.name]));
+  let up = 0, uu = 0, lp = 0, lu = 0;
+  $("#budgetBody").innerHTML = board.budget.map((b, i) => {
+    up += b.units_planned; uu += b.units_used; lp += b.llm_planned; lu += b.llm_used;
+    return `<tr><td>${b.phase}. ${esc(names[b.phase])}</td>
+      <td>${b.units_planned}</td>
+      <td><input type="number" min="0" step="0.1" data-b="${i}" data-k="units_used" value="${b.units_used}" aria-label="Compute units used, phase ${b.phase}"></td>
+      <td>${b.llm_planned}</td>
+      <td><input type="number" min="0" step="0.01" data-b="${i}" data-k="llm_used" value="${b.llm_used}" aria-label="LLM dollars used, phase ${b.phase}"></td></tr>`;
+  }).join("");
+  const caps = board.budget_caps;
+  const early = board.budget.filter((b) => b.phase <= 2).reduce((s, b) => s + b.units_used, 0);
+  $("#budgetFoot").innerHTML = `<tr><td>Total (cap ${caps.units} units, $${caps.llm})</td>
+    <td>${up}</td><td class="${uu > caps.units ? "over-cap" : ""}">${+uu.toFixed(2)}</td>
+    <td>${lp}</td><td class="${lu > caps.llm ? "over-cap" : ""}">${+lu.toFixed(2)}</td></tr>
+    <tr><td>Phases 0–2 compute units (warning at 50)</td><td></td><td class="${early > 50 ? "over-cap" : ""}">${+early.toFixed(2)}</td><td></td><td></td></tr>`;
+}
+
+/* ---------- interactions ---------- */
+function moveCard(id, status) {
+  const c = board.cards.find((x) => x.id === id);
+  if (!c || c.status === status) return;
+  c.status = status; render(); save();
+}
+
+$("#board").addEventListener("dragstart", (e) => {
+  const card = e.target.closest(".card"); if (!card) return;
+  e.dataTransfer.setData("text/plain", card.dataset.id); e.dataTransfer.effectAllowed = "move";
+});
+$("#board").addEventListener("dragover", (e) => {
+  const col = e.target.closest(".col"); if (!col) return;
+  e.preventDefault();
+  document.querySelectorAll(".col.over").forEach((x) => x !== col && x.classList.remove("over"));
+  col.classList.add("over");
+});
+$("#board").addEventListener("dragleave", (e) => { const col = e.target.closest(".col"); if (col && !col.contains(e.relatedTarget)) col.classList.remove("over"); });
+$("#board").addEventListener("drop", (e) => {
+  const col = e.target.closest(".col"); if (!col) return;
+  e.preventDefault(); col.classList.remove("over");
+  moveCard(e.dataTransfer.getData("text/plain"), col.dataset.col);
+});
+$("#board").addEventListener("click", (e) => { const card = e.target.closest(".card"); if (card) openDialog(card.dataset.id); });
+$("#board").addEventListener("keydown", (e) => {
+  const card = e.target.closest(".card"); if (!card) return;
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDialog(card.dataset.id); }
+  const idx = COLS.findIndex(([k]) => k === board.cards.find((c) => c.id === card.dataset.id).status);
+  if (e.key === "ArrowRight" && idx < COLS.length - 1) { moveCard(card.dataset.id, COLS[idx + 1][0]); focusCard(card.dataset.id); }
+  if (e.key === "ArrowLeft" && idx > 0) { moveCard(card.dataset.id, COLS[idx - 1][0]); focusCard(card.dataset.id); }
+});
+function focusCard(id) { const el = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`); if (el) el.focus(); }
+
+$("#phases").addEventListener("click", (e) => {
+  const b = e.target.closest(".phase"); if (!b) return;
+  const id = Number(b.dataset.phase); ui.phase = ui.phase === id ? null : id; persistUI(); render();
+});
+$("#q").addEventListener("input", (e) => { ui.q = e.target.value; render(); });
+$("#owner").addEventListener("change", (e) => { ui.owner = e.target.value; persistUI(); render(); });
+$("#hideDone").addEventListener("change", (e) => { ui.hideDone = e.target.checked; persistUI(); render(); });
+$("#readyOnly").addEventListener("change", (e) => { ui.readyOnly = e.target.checked; persistUI(); render(); });
+$("#reload").addEventListener("click", load);
+$("#budgetBody").addEventListener("change", (e) => {
+  const i = e.target.dataset.b; if (i === undefined) return;
+  board.budget[i][e.target.dataset.k] = Math.max(0, Number(e.target.value) || 0);
+  renderBudget(); save();
+});
+
+/* ---------- dialog ---------- */
+const form = $("#form");
+form.status.innerHTML = COLS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("");
+
+function openDialog(id) {
+  const c = id ? board.cards.find((x) => x.id === id) : null;
+  editing = c;
+  form.phase.innerHTML = board.phases.map((p) => `<option value="${p.id}">${p.id}. ${esc(p.name)}</option>`).join("");
+  $("#dlgTitle").textContent = c ? `${c.id} · ${c.type === "gate" ? "Gate" : "Task"}` : "New task";
+  form.title.value = c ? c.title : "";
+  form.status.value = c ? c.status : "todo";
+  form.owner.value = c ? c.owner : "Coding agent";
+  form.phase.value = c ? c.phase : (ui.phase ?? (board.phases.find((p) => p.start && dayNumber() >= p.start && dayNumber() <= p.end)?.id ?? 0));
+  form.deps.value = c ? (c.deps || []).join(", ") : "";
+  form.gpu.value = c ? c.gpu || "" : "";
+  form.done_when.value = c ? c.done_when || "" : "";
+  form.notes.value = c ? c.notes || "" : "";
+  $("#del").style.display = c ? "" : "none";
+  $("#checksWrap").innerHTML = c && c.type === "gate" ? `
+    <table class="checks"><thead><tr><th>Check</th><th>Go if</th><th>Otherwise</th><th>Result</th><th>Observed</th></tr></thead><tbody>
+    ${c.checks.map((k, i) => `<tr><td>${esc(k.label)}</td><td>${esc(k.go_if)}</td><td>${esc(k.fallback)}</td>
+      <td><select data-check="${i}" data-k="result">${["pending", "go", "fallback"].map((r) => `<option${k.result === r ? " selected" : ""}>${r}</option>`).join("")}</select></td>
+      <td><input data-check="${i}" data-k="observed" value="${esc(k.observed)}" aria-label="Observed value"></td></tr>`).join("")}
+    </tbody></table>` : "";
+  $("#dlg").showModal();
+}
+
+function nextId(phase) {
+  const nums = board.cards.filter((c) => c.phase === phase && c.type === "task").map((c) => sortKey(c.id)[1]);
+  return `${phase}.${(nums.length ? Math.max(...nums) : 0) + 1}`;
+}
+
+$("#dlg").addEventListener("close", () => {
+  if ($("#dlg").returnValue !== "save") return;
+  const phase = Number(form.phase.value);
+  const deps = form.deps.value.split(",").map((s) => s.trim()).filter(Boolean);
+  let c = editing;
+  if (!c) { c = { id: nextId(phase), type: "task", notes: "" }; board.cards.push(c); }
+  Object.assign(c, {
+    title: form.title.value.trim(), status: form.status.value, owner: form.owner.value, phase,
+    deps, gpu: form.gpu.value.trim(), done_when: form.done_when.value.trim(), notes: form.notes.value,
+  });
+  if (c.type === "gate") {
+    form.querySelectorAll("[data-check]").forEach((el) => { c.checks[el.dataset.check][el.dataset.k] = el.value; });
+  }
+  render(); save();
+});
+$("#del").addEventListener("click", () => {
+  if (!editing || !confirm(`Delete ${editing.id}? Other tasks that depend on it keep the reference.`)) return;
+  board.cards = board.cards.filter((c) => c !== editing);
+  $("#dlg").close("cancel"); render(); save();
+});
+$("#add").addEventListener("click", () => openDialog(null));
+
+/* ---------- start ---------- */
+$("#q").value = ui.q; $("#owner").value = ui.owner; $("#hideDone").checked = ui.hideDone; $("#readyOnly").checked = ui.readyOnly;
+load().catch(() => setStatus("Could not load the board: start server.py", true));
+setInterval(poll, 4000);
+</script>
+</body>
+</html>
