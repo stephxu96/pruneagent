@@ -354,6 +354,33 @@ def _val_ppl(net, model: str, seqlen: int, windows: int | None, device: str, dat
     return {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1), "data_sha256": sha}
 
 
+def _scores(net, model: str, revision: str, device: str, dtype: str, data_dir: Path | None,
+            scores_path: Path | None):
+    """Cached pruning scores for the unpruned `net`, computed and saved if missing."""
+    import time
+
+    from pruneagent import data as d
+    from pruneagent import pruner
+
+    scores_path = scores_path or Path("checkpoints/scores") / f"{d.slug(model)}__{device}__{dtype}.safetensors"
+    if scores_path.exists():
+        typer.echo(f"  scores from {scores_path}")
+        return pruner.load_scores(scores_path)
+    start = time.perf_counter()
+    manifest = d.read_manifest(data_dir)
+    meta = {"model": model, "revision": revision, "device": device, "dtype": dtype,
+            "flap_calib": d.flap_calib_name(model),
+            "flap_calib_sha256": manifest["entries"][d.flap_calib_name(model)]["sha256"],
+            "wanda_calib": d.calib_name(model),
+            "wanda_calib_sha256": manifest["entries"][d.calib_name(model)]["sha256"]}
+    scores = pruner.compute_scores(net, d.load_tokens(d.flap_calib_name(model), data_dir),
+                                   d.load_tokens(d.calib_name(model), data_dir), device, meta=meta)
+    scores_path.parent.mkdir(parents=True, exist_ok=True)
+    pruner.save_scores(scores, scores_path)
+    typer.echo(f"  scores computed in {time.perf_counter() - start:.0f} s -> {scores_path}")
+    return scores
+
+
 @app.command("prune")
 def prune_cmd(
     plan: Annotated[Path, typer.Option(help="Plan JSON: {'plan': {layer: {...}}} and/or {'steps': [...]}.")],
@@ -386,22 +413,7 @@ def prune_cmd(
     net = ev.load_model(model, revision, dtype, device)
     layer_plan = P.apply_steps(P.validate(spec.get("plan", {}), net.config), spec.get("steps", []), net.config)
 
-    scores_path = scores_path or Path("checkpoints/scores") / f"{d.slug(model)}__{device}__{dtype}.safetensors"
-    if scores_path.exists():
-        scores = pruner.load_scores(scores_path)
-        typer.echo(f"  scores from {scores_path}")
-    else:
-        start = time.perf_counter()
-        meta = {"model": model, "revision": revision, "device": device, "dtype": dtype,
-                "flap_calib": d.flap_calib_name(model),
-                "flap_calib_sha256": manifest["entries"][d.flap_calib_name(model)]["sha256"],
-                "wanda_calib": d.calib_name(model),
-                "wanda_calib_sha256": manifest["entries"][d.calib_name(model)]["sha256"]}
-        scores = pruner.compute_scores(net, d.load_tokens(d.flap_calib_name(model), data_dir),
-                                       d.load_tokens(d.calib_name(model), data_dir), device, meta=meta)
-        scores_path.parent.mkdir(parents=True, exist_ok=True)
-        pruner.save_scores(scores, scores_path)
-        typer.echo(f"  scores computed in {time.perf_counter() - start:.0f} s -> {scores_path}")
+    scores = _scores(net, model, revision, device, dtype, data_dir, scores_path)
 
     before = pruner.weight_counts(net)
     start = time.perf_counter()
@@ -465,6 +477,96 @@ def ppl_saved_cmd(
     results.mkdir(parents=True, exist_ok=True)
     out = results / f"{path.name}__saved__{device}__{dtype}.json"
     out.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {out}")
+
+
+@app.command("probe")
+def probe_cmd(
+    model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
+    samples: Annotated[int, typer.Option(help="C4 calibration samples for the probes.")] = 8,
+    steps: Annotated[int, typer.Option(help="Probe 1..steps steps of each strategy.")] = 1,
+    ground_truth: Annotated[bool, typer.Option(help="Also measure validation perplexity after one step of "
+                                               "each strategy on each layer, and compare rankings.")] = False,
+    seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
+    windows: Annotated[int | None, typer.Option(help="Validation windows to evaluate (default: all).")] = None,
+    layers: Annotated[str | None, typer.Option(help="Comma-separated layers (default: all).")] = None,
+    scores_path: Annotated[Path | None, typer.Option("--scores", help="Cached scores (computed if missing).")] = None,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    out: Annotated[Path | None, typer.Option(help="Results JSON (default: results/probes/<model>__<device>"
+                                             "__<dtype>.json). Rewritten after every evaluation; "
+                                             "evaluations already in it are reused.")] = None,
+) -> None:
+    """Layer probes for every strategy (the sensitivity table); with --ground-truth, check them against
+    full-model validation perplexity (assumption A1)."""
+    import json
+    import time
+
+    from pruneagent import data as d
+    from pruneagent import evaluate as ev
+    from pruneagent import plan as P
+    from pruneagent import probe as pr
+    from pruneagent import pruner
+
+    device = device or ev.pick_device()
+    revision = d.read_manifest(data_dir)["entries"][d.calib_name(model)]["tokenizer"]["revision"]
+    out = out or Path("results/probes") / f"{d.slug(model)}__{device}__{dtype}.json"
+    typer.echo(f"{model}@{revision[:8]} on {device} in {dtype}")
+    net = ev.load_model(model, revision, dtype, device)
+    scores = _scores(net, model, revision, device, dtype, data_dir, scores_path)
+    layer_ids = [int(x) for x in layers.split(",")] if layers else list(range(net.config.num_hidden_layers))
+
+    ev.synchronize(device)
+    start = time.perf_counter()
+    acts = pr.capture(net, d.load_tokens(d.calib_name(model), data_dir)[:samples], device)
+    ev.synchronize(device)
+    capture_s = time.perf_counter() - start
+    start = time.perf_counter()
+    table = pr.sensitivity_table(net, acts, scores, steps=tuple(range(1, steps + 1)), layers=layer_ids)
+    ev.synchronize(device)
+    probe_s = time.perf_counter() - start
+    del acts
+    typer.echo(f"  probes: capture {capture_s:.1f} s, {len(layer_ids)} layers x {len(P.STRATEGIES)} "
+               f"strategies x {steps} steps in {probe_s:.1f} s")
+
+    record = {"method": "probe", **_run_record(model, revision, device, dtype, seqlen),
+              "probe_samples": samples, "probe_calib": d.calib_name(model), "scores": scores.meta,
+              "capture_seconds": round(capture_s, 2), "probe_seconds": round(probe_s, 2),
+              "table": {str(i): lp for i, lp in table.items()}}
+    previous = json.loads(out.read_text()) if out.exists() else {}
+
+    def save() -> None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(record, indent=2) + "\n")
+
+    save()
+    if ground_truth:
+        gt = previous.get("ground_truth", {}) if previous.get("windows") == windows else {}
+        record["windows"] = windows
+        record["ground_truth"] = gt
+        if "dense" not in gt:
+            gt["dense"] = _val_ppl(net, model, seqlen, windows, device, data_dir)
+            save()
+        typer.echo(f"  dense validation ppl {gt['dense']['ppl']:.4f} ({gt['dense']['n_windows']} windows)")
+        dense = P.dense_plan(net.config)
+        for i in layer_ids:
+            for s in P.STRATEGIES:
+                key = f"{i}/{s}"
+                if key in gt:
+                    continue
+                pruned = pruner.prune(net, P.step(dense, i, s, net.config), scores)
+                gt[key] = _val_ppl(pruned, model, seqlen, windows, device, data_dir)
+                del pruned
+                save()
+                typer.echo(f"  layer {i:2d} {s:24s} ppl {gt[key]['ppl']:.4f}  ({gt[key]['seconds']} s)")
+        ppl = {(int(k.split("/")[0]), k.split("/")[1]): v["ppl"] for k, v in gt.items() if k != "dense"}
+        record["comparison"] = pr.compare(table, gt["dense"]["ppl"], ppl)
+        save()
+        c = record["comparison"]
+        typer.echo(f"  Spearman, all {c['n']} pairs: {c.get('all', float('nan')):.3f}")
+        for s, v in c["per_strategy"].items():
+            typer.echo(f"  Spearman, {s:24s} {v['spearman']:.3f}  (Block Influence {v['spearman_block_influence']:.3f})")
     typer.echo(f"Saved {out}")
 
 

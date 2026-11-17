@@ -135,6 +135,30 @@ def drop_layers(model, dropped: list[int]) -> None:
 
 
 @torch.no_grad()
+def prune_block(block, i: int, p: P.LayerPlan, scores: Scores, n_groups: int, width: int) -> None:
+    """Prune one unpruned, kept block (layer `i`) in place to its layer plan `p` (steps 1-3 of the module
+    docstring). Shared by `apply_plan` and the layer probes so both build exactly the same layer."""
+    in_idx = {}
+    if p["groups_keep"] < n_groups:
+        keep = top_mask(scores.attn[i], p["groups_keep"])
+        flap.remove_attention_groups(block, keep, scores.stats.attn_mean[i])
+        per = block.self_attn.head_dim * block.self_attn.num_key_value_groups
+        in_idx["self_attn.o_proj"] = torch.where(keep.repeat_interleave(per))[0]
+    if p["mlp_keep"] < width:
+        keep = top_mask(scores.mlp[i], p["mlp_keep"])
+        flap.remove_mlp_neurons(block, keep, scores.stats.mlp_mean[i])
+        in_idx["mlp.down_proj"] = torch.where(keep)[0]
+    if p["wanda_sparsity"] > 0:
+        for name in LINEARS:
+            lin = _sublayer(block, name)
+            sq = scores.wanda_sq[name][i]
+            if name in in_idx:
+                sq = sq[in_idx[name]]
+            mask = row_mask(lin.weight, sq.to(lin.weight.device), p["wanda_sparsity"])
+            lin.weight.mul_(mask.to(lin.weight.dtype))
+
+
+@torch.no_grad()
 def apply_plan(model, plan: dict, scores: Scores):
     """Prune the unpruned `model` in place to `plan` (validated first) and return it. See module docstring."""
     full = P.validate(plan, model.config)
@@ -143,27 +167,8 @@ def apply_plan(model, plan: dict, scores: Scores):
     n_groups, _ = flap.group_shape(model)
     width = model.config.intermediate_size
     for i, block in enumerate(model.model.layers):
-        p = full[i]
-        if p["dropped"]:
-            continue
-        in_idx = {}
-        if p["groups_keep"] < n_groups:
-            keep = top_mask(scores.attn[i], p["groups_keep"])
-            flap.remove_attention_groups(block, keep, scores.stats.attn_mean[i])
-            per = block.self_attn.head_dim * block.self_attn.num_key_value_groups
-            in_idx["self_attn.o_proj"] = torch.where(keep.repeat_interleave(per))[0]
-        if p["mlp_keep"] < width:
-            keep = top_mask(scores.mlp[i], p["mlp_keep"])
-            flap.remove_mlp_neurons(block, keep, scores.stats.mlp_mean[i])
-            in_idx["mlp.down_proj"] = torch.where(keep)[0]
-        if p["wanda_sparsity"] > 0:
-            for name in LINEARS:
-                lin = _sublayer(block, name)
-                sq = scores.wanda_sq[name][i]
-                if name in in_idx:
-                    sq = sq[in_idx[name]]
-                mask = row_mask(lin.weight, sq.to(lin.weight.device), p["wanda_sparsity"])
-                lin.weight.mul_(mask.to(lin.weight.dtype))
+        if not full[i]["dropped"]:
+            prune_block(block, i, full[i], scores, n_groups, width)
     drop_layers(model, [i for i, p in full.items() if p["dropped"]])
     model.pruneagent = {"dense_config": dense_config, "plan": full}
     return model
