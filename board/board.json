@@ -256,7 +256,7 @@
       "done_when": "Repeat runs vary < 5% on each machine",
       "gpu": "M4 + T4",
       "status": "doing",
-      "notes": "[2026-11-17] Agent started 10:12 on its own branch"
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch\n[2026-11-17] Mac done (device test 94.8 GB/s, 3.48 TFLOPs; repeat spread < 3%). First T4 run hung after a lost connection with no result; relaunched 13:30, about 20 min."
     },
     {
       "id": "1.7",
@@ -300,8 +300,8 @@
       ],
       "done_when": "Savings at the bar recorded",
       "gpu": "T4",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started 10:12 on its own branch\n[2026-11-17] Two Colab runs failed on agent bugs (fixed). Wanda-sp at the bar: ratio 0.203, 17.2% of block weights, val ppl 25.89, mean acc 42.88%. FLAP held back by accuracy, not perplexity: 23.5% removed still 40.51% acc (< 41.80). Third run launched ~11:50, about 75 min"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch\n[2026-11-17] Two Colab runs failed on agent bugs (fixed). Wanda-sp at the bar: ratio 0.203, 17.2% of block weights, val ppl 25.89, mean acc 42.88%. FLAP held back by accuracy, not perplexity: 23.5% removed still 40.51% acc (< 41.80). Third run launched ~11:50, about 75 min\n[2026-11-17] Done (run 3, T4). FLAP ratio 0.2044: 15.2% of weight memory removed, val ppl 19.98, acc 41.89% (limited by accuracy, clears by 0.09 pt). Wanda-sp ratio 0.2031: 12.7% removed, val ppl 25.89 (limited by perplexity), acc 42.88%. A7 holds (15.2% > 5%)."
     },
     {
       "id": "1.10",
