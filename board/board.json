@@ -255,8 +255,8 @@
       ],
       "done_when": "Repeat runs vary < 5% on each machine",
       "gpu": "M4 + T4",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started 10:12 on its own branch\n[2026-11-17] Mac done (device test 94.8 GB/s, 3.48 TFLOPs; repeat spread < 3%). First T4 run hung after a lost connection with no result; relaunched 13:30, about 20 min."
+      "status": "done",
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch\n[2026-11-17] Mac done (device test 94.8 GB/s, 3.48 TFLOPs; repeat spread < 3%). First T4 run hung after a lost connection with no result; relaunched 13:30, about 20 min.\n[2026-11-17] Done. T4: device test 233 GB/s, 21.9 TFLOPs. Medians of the two invocations agree within 4.2% on T4 and 2% on M4; single runs on T4 spread 9-18% (noisy VM). T4 decode only ~23 tok/s vs M4 ~51 tok/s: small model on T4 is held back by per-token overhead, not memory speed."
     },
     {
       "id": "1.7",
@@ -270,8 +270,8 @@
       ],
       "done_when": "Rank correlation and % error recorded per machine",
       "gpu": "M4 + T4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started on its own branch"
     },
     {
       "id": "1.8",
