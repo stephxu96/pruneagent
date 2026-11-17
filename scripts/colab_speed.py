@@ -50,8 +50,6 @@ def main() -> None:
     for path in sorted(Path("results/speed").rglob("*.json")):
         if "__cuda__" in path.name or path.name == "t4.json":
             combined["files"][str(path)] = json.loads(path.read_text())
-    for path in sorted(Path("results/pruned").glob("*mixed_check__cuda*.json")):
-        combined["files"][str(path)] = json.loads(path.read_text())
     with open("/content/result.json", "w") as f:
         json.dump(combined, f, indent=2)
     print(json.dumps({k: {m: v.get(m, {}).get("median") if isinstance(v.get(m), dict) else v.get(m)

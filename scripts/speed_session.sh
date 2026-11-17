@@ -13,7 +13,7 @@ shift 2
 model=checkpoints/pruned/mixed_check
 if [[ ! -f $model/plan.json ]]; then
   uv run pruneagent prune --plan plans/mixed_check.json --out "$model" --windows 1 --device "$device" \
-    ${SCORES:+--scores "$SCORES"}
+    --results results/speed/prune_log ${SCORES:+--scores "$SCORES"}
 fi
 uv run pruneagent device-test --name "$name" --device "$device"
 for tag in a b; do
