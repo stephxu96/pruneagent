@@ -1,0 +1,33 @@
+{
+ "description": "Gate-subset check (task 1.12): One key/value group removed on layers 2-14 (even).",
+ "steps": [
+  {
+   "layer": 2,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 4,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 6,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 8,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 10,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 12,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 14,
+   "strategy": "remove_attention_group"
+  }
+ ]
+}

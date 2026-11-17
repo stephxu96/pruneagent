@@ -1,0 +1,61 @@
+{
+ "description": "Gate-subset check (task 1.12): Drop layers 21, 23, 25; one key/value group removed on 10-20.",
+ "steps": [
+  {
+   "layer": 21,
+   "strategy": "drop_layer"
+  },
+  {
+   "layer": 23,
+   "strategy": "drop_layer"
+  },
+  {
+   "layer": 25,
+   "strategy": "drop_layer"
+  },
+  {
+   "layer": 10,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 11,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 12,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 13,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 14,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 15,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 16,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 17,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 18,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 19,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 20,
+   "strategy": "remove_attention_group"
+  }
+ ]
+}

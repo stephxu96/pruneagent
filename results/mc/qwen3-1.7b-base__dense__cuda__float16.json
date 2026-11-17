@@ -1,0 +1,54 @@
+{
+  "method": "dense",
+  "model": "Qwen/Qwen3-1.7B-Base",
+  "revision": "ea980cb0a6c2ae4b936e82123acc929f1cec04c1",
+  "device": "cuda",
+  "dtype": "float16",
+  "tasks": {
+    "boolq": {
+      "acc": 0.791131498470948,
+      "acc_norm": null,
+      "acc_stderr": 0.007109734011286579
+    },
+    "rte": {
+      "acc": 0.7689530685920578,
+      "acc_norm": null,
+      "acc_stderr": 0.02537146112218082
+    },
+    "hellaswag": {
+      "acc": 0.4929296952798247,
+      "acc_norm": 0.6653057159928301,
+      "acc_stderr": 0.004989282516055173
+    },
+    "winogrande": {
+      "acc": 0.6400947119179163,
+      "acc_norm": null,
+      "acc_stderr": 0.013489609590266754
+    },
+    "arc_easy": {
+      "acc": 0.7356902356902357,
+      "acc_norm": 0.6830808080808081,
+      "acc_stderr": 0.009048410451862887
+    },
+    "arc_challenge": {
+      "acc": 0.41552901023890787,
+      "acc_norm": 0.45051194539249145,
+      "acc_stderr": 0.014401366641216409
+    },
+    "openbookqa": {
+      "acc": 0.3,
+      "acc_norm": 0.39,
+      "acc_stderr": 0.020514426225627987
+    }
+  },
+  "mean_acc": 0.5920468885985557,
+  "num_fewshot": 0,
+  "limit": null,
+  "seconds": 674.0,
+  "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+  "torch": "2.15.0",
+  "transformers": "5.23.0",
+  "lm_eval": "0.4.13",
+  "created_at": "2026-11-17T15:04:15+00:00",
+  "git_ref": "504d6533cc7178179a44ce56c91e67871d65be23"
+}

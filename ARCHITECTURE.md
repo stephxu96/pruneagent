@@ -378,7 +378,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 | Role | Dataset | Link |
 |---|---|---|
 | Calibration (bar, scoring, probes, baselines) | C4 `en`, 128 samples × 2,048 tokens | https://huggingface.co/datasets/allenai/c4 |
-| Gate (every candidate) | WikiText-2 validation split, a fixed subset of 32 of its 128 windows (full split for the bar and baseline pruning) | https://huggingface.co/datasets/Salesforce/wikitext (`wikitext-2-raw-v1`) |
+| Gate (every candidate) | WikiText-2 validation split, a fixed subset of 32 of its 128 windows, every 4th window starting at the first; candidates are compared with Wanda-50% on these same 32 windows (23.36 on Qwen3-0.6B). The full split is used for reported results and for pruning the comparison methods | https://huggingface.co/datasets/Salesforce/wikitext (`wikitext-2-raw-v1`) |
 | Final perplexity | WikiText-2 test split | same |
 | Final multiple-choice accuracy (Wanda's 7 question sets; no practice examples given) | BoolQ, RTE, HellaSwag, WinoGrande, ARC-Easy, ARC-Challenge, OpenBookQA via lm-evaluation-harness | https://github.com/EleutherAI/lm-evaluation-harness |
 | Knowledge | MMLU | https://huggingface.co/datasets/cais/mmlu |

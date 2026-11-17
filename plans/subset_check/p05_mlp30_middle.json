@@ -1,0 +1,125 @@
+{
+ "description": "Gate-subset check (task 1.12): narrow_mlp x3 (30% of width) on middle layers 10-19.",
+ "steps": [
+  {
+   "layer": 10,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 10,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 10,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 11,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 11,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 11,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 12,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 12,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 12,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 13,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 13,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 13,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 14,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 14,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 14,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 15,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 15,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 15,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 16,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 16,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 16,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 17,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 17,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 17,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 18,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 18,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 18,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 19,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 19,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 19,
+   "strategy": "narrow_mlp"
+  }
+ ]
+}

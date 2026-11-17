@@ -1,0 +1,21 @@
+{
+ "description": "Gate-subset check (task 1.12): narrow_mlp x1 on late layers 20-23.",
+ "steps": [
+  {
+   "layer": 20,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 21,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 22,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 23,
+   "strategy": "narrow_mlp"
+  }
+ ]
+}

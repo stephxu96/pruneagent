@@ -5,17 +5,19 @@
 Clones branch `task-1.9`, installs the locked project, rebuilds the data cache and checks it against the committed
 manifest, then runs `pruneagent baseline` for both methods. Everything goes into /content/result.json.
 
-Run 2. Run 1 (results/baselines/qwen3-0.6b-base__colab_run1.json, commit d5be693) measured Wanda-50% on the T4
+Run 1 (results/baselines/qwen3-0.6b-base__colab_run1.json, commit d5be693) measured Wanda-50% on the T4
 (validation 23.69, for reference; the bar is task 1.1's numbers) and bisected both methods on perplexity over
 [0, 0.5]; it found FLAP failing accuracy at 0.2334 and lost the Wanda-sp record to a bookkeeping bug after its
-accuracy check. To fit one session, this run starts each search from run 1's final perplexity interval
-(FLAP 0.2734-0.2773, Wanda-sp 0.2031-0.2070) and bisects FLAP on the whole bar over [0.13, 0.2334].
+accuracy check. Run 2 (commit 3652d92) stopped at once on a search bug (an assumed-passing lower ratio was
+treated as failing). Run 3 follows run 2's plan: to fit one session, it starts each search from run 1's final
+perplexity interval (FLAP 0.2734-0.2773, Wanda-sp 0.2031-0.2070) and bisects FLAP on the whole bar over [0.13, 0.2334].
 """
 
 import json
 import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 REPO = "https://github.com/stephxu96/pruneagent.git"
@@ -64,12 +66,23 @@ def main() -> None:
 
     git_ref = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
     combined = {"git_ref": git_ref, "runs": {}}
+    stop = threading.Event()
+
+    def autosave() -> None:  # `baseline` rewrites its JSON after every measurement; copy it out every minute
+        while not stop.wait(60):
+            try:
+                save(combined)
+            except (OSError, ValueError) as e:  # a half-written file; the next pass picks it up
+                print(f"autosave skipped: {e}", file=sys.stderr, flush=True)
+
+    threading.Thread(target=autosave, daemon=True).start()
     try:
         for method, extra in RUNS:
             sh(["uv", "run", "pruneagent", "baseline", "--model", MODEL, "--method", method, "--device", "cuda",
                 *extra])
             save(combined)
     finally:
+        stop.set()
         save(combined)
     print(json.dumps({k: v.get("search", {}).get("ratio") for k, v in combined["runs"].items()}, indent=2))
 

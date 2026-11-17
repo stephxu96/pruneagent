@@ -354,6 +354,33 @@ def _val_ppl(net, model: str, seqlen: int, windows: int | None, device: str, dat
     return {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1), "data_sha256": sha}
 
 
+def _scores(net, model: str, revision: str, device: str, dtype: str, data_dir: Path | None,
+            scores_path: Path | None):
+    """Cached pruning scores for the unpruned `net`, computed and saved if missing."""
+    import time
+
+    from pruneagent import data as d
+    from pruneagent import pruner
+
+    scores_path = scores_path or Path("checkpoints/scores") / f"{d.slug(model)}__{device}__{dtype}.safetensors"
+    if scores_path.exists():
+        typer.echo(f"  scores from {scores_path}")
+        return pruner.load_scores(scores_path)
+    start = time.perf_counter()
+    manifest = d.read_manifest(data_dir)
+    meta = {"model": model, "revision": revision, "device": device, "dtype": dtype,
+            "flap_calib": d.flap_calib_name(model),
+            "flap_calib_sha256": manifest["entries"][d.flap_calib_name(model)]["sha256"],
+            "wanda_calib": d.calib_name(model),
+            "wanda_calib_sha256": manifest["entries"][d.calib_name(model)]["sha256"]}
+    scores = pruner.compute_scores(net, d.load_tokens(d.flap_calib_name(model), data_dir),
+                                   d.load_tokens(d.calib_name(model), data_dir), device, meta=meta)
+    scores_path.parent.mkdir(parents=True, exist_ok=True)
+    pruner.save_scores(scores, scores_path)
+    typer.echo(f"  scores computed in {time.perf_counter() - start:.0f} s -> {scores_path}")
+    return scores
+
+
 @app.command("prune")
 def prune_cmd(
     plan: Annotated[Path, typer.Option(help="Plan JSON: {'plan': {layer: {...}}} and/or {'steps': [...]}.")],
@@ -386,22 +413,7 @@ def prune_cmd(
     net = ev.load_model(model, revision, dtype, device)
     layer_plan = P.apply_steps(P.validate(spec.get("plan", {}), net.config), spec.get("steps", []), net.config)
 
-    scores_path = scores_path or Path("checkpoints/scores") / f"{d.slug(model)}__{device}__{dtype}.safetensors"
-    if scores_path.exists():
-        scores = pruner.load_scores(scores_path)
-        typer.echo(f"  scores from {scores_path}")
-    else:
-        start = time.perf_counter()
-        meta = {"model": model, "revision": revision, "device": device, "dtype": dtype,
-                "flap_calib": d.flap_calib_name(model),
-                "flap_calib_sha256": manifest["entries"][d.flap_calib_name(model)]["sha256"],
-                "wanda_calib": d.calib_name(model),
-                "wanda_calib_sha256": manifest["entries"][d.calib_name(model)]["sha256"]}
-        scores = pruner.compute_scores(net, d.load_tokens(d.flap_calib_name(model), data_dir),
-                                       d.load_tokens(d.calib_name(model), data_dir), device, meta=meta)
-        scores_path.parent.mkdir(parents=True, exist_ok=True)
-        pruner.save_scores(scores, scores_path)
-        typer.echo(f"  scores computed in {time.perf_counter() - start:.0f} s -> {scores_path}")
+    scores = _scores(net, model, revision, device, dtype, data_dir, scores_path)
 
     before = pruner.weight_counts(net)
     start = time.perf_counter()
@@ -544,6 +556,21 @@ def baseline_cmd(
                 return wanda_sp.prune_wanda_sp(net, calib, ratio, device)
         current: dict = {"ratio": None, "net": None}
         info: dict[float, dict] = {}
+        record = {"method": method, **_run_record(model, revision, device, dtype, seqlen), "bar": bar,
+                  "calibration": {"entry": calib_name, "sha256": manifest["entries"][calib_name]["sha256"]},
+                  "search": {"lo": lo, "hi": hi, "tol": tol, "acc_lo": acc_lo, "acc_tol": acc_tol,
+                             "acc_fails_at": acc_fails_at, "windows": windows, "mc_limit": mc_limit,
+                             "status": "running"},
+                  "weights_before": before}
+        suffix = f"__windows{windows}" if windows else ""
+        suffix += f"__limit{mc_limit}" if mc_limit else ""
+        path = results / f"{d.slug(model)}__{method.replace('-', '')}-at-bar__{device}__{dtype}{suffix}.json"
+
+        def save(record=record, info=info, path=path) -> None:
+            """Write everything measured so far; called after every measurement so a crash loses nothing."""
+            record["trials"] = {f"{k:.4f}": v for k, v in sorted(info.items())}
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(record, indent=2) + "\n")
 
         def build(ratio: float, prune_fn=prune_fn, current=current, info=info) -> object:
             if current["ratio"] == ratio:
@@ -576,6 +603,7 @@ def baseline_cmd(
             info[ratio]["validation"] = {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1)}
             typer.echo(f"[{method}] ratio {ratio:.4f}: block weights removed {info[ratio]['block_weights_removed']:.4f}"
                        f", validation ppl {r.ppl:.4f}")
+            save()
             return r.ppl
 
         def mean_acc(ratio: float, method=method, info=info) -> float:
@@ -583,41 +611,191 @@ def baseline_cmd(
             start = time.perf_counter()
             raw = mc.evaluate(net, tok, device, batch_size="auto", limit=mc_limit)
             info[ratio]["mc"] = mc.summarize(raw) | {"seconds": round(time.perf_counter() - start, 1)}
-            typer.echo(f"[{method}] ratio {ratio:.4f}: mean accuracy {info[ratio]['mc']['mean_acc']:.4f}")
+            typer.echo(f"[{method}] ratio {ratio:.4f}: mean accuracy {info[ratio]['mc']['mean_acc']:.4f}; " + ", ".join(
+                f"{t} {v['acc']:.4f}" for t, v in info[ratio]["mc"]["tasks"].items()))
+            save()
             return info[ratio]["mc"]["mean_acc"]
 
         search = B.search_bar(val_ppl, mean_acc, bar["max_validation_ppl"], bar["min_mean_acc"],
                               lo=lo, hi=hi, tol=tol, acc_lo=acc_lo, acc_tol=acc_tol, acc_fails_at=acc_fails_at)
-        record = {"method": method, **_run_record(model, revision, device, dtype, seqlen), "bar": bar,
-                  "calibration": {"entry": calib_name, "sha256": manifest["entries"][calib_name]["sha256"]},
-                  "search": {"lo": lo, "hi": hi, "tol": tol, "acc_lo": acc_lo, "acc_tol": acc_tol,
-                             "acc_fails_at": acc_fails_at,
-                             "windows": windows, "mc_limit": mc_limit, **search.to_json()},
-                  "weights_before": before}
+        record["search"] |= {"status": "done", **search.to_json()}
+        save()
         if search.ratio is not None:
             net = build(search.ratio)  # rebuilt only if a later trial replaced it
             at = info[search.ratio]
             r = ev.perplexity(net, val_ids, seqlen, device)
             at["validation_final_model"] = {"ppl": r.ppl, "n_windows": r.n_windows}
+            save()
             if windows is None:
                 r = ev.perplexity(net, test_ids, seqlen, device)
                 at["test"] = {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1)}
+                typer.echo(f"[{method}] ratio {search.ratio:.4f}: test ppl {r.ppl:.4f}")
+                save()
             record["at_bar"] = {"ratio": search.ratio, **at}
             typer.echo(f"[{method}] at the bar: ratio {search.ratio:.4f}, block weights removed "
                        f"{at['block_weights_removed']:.4f}, weight bytes removed {at['weight_bytes_removed']:.4f}, "
-                       f"validation {at['validation']['ppl']:.4f}, test {at.get('test', {}).get('ppl', float('nan')):.4f}"
-                       f", mean accuracy {at['mc']['mean_acc']:.4f}")
+                       f"validation {at.get('validation', {}).get('ppl', float('nan')):.4f}, test {at.get('test', {}).get('ppl', float('nan')):.4f}"
+                       f", mean accuracy {at.get('mc', {}).get('mean_acc', float('nan')):.4f}")
         else:
             typer.echo(f"[{method}] bar not met: {search.note}")
-        record["trials"] = {f"{k:.4f}": v for k, v in sorted(info.items())}
         current["net"] = None
-
-        results.mkdir(parents=True, exist_ok=True)
-        suffix = f"__windows{windows}" if windows else ""
-        suffix += f"__limit{mc_limit}" if mc_limit else ""
-        path = results / f"{d.slug(model)}__{method.replace('-', '')}-at-bar__{device}__{dtype}{suffix}.json"
-        path.write_text(json.dumps(record, indent=2) + "\n")
+        save()
         typer.echo(f"Saved {path}")
+
+
+@app.command("estimate")
+def estimate_cmd(
+    plan: Annotated[Path, typer.Option(help="Plan JSON ({'plan': ...} and/or {'steps': [...]}), or a saved model's "
+                                            "plan.json or directory (then compared with its file size).")],
+    target: Annotated[str | None, typer.Option(help="Device target: preset (m4, t4), JSON file or inline JSON.")] = None,
+    model: Annotated[str, typer.Option(help="Hugging Face model id (ignored for a saved model).")] = "Qwen/Qwen3-0.6B-Base",
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32 (ignored for a saved model).")] = "float16",
+    context: Annotated[int, typer.Option(help="Tokens of history when generating (key/value cache).")] = 512,
+    prompt: Annotated[int, typer.Option(help="Prompt length for prefill FLOPs.")] = 512,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/estimate"),
+) -> None:
+    """Weight bytes, bytes read per generated token, prompt FLOPs and estimated speed for a plan; no weights needed."""
+    import json
+
+    from pruneagent import data as d
+    from pruneagent import estimate as E
+    from pruneagent import loader
+    from pruneagent import plan as P
+
+    path = plan / loader.PLAN if plan.is_dir() else plan
+    spec = json.loads(path.read_text())
+    is_saved = spec.get("format") == loader.FORMAT
+    record: dict = {"plan_file": str(path)}
+    if is_saved:
+        saved = loader.read_plan(path.parent)
+        config, layer_plan, dtype = saved["dense_config"], saved["plan"], saved["dtype"]
+        model, revision = saved["model_id"], saved["revision"]
+    else:
+        from transformers import AutoConfig
+
+        revision = d.read_manifest(data_dir)["entries"][d.calib_name(model)]["tokenizer"]["revision"]
+        config = AutoConfig.from_pretrained(model, revision=revision).to_dict()
+        layer_plan = P.apply_steps(P.validate(spec.get("plan", {}), config), spec.get("steps", []), config)
+    dtype_bytes = {"float16": 2, "bfloat16": 2, "float32": 4}[dtype]
+    dev = E.load_target(target) if target else None
+    est = E.estimate(config, layer_plan, dev, dtype_bytes=dtype_bytes, context=context, prompt=prompt)
+    dense = E.estimate(config, {}, dev, dtype_bytes=dtype_bytes, context=context, prompt=prompt)
+    record |= {"model": model, "revision": revision, "dtype": dtype, "plan": P.to_json(layer_plan),
+               "estimate": est.to_dict(), "dense": dense.to_dict()}
+    typer.echo(f"{model} in {dtype}: {path}")
+    typer.echo(f"  weight bytes      {est.weight_bytes:,} ({est.weight_bytes / dense.weight_bytes:.4f} of dense)")
+    typer.echo(f"  read per token    {est.decode_bytes_per_token:,} at a {context}-token context")
+    typer.echo(f"  prompt FLOPs      {est.prefill_flops:.4g} for {prompt} tokens")
+    weights_file = path.parent / loader.WEIGHTS
+    if is_saved and weights_file.exists():
+        size = weights_file.stat().st_size
+        diff = (est.weight_bytes - size) / size
+        record["file"] = {"path": str(weights_file), "bytes": size, "relative_difference": diff}
+        typer.echo(f"  saved file        {size:,} (estimate {diff:+.4%})")
+    if dev:
+        c = E.check(dev, config, layer_plan, dtype_bytes=dtype_bytes, context=context, prompt=prompt)
+        record["check"] = c.to_dict()
+        typer.echo(f"  on {dev.name}: decode {est.est_decode_tok_s:.1f} tokens/s (unpruned "
+                   f"{dense.est_decode_tok_s:.1f}), prompt {est.est_prefill_tok_s:.0f} tokens/s; "
+                   f"fits {c.fits_memory} (over by {c.memory_gap_gb:.3f} GB), speed met {c.meets_speed} "
+                   f"(short by {c.speed_gap_tok_s:.1f} tokens/s)")
+    results.mkdir(parents=True, exist_ok=True)
+    name = path.parent.name if is_saved else path.stem
+    suffix = f"__{target}" if target in E.PRESETS else ""
+    out = results / f"{d.slug(model)}__{name}__{dtype}{suffix}.json"
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {out}")
+
+
+@app.command("probe")
+def probe_cmd(
+    model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
+    samples: Annotated[int, typer.Option(help="C4 calibration samples for the probes.")] = 8,
+    steps: Annotated[int, typer.Option(help="Probe 1..steps steps of each strategy.")] = 1,
+    ground_truth: Annotated[bool, typer.Option(help="Also measure validation perplexity after one step of "
+                                               "each strategy on each layer, and compare rankings.")] = False,
+    seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
+    windows: Annotated[int | None, typer.Option(help="Validation windows to evaluate (default: all).")] = None,
+    layers: Annotated[str | None, typer.Option(help="Comma-separated layers (default: all).")] = None,
+    scores_path: Annotated[Path | None, typer.Option("--scores", help="Cached scores (computed if missing).")] = None,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    out: Annotated[Path | None, typer.Option(help="Results JSON (default: results/probes/<model>__<device>"
+                                             "__<dtype>.json). Rewritten after every evaluation; "
+                                             "evaluations already in it are reused.")] = None,
+) -> None:
+    """Layer probes for every strategy (the sensitivity table); with --ground-truth, check them against
+    full-model validation perplexity (assumption A1)."""
+    import json
+    import time
+
+    from pruneagent import data as d
+    from pruneagent import evaluate as ev
+    from pruneagent import plan as P
+    from pruneagent import probe as pr
+    from pruneagent import pruner
+
+    device = device or ev.pick_device()
+    revision = d.read_manifest(data_dir)["entries"][d.calib_name(model)]["tokenizer"]["revision"]
+    out = out or Path("results/probes") / f"{d.slug(model)}__{device}__{dtype}.json"
+    typer.echo(f"{model}@{revision[:8]} on {device} in {dtype}")
+    net = ev.load_model(model, revision, dtype, device)
+    scores = _scores(net, model, revision, device, dtype, data_dir, scores_path)
+    layer_ids = [int(x) for x in layers.split(",")] if layers else list(range(net.config.num_hidden_layers))
+
+    ev.synchronize(device)
+    start = time.perf_counter()
+    acts = pr.capture(net, d.load_tokens(d.calib_name(model), data_dir)[:samples], device)
+    ev.synchronize(device)
+    capture_s = time.perf_counter() - start
+    start = time.perf_counter()
+    table = pr.sensitivity_table(net, acts, scores, steps=tuple(range(1, steps + 1)), layers=layer_ids)
+    ev.synchronize(device)
+    probe_s = time.perf_counter() - start
+    del acts
+    typer.echo(f"  probes: capture {capture_s:.1f} s, {len(layer_ids)} layers x {len(P.STRATEGIES)} "
+               f"strategies x {steps} steps in {probe_s:.1f} s")
+
+    record = {"method": "probe", **_run_record(model, revision, device, dtype, seqlen),
+              "probe_samples": samples, "probe_calib": d.calib_name(model), "scores": scores.meta,
+              "capture_seconds": round(capture_s, 2), "probe_seconds": round(probe_s, 2),
+              "table": {str(i): lp for i, lp in table.items()}}
+    previous = json.loads(out.read_text()) if out.exists() else {}
+
+    def save() -> None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(record, indent=2) + "\n")
+
+    save()
+    if ground_truth:
+        gt = previous.get("ground_truth", {}) if previous.get("windows") == windows else {}
+        record["windows"] = windows
+        record["ground_truth"] = gt
+        if "dense" not in gt:
+            gt["dense"] = _val_ppl(net, model, seqlen, windows, device, data_dir)
+            save()
+        typer.echo(f"  dense validation ppl {gt['dense']['ppl']:.4f} ({gt['dense']['n_windows']} windows)")
+        dense = P.dense_plan(net.config)
+        for i in layer_ids:
+            for s in P.STRATEGIES:
+                key = f"{i}/{s}"
+                if key in gt:
+                    continue
+                pruned = pruner.prune(net, P.step(dense, i, s, net.config), scores)
+                gt[key] = _val_ppl(pruned, model, seqlen, windows, device, data_dir)
+                del pruned
+                save()
+                typer.echo(f"  layer {i:2d} {s:24s} ppl {gt[key]['ppl']:.4f}  ({gt[key]['seconds']} s)")
+        ppl = {(int(k.split("/")[0]), k.split("/")[1]): v["ppl"] for k, v in gt.items() if k != "dense"}
+        record["comparison"] = pr.compare(table, gt["dense"]["ppl"], ppl)
+        save()
+        c = record["comparison"]
+        typer.echo(f"  Spearman, all {c['n']} pairs: {c.get('all', float('nan')):.3f}")
+        for s, v in c["per_strategy"].items():
+            typer.echo(f"  Spearman, {s:24s} {v['spearman']:.3f}  (Block Influence {v['spearman_block_influence']:.3f})")
+    typer.echo(f"Saved {out}")
 
 
 @app.callback()
