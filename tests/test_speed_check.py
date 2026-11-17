@@ -41,6 +41,14 @@ def test_fit_recovers_scale_and_overhead():
     assert fit["max_abs_error"] == pytest.approx(0, abs=1e-9)
 
 
+def test_fit_overhead_recovers_fixed_overhead():
+    est = [50.0, 80.0, 120.0]
+    meas = [1 / (1 / v + 0.003) for v in est]
+    fit = S.fit_overhead(est, meas)
+    assert fit["overhead_s_per_token"] == pytest.approx(0.003)
+    assert fit["max_abs_error"] == pytest.approx(0, abs=1e-9)
+
+
 def test_load_target_reads_device_test_file(tmp_path):
     test = {"bandwidth": {"median": 94.8}, "compute": {"median": 3.48}}
     f = tmp_path / "m4.json"

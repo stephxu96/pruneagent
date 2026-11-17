@@ -937,6 +937,8 @@ def speed_check_cmd(
     record = {"machine": machine, "device": device, "targets": {t: asdict(dev) for t, dev in devs.items()},
               "plans": rows, "summary": summary,
               "definitions": {"error": "(estimated - measured) / measured; positive = estimate too fast",
+                              "fit_overhead": "in-sample least squares, measured s/token = estimated s/token + "
+                                              "overhead; an extra column only, not used for A6 / A8",
                               "fit": "in-sample least-squares line, measured s/token = scale x estimated s/token "
                                      "+ overhead; an extra column only, not used for A6 / A8"}}
     for t in targets:
@@ -947,11 +949,14 @@ def speed_check_cmd(
                        f"{summary[t]['decode']['error'][i]:>+8.0%}{r['estimated'][t]['prefill']:>13.0f}"
                        f"{r['measured']['prefill']:>8.0f}{summary[t]['prefill']['error'][i]:>+8.0%}")
         for ms in S.MEASURES:
-            s, fit = summary[t][ms], summary[t][ms]["fit"]
+            s, fit, oh = summary[t][ms], summary[t][ms]["fit"], summary[t][ms]["fit_overhead"]
             rho = "n/a" if s["spearman"] is None else f"{s['spearman']:.3f}"
             typer.echo(f"  {ms:<8} Spearman {rho}  mean |error| {s['mean_abs_error']:.1%}  max |error| "
-                       f"{s['max_abs_error']:.1%}  | fitted line (in-sample): mean |error| "
-                       f"{fit['mean_abs_error']:.1%}, max {fit['max_abs_error']:.1%}")
+                       f"{s['max_abs_error']:.1%}")
+            typer.echo(f"    in-sample corrections: + {oh['overhead_s_per_token'] * 1e3:.3f} ms/token -> mean "
+                       f"{oh['mean_abs_error']:.1%}, max {oh['max_abs_error']:.1%};  x {fit['scale']:.2f} + "
+                       f"{fit['overhead_s_per_token'] * 1e3:.3f} ms/token -> mean {fit['mean_abs_error']:.1%}, "
+                       f"max {fit['max_abs_error']:.1%}")
     results.mkdir(parents=True, exist_ok=True)
     out = results / f"{machine}.json"
     out.write_text(json.dumps(record, indent=2) + "\n")

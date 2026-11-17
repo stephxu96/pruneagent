@@ -8,9 +8,10 @@ device target) is set beside the speed meter's median (`speed.measure`). Reporte
     mean_abs_error       mean of |error| over the plans (A8: within ~0.25)
     max_abs_error        largest |error|
 
-`fit_time` is an optional, separately labelled correction: a straight line from estimated to measured time per
-token, measured = scale x estimated + overhead, fitted by least squares on the same measurements it is then
-scored on (in-sample, so it flatters the estimate). It is never used for the A6 / A8 numbers.
+Two optional, separately labelled corrections, each fitted by least squares on the same measurements it is then
+scored on (in-sample, so they flatter the estimate) and never used for the A6 / A8 numbers:
+`fit_overhead`  measured time per token = estimated + a fixed overhead;
+`fit_time`      measured time per token = scale x estimated + a fixed overhead.
 """
 
 from __future__ import annotations
@@ -77,14 +78,24 @@ def fit_time(estimated: list[float], measured: list[float]) -> dict:
             "spearman": spearman(corrected, measured)}
 
 
+def fit_overhead(estimated: list[float], measured: list[float]) -> dict:
+    """The simplest correction: a fixed overhead added to every token's estimated time (least squares, so the
+    mean of measured minus estimated seconds per token). Corrected speed = 1 / (1 / estimated + overhead)."""
+    overhead = statistics.fmean(1 / m - 1 / e for e, m in zip(estimated, measured, strict=True))
+    corrected = [1 / (1 / e + overhead) for e in estimated]
+    return {"overhead_s_per_token": overhead, "corrected": corrected,
+            **{k: v for k, v in score(corrected, measured).items() if k != "spearman"},
+            "spearman": spearman(corrected, measured)}
+
+
 def compare(rows: list[dict], targets: list[str]) -> dict:
     """`rows`: one per plan, {"plan", "measured": {"decode", "prefill"}, "estimated": {target: {"decode",
-    "prefill"}}}. Returns {target: {measure: score(...) + {"fit": fit_time(...)}}}."""
+    "prefill"}}}. Returns {target: {measure: score(...) + {"fit": fit_time(...), "fit_overhead": ...}}}."""
     out: dict = {}
     for t in targets:
         out[t] = {}
         for m in MEASURES:
             est = [r["estimated"][t][m] for r in rows]
             meas = [r["measured"][m] for r in rows]
-            out[t][m] = score(est, meas) | {"fit": fit_time(est, meas)}
+            out[t][m] = score(est, meas) | {"fit": fit_time(est, meas), "fit_overhead": fit_overhead(est, meas)}
     return out
