@@ -147,6 +147,63 @@ def wanda_cmd(
     typer.echo(f"Saved {out}")
 
 
+@app.command("mc")
+def mc_cmd(
+    model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",
+    sparsity: Annotated[float, typer.Option(help="Wanda sparsity to apply first (0 = unpruned).")] = 0.0,
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
+    batch_size: Annotated[str, typer.Option(help="lm-eval batch size, or 'auto'.")] = "auto",
+    limit: Annotated[int | None, typer.Option(help="Questions per task (for quick checks only).")] = None,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/mc"),
+) -> None:
+    """Multiple-choice accuracy on the seven Wanda-paper question sets, optionally after Wanda pruning."""
+    import json
+    import platform
+    import time
+    from datetime import UTC, datetime
+    from importlib.metadata import version as pkg_version
+
+    from transformers import AutoTokenizer
+
+    from pruneagent import data as d
+    from pruneagent import evaluate as ev
+    from pruneagent import mc, wanda
+
+    device = device or ev.pick_device()
+    manifest = d.read_manifest(data_dir)
+    revision = manifest["entries"][d.calib_name(model)]["tokenizer"]["revision"]
+    label = f"wanda{round(sparsity * 100)}" if sparsity else "dense"
+    typer.echo(f"{model}@{revision[:8]} on {device} in {dtype}: {label}")
+    net = ev.load_model(model, revision, dtype, device)
+    tok = AutoTokenizer.from_pretrained(model, revision=revision)
+    record = {"method": label, "model": model, "revision": revision, "device": device, "dtype": dtype}
+    if sparsity:
+        wanda.prune_wanda(net, d.load_tokens(d.calib_name(model), data_dir), sparsity, device)
+        record["achieved_linear_sparsity"] = wanda.linear_sparsity(net)
+        typer.echo(f"  block linear sparsity {record['achieved_linear_sparsity']:.4f}")
+
+    start = time.perf_counter()
+    raw = mc.evaluate(net, tok, device, batch_size=int(batch_size) if batch_size.isdigit() else batch_size,
+                      limit=limit)
+    record |= mc.summarize(raw)
+    record |= {
+        "num_fewshot": 0, "limit": limit, "seconds": round(time.perf_counter() - start, 1),
+        "machine": platform.platform(), "torch": pkg_version("torch"), "transformers": pkg_version("transformers"),
+        "lm_eval": pkg_version("lm_eval"), "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+    for task, r in record["tasks"].items():
+        typer.echo(f"  {task:<14} acc {r['acc']:.4f}")
+    typer.echo(f"  {'mean':<14} acc {record['mean_acc']:.4f}  ({record['seconds']:.0f} s)")
+
+    results.mkdir(parents=True, exist_ok=True)
+    suffix = f"__limit{limit}" if limit else ""
+    out = results / f"{d.slug(model)}__{label}__{device}__{dtype}{suffix}.json"
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {out}")
+
+
 @app.callback()
 def main() -> None:
     """PruneAgent command line."""
