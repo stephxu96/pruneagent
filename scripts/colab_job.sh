@@ -27,6 +27,7 @@ if [ $rc -ne 0 ]; then
   echo "$st" >&2
 fi
 
+mkdir -p "$(dirname "$local_result")"
 if colab download -s "$session" "$remote_result" "$local_result" >&2; then
   echo "[job] result saved to $local_result" >&2
   exit 0
