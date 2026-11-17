@@ -411,7 +411,7 @@
           "go_if": "FLAP at the bar saves ≥ 5% of weight memory",
           "fallback": "Continue; headline becomes how the agent mixes strategies",
           "result": "pending",
-          "observed": ""
+          "observed": "FLAP at the bar removes 15.2% of weight memory (held back by accuracy, which it clears by only 0.09 points); uniform Wanda-sp removes 12.7%"
         },
         {
           "label": "32-window subset ranks like the full split (A9)",
