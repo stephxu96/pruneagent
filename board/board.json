@@ -54,7 +54,7 @@
     {
       "phase": 0,
       "units_planned": 2,
-      "units_used": 0,
+      "units_used": 0.3,
       "llm_planned": 0,
       "llm_used": 0
     },
@@ -111,15 +111,15 @@
       "id": "0.2",
       "type": "task",
       "phase": 0,
-      "title": "Colab notebook skeleton: Drive mount, install from lock file, GPU in manifest",
+      "title": "Colab job runner with the Colab CLI: named session, uv sync --locked, reconnect, download, always stop",
       "owner": "Coding agent",
       "deps": [
         "0.1"
       ],
-      "done_when": "Same notebook runs on T4 and A100",
+      "done_when": "A job runs on the T4 end to end and the session is released",
       "gpu": "",
-      "status": "todo",
-      "notes": "[2026-11-16] Deferred: Colab only needed for 1.7B work and T4 speed; 0.4's T4 half waits on it"
+      "status": "done",
+      "notes": "[2026-11-16] Deferred: Colab only needed for 1.7B work and T4 speed; 0.4's T4 half waits on it\n[2026-11-16] Done via Google Colab CLI 0.8.0 instead of a notebook. `colab run` failed 3 times (kernel stderr, 30 s silence limit, lost connection); scripts/colab_job.sh (new / exec / download / stop) worked."
     },
     {
       "id": "0.3",
@@ -139,7 +139,7 @@
       "id": "0.4",
       "type": "task",
       "phase": 0,
-      "title": "Dense Qwen3-0.6B validation and test perplexity on Mac and T4",
+      "title": "Dense Qwen3-0.6B-Base validation and test perplexity on Mac and T4",
       "owner": "Coding agent",
       "deps": [
         "0.2",
@@ -147,8 +147,8 @@
       ],
       "done_when": "Numbers recorded",
       "gpu": "Mac + T4",
-      "status": "doing",
-      "notes": "Mac half done for Qwen3-0.6B-Base (M4, fp16): val ppl 13.27, test 12.66; ~2.2 s per 2,048-token window (~5 min per split). Chat model for reference: val 22.19, test 20.96. T4 half waits on 0.2."
+      "status": "done",
+      "notes": "Qwen3-0.6B-Base fp16. M4: val 13.2650, test 12.6601 (~2.2 s/window). T4: val 13.2654, test 12.6604 (~0.25 s/window, ~9x faster). Difference < 0.01%. Chat model for reference: val 22.19, test 20.96 (M4)."
     },
     {
       "id": "G0",
@@ -161,15 +161,15 @@
       ],
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
-      "status": "todo",
+      "status": "done",
       "notes": "",
       "checks": [
         {
           "label": "Dense 0.6B perplexity, Mac vs. T4",
           "go_if": "Agree within 1%",
           "fallback": "Fix the evaluation code before anything else",
-          "result": "pending",
-          "observed": ""
+          "result": "go",
+          "observed": "M4 vs T4 differ by 0.003% (val) and 0.002% (test); T4 data hashes match the committed manifest"
         }
       ]
     },

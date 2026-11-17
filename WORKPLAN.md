@@ -28,7 +28,7 @@ Days are calendar days from the start of the build: D1 = Monday 16 November 2026
 | # | Task | Owner | Done when |
 |---|---|---|---|
 | 0.1 | Repo, `uv` lock file (PyTorch, Transformers, LangGraph, lm-eval), pytest, GitHub Actions | Coding agent | CI runs an empty test suite |
-| 0.2 | Colab notebook skeleton: mounts Drive, installs from the lock file, records GPU type in a manifest | Coding agent | Same notebook runs on T4 and A100 |
+| 0.2 | Colab job runner with the Google Colab CLI (`scripts/colab_job.sh`): named GPU session, clone + `uv sync --locked`, reconnect on a dropped connection, download the result, always stop the session | Coding agent | A job runs on the T4 end to end and the session is released |
 | 0.3 | Download and cache C4 calibration set (128 × 2,048 tokens, fixed seed) and WikiText-2 validation and test splits | Coding agent | Cached files hashed in the manifest |
 | 0.4 | Dense Qwen3-0.6B: validation and test perplexity on Mac and T4 | Coding agent | Numbers recorded |
 
