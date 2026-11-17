@@ -61,7 +61,7 @@
     {
       "phase": 1,
       "units_planned": 25,
-      "units_used": 0,
+      "units_used": 0.4,
       "llm_planned": 10,
       "llm_used": 0
     },
@@ -185,7 +185,7 @@
       "done_when": "Bar recorded: validation and test perplexity, 7 zero-shot tasks",
       "gpu": "T4",
       "status": "doing",
-      "notes": "[2026-11-16] Our Wanda 50% (all 7 block linears, C4 128×2048, layer by layer), M4 fp16: sparsity 0.5000; val ppl 23.68, test 22.57 (dense 13.27 / 12.66). Bar: val ≤ 26.05, test ≤ 24.83. Cross-check vs llm-compressor 0.8.1 pending; zero-shot pending."
+      "notes": "[2026-11-16] Our Wanda 50% (all 7 block linears, C4 128×2048, layer by layer), M4 fp16: sparsity 0.5000; val ppl 23.68, test 22.57 (dense 13.27 / 12.66). Bar: val ≤ 26.05, test ≤ 24.83. Cross-check vs llm-compressor 0.8.1 pending; zero-shot pending.\n[2026-11-16] Cross-check passed: llm-compressor 0.8.1 WandaPruningModifier on T4 gives val 23.679 / test 22.564 vs ours 23.683 / 22.569 (+0.01% / +0.02%; limit 2%). Zero-shot still to do."
     },
     {
       "id": "1.2",

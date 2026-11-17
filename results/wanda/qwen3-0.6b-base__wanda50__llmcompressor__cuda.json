@@ -1,0 +1,26 @@
+{
+  "method": "wanda (llm-compressor WandaPruningModifier)",
+  "llmcompressor": "0.8.1",
+  "transformers": "4.56.2",
+  "torch": "2.8.0",
+  "target_sparsity": 0.5,
+  "achieved_linear_sparsity": 0.5,
+  "model": "Qwen/Qwen3-0.6B-Base",
+  "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+  "device": "cuda",
+  "dtype": "float16",
+  "prune_seconds": 215.4,
+  "splits": {
+    "validation": {
+      "ppl": 23.679155349731445,
+      "n_windows": 128,
+      "seconds": 102.6
+    },
+    "test": {
+      "ppl": 22.564472198486328,
+      "n_windows": 146,
+      "seconds": 117.2
+    }
+  },
+  "git_ref": "bd1f9ddf8654b2a96d712db9b5c4c9a065323020"
+}
