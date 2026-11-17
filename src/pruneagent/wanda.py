@@ -70,7 +70,7 @@ def _block_inputs(model, calib: torch.Tensor, device: str):
     try:
         for sample in calib:
             try:
-                model(sample.unsqueeze(0).to(device))
+                model(sample.unsqueeze(0).to(device), use_cache=False)  # samples must not see each other
             except _StopForward:
                 pass
     finally:

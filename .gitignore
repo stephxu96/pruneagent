@@ -31,3 +31,6 @@ board/board.json.tmp
 
 # llm-compressor logs
 sparse_logs/
+
+# agent worktrees (Claude Code)
+.claude/worktrees/

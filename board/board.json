@@ -212,8 +212,8 @@
       ],
       "done_when": "Matches its reference at a uniform cut",
       "gpu": "T4",
-      "status": "todo",
-      "notes": ""
+      "status": "done",
+      "notes": "[2026-11-17] Agent started 09:45 on its own branch\n[2026-11-17] Merged. Matches reference exactly (0 of 224 groups, 0 of 86,016 neurons differ). Wanda-sp 20%: validation ppl 25.98, test 25.29; removes 17.0% of block weights (attention cut rounds down to 1 of 8 groups)"
     },
     {
       "id": "1.4",
@@ -227,8 +227,8 @@
       ],
       "done_when": "Save-and-reload gives identical perplexity",
       "gpu": "T4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started 09:45 on its own branch"
     },
     {
       "id": "1.5",
@@ -314,8 +314,8 @@
       ],
       "done_when": "Bar recorded for 1.7B",
       "gpu": "A100",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started 09:45 on its own branch; Colab A100"
     },
     {
       "id": "1.11",
