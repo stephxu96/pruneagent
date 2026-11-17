@@ -1,0 +1,2805 @@
+{
+  "git_ref": "74c16ac4878c1c121ea350554a38818bc0dfd9dc",
+  "files": {
+    "results/speed_check/devices/t4.json": {
+      "name": "t4",
+      "kind": "gpu",
+      "bandwidth_gbs": 232.2,
+      "compute_tflops": 22.6,
+      "measured_at": "2026-11-17T18:41:40+00:00",
+      "device": "cuda",
+      "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "torch": "2.15.0+cu132",
+      "device_name": "Tesla T4",
+      "memory_total_gb": 15.637086208,
+      "test": {
+        "bandwidth": {
+          "median": 232.20089272435305,
+          "min": 232.1922436236369,
+          "max": 232.32033751232163,
+          "spread": 0.0005516511464785447,
+          "runs": [
+            232.1922436236369,
+            232.20089272435305,
+            232.2447192974539,
+            232.1978472636084,
+            232.32033751232163
+          ]
+        },
+        "compute": {
+          "median": 22.596962629089848,
+          "min": 21.358553008558175,
+          "max": 22.60026803029939,
+          "spread": 0.05495052773786118,
+          "runs": [
+            22.596529065487537,
+            22.59795372063875,
+            22.60026803029939,
+            22.596962629089848,
+            21.358553008558175
+          ]
+        },
+        "method": {
+          "copy_mb": 1024,
+          "matmul_n": 4096,
+          "matmul_dtype": "float16",
+          "iters": 20,
+          "repeats": 5,
+          "warmup": 3,
+          "bandwidth": "2 x bytes copied / s (read + write), GB = 1e9 bytes",
+          "compute": "2 n^3 / s for an n x n matmul, TFLOPs = 1e12 FLOPs/s"
+        }
+      }
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_attn4__cuda__float16.json": {
+      "label": "speed_check_attn4",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:44:59+00:00",
+      "path": "checkpoints/pruned/speed_check_attn4",
+      "file_bytes": 1016034176,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 507998208,
+      "weight_bytes": 1015996928,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 11687.039169425794,
+        "min": 8837.933140933555,
+        "max": 12221.181910027368,
+        "spread": 0.2894872448057379,
+        "runs": [
+          11898.842363483287,
+          12221.181910027368,
+          11510.841830359323,
+          11687.039169425794,
+          8837.933140933555
+        ]
+      },
+      "decode_tok_s": {
+        "median": 24.5119841191248,
+        "min": 21.8800505859671,
+        "max": 25.604429116244326,
+        "spread": 0.15194112855888237,
+        "runs": [
+          25.604429116244326,
+          21.8800505859671,
+          24.81017839467492,
+          22.49206819119101,
+          24.5119841191248
+        ]
+      },
+      "peak_memory_bytes": 1064648704,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_dense__cuda__float16.json": {
+      "label": "speed_check_dense",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:46:51+00:00",
+      "path": "checkpoints/pruned/speed_check_dense",
+      "file_bytes": 1192134752,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 596049920,
+      "weight_bytes": 1192100352,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 9335.572193169543,
+        "min": 8346.042982089106,
+        "max": 9837.658838556537,
+        "spread": 0.1597776575022135,
+        "runs": [
+          8346.042982089106,
+          9468.831298218443,
+          9837.658838556537,
+          9335.572193169543,
+          9044.751788949154
+        ]
+      },
+      "decode_tok_s": {
+        "median": 21.18628742869633,
+        "min": 19.86717443858574,
+        "max": 24.365023038663796,
+        "spread": 0.21229998956711157,
+        "runs": [
+          21.18628742869633,
+          24.365023038663796,
+          20.162977185829433,
+          22.605436399270683,
+          19.86717443858574
+        ]
+      },
+      "peak_memory_bytes": 1294607360,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_drop14__cuda__float16.json": {
+      "label": "speed_check_drop14",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:48:09+00:00",
+      "path": "checkpoints/pruned/speed_check_drop14",
+      "file_bytes": 751650840,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 375816704,
+      "weight_bytes": 751633920,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 18148.610606916725,
+        "min": 13222.90486042782,
+        "max": 18488.253098421905,
+        "spread": 0.29012404045890855,
+        "runs": [
+          15952.417428375984,
+          18148.610606916725,
+          18488.253098421905,
+          18431.183719785222,
+          13222.90486042782
+        ]
+      },
+      "decode_tok_s": {
+        "median": 42.68335639048469,
+        "min": 32.84029242109291,
+        "max": 43.46593120239448,
+        "spread": 0.2489410318179739,
+        "runs": [
+          43.46593120239448,
+          43.30705346866217,
+          42.68335639048469,
+          32.84029242109291,
+          41.98159963875483
+        ]
+      },
+      "peak_memory_bytes": 806919168,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_drop4__cuda__float16.json": {
+      "label": "speed_check_drop4",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:50:06+00:00",
+      "path": "checkpoints/pruned/speed_check_drop4",
+      "file_bytes": 1066282160,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 533126144,
+      "weight_bytes": 1066252800,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 10711.877932805943,
+        "min": 9083.273625292137,
+        "max": 12470.78620900124,
+        "spread": 0.3162389083369395,
+        "runs": [
+          12470.78620900124,
+          10711.877932805943,
+          10661.038082777788,
+          12457.834063936054,
+          9083.273625292137
+        ]
+      },
+      "decode_tok_s": {
+        "median": 27.824843256709496,
+        "min": 25.97460016170056,
+        "max": 30.091322141951665,
+        "spread": 0.14795130891737995,
+        "runs": [
+          26.554846569124273,
+          27.824843256709496,
+          30.091322141951665,
+          25.97460016170056,
+          29.705587487354702
+        ]
+      },
+      "peak_memory_bytes": 1149972992,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_drop8__cuda__float16.json": {
+      "label": "speed_check_drop8",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:51:22+00:00",
+      "path": "checkpoints/pruned/speed_check_drop8",
+      "file_bytes": 940429600,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 470202368,
+      "weight_bytes": 940405248,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 13188.699324795576,
+        "min": 11027.548237006591,
+        "max": 14225.158532039992,
+        "spread": 0.24245076912335806,
+        "runs": [
+          14225.158532039992,
+          11027.548237006591,
+          13188.699324795576,
+          14060.381760212511,
+          12862.96388667548
+        ]
+      },
+      "decode_tok_s": {
+        "median": 31.25302416842991,
+        "min": 29.285384382400505,
+        "max": 32.62517474130347,
+        "spread": 0.10686294999498436,
+        "runs": [
+          29.285384382400505,
+          32.62517474130347,
+          32.58667071357151,
+          30.69663079431554,
+          31.25302416842991
+        ]
+      },
+      "peak_memory_bytes": 1017713664,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_mix_heavy__cuda__float16.json": {
+      "label": "speed_check_mix_heavy",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:53:10+00:00",
+      "path": "checkpoints/pruned/speed_check_mix_heavy",
+      "file_bytes": 605516000,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 302742016,
+      "weight_bytes": 605484544,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 14357.62137173318,
+        "min": 12963.134895155697,
+        "max": 14813.648068561264,
+        "spread": 0.12888716908559777,
+        "runs": [
+          14433.955112583222,
+          14813.648068561264,
+          14357.62137173318,
+          12963.134895155697,
+          13316.095924567204
+        ]
+      },
+      "decode_tok_s": {
+        "median": 30.877044251245152,
+        "min": 25.42493554621662,
+        "max": 31.072042681779475,
+        "spread": 0.18289014614263568,
+        "runs": [
+          30.918048840309023,
+          30.877044251245152,
+          25.42493554621662,
+          30.76019966403932,
+          31.072042681779475
+        ]
+      },
+      "peak_memory_bytes": 652429312,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_mix_light__cuda__float16.json": {
+      "label": "speed_check_mix_light",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:54:30+00:00",
+      "path": "checkpoints/pruned/speed_check_mix_light",
+      "file_bytes": 945295240,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 472628736,
+      "weight_bytes": 945257984,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 12227.822580890102,
+        "min": 8182.174713680232,
+        "max": 12414.84405078411,
+        "spread": 0.346150699284661,
+        "runs": [
+          8182.174713680232,
+          12348.237269827598,
+          12227.822580890102,
+          11849.337707652969,
+          12414.84405078411
+        ]
+      },
+      "decode_tok_s": {
+        "median": 26.024819822304135,
+        "min": 22.69810435117568,
+        "max": 26.978315373492332,
+        "spread": 0.16446649973147442,
+        "runs": [
+          26.024819822304135,
+          26.540922962706855,
+          22.69810435117568,
+          26.978315373492332,
+          24.425535470652136
+        ]
+      },
+      "peak_memory_bytes": 1005445632,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_mlp25__cuda__float16.json": {
+      "label": "speed_check_mlp25",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:56:48+00:00",
+      "path": "checkpoints/pruned/speed_check_mlp25",
+      "file_bytes": 795833080,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 397897728,
+      "weight_bytes": 795795968,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 9988.947580650458,
+        "min": 9266.768901601028,
+        "max": 10564.035956938735,
+        "spread": 0.12987024357307034,
+        "runs": [
+          10564.035956938735,
+          9673.517097540705,
+          10383.626108670493,
+          9266.768901601028,
+          9988.947580650458
+        ]
+      },
+      "decode_tok_s": {
+        "median": 22.792102443970506,
+        "min": 20.757573915941936,
+        "max": 24.19795277252318,
+        "spread": 0.150946094816776,
+        "runs": [
+          20.757573915941936,
+          24.19795277252318,
+          21.90099434083953,
+          22.792102443970506,
+          23.389272456853455
+        ]
+      },
+      "peak_memory_bytes": 890892800,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_mlp50__cuda__float16.json": {
+      "label": "speed_check_mlp50",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:58:20+00:00",
+      "path": "checkpoints/pruned/speed_check_mlp50",
+      "file_bytes": 927953736,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 463958016,
+      "weight_bytes": 927916544,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 9587.287676000586,
+        "min": 9364.864980025737,
+        "max": 10455.475642823652,
+        "spread": 0.11375591300217167,
+        "runs": [
+          10426.564393455783,
+          9587.287676000586,
+          9364.864980025737,
+          9564.066844460567,
+          10455.475642823652
+        ]
+      },
+      "decode_tok_s": {
+        "median": 22.700305442816298,
+        "min": 20.532272574783615,
+        "max": 24.258493438925175,
+        "spread": 0.16414849013940266,
+        "runs": [
+          20.953689459141042,
+          23.306244133430223,
+          20.532272574783615,
+          24.258493438925175,
+          22.700305442816298
+        ]
+      },
+      "peak_memory_bytes": 1046245888,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/measured/qwen3-0.6b-base__speed_check_wanda50__cuda__float16.json": {
+      "label": "speed_check_wanda50",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T19:00:42+00:00",
+      "path": "checkpoints/pruned/speed_check_wanda50",
+      "file_bytes": 1192134752,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 596049920,
+      "weight_bytes": 1192100352,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 8032.258428372627,
+        "min": 7630.8363527692145,
+        "max": 8639.406380986327,
+        "spread": 0.12556493758399329,
+        "runs": [
+          8032.258428372627,
+          7630.8363527692145,
+          8460.99968300336,
+          7975.299376303626,
+          8639.406380986327
+        ]
+      },
+      "decode_tok_s": {
+        "median": 20.486871640179043,
+        "min": 19.628743694440168,
+        "max": 22.109503435745882,
+        "spread": 0.1210902174268728,
+        "runs": [
+          20.486871640179043,
+          19.628743694440168,
+          21.340696733607704,
+          19.637823465883873,
+          22.109503435745882
+        ]
+      },
+      "peak_memory_bytes": 1294607360,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_attn4__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:43:59+00:00",
+      "plan_file": "plans/speed_check_attn4.json",
+      "saved_to": "checkpoints/pruned/speed_check_attn4",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "1": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "2": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "3": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "4": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "5": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "6": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "7": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "8": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "9": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "10": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "11": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "12": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "13": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "14": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "15": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "16": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "17": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "18": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "19": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "20": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "21": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "22": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "25": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "26": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "27": {
+          "mlp_keep": 3072,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        }
+      },
+      "dropped_layers": [],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 352321536,
+        "block_zeros": 371,
+        "parameters": 507998208
+      },
+      "block_weights_removed": 0.19999999999999996,
+      "parameters_removed": 0.14772539857064326,
+      "scores": {
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "device": "cuda",
+        "dtype": "float16",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d"
+      },
+      "prune_seconds": 0.1,
+      "validation": {
+        "ppl": 122.25114440917969,
+        "n_windows": 1,
+        "seconds": 0.2,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_dense__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:45:46+00:00",
+      "plan_file": "plans/speed_check_dense.json",
+      "saved_to": "checkpoints/pruned/speed_check_dense",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "1": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "2": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "3": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "4": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "5": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "6": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "7": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "8": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "9": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "10": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "11": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "12": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "13": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "14": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "15": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "16": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "17": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "18": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "19": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "20": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "21": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "22": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "25": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "26": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "27": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        }
+      },
+      "dropped_layers": [],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "block_weights_removed": 0.0,
+      "parameters_removed": 0.0,
+      "scores": {
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "dtype": "float16",
+        "device": "cuda",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "model": "Qwen/Qwen3-0.6B-Base"
+      },
+      "prune_seconds": 0.0,
+      "validation": {
+        "ppl": 8.109503746032715,
+        "n_windows": 1,
+        "seconds": 0.4,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_drop14__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:47:28+00:00",
+      "plan_file": "plans/speed_check_drop14.json",
+      "saved_to": "checkpoints/pruned/speed_check_drop14",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "1": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "2": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "3": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "4": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "5": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "6": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "7": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "8": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "9": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "10": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "11": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "12": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "13": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "14": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "15": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "16": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "17": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "18": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "19": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "20": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "21": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "22": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "25": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "26": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "27": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        }
+      },
+      "dropped_layers": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 220200960,
+        "block_zeros": 224,
+        "parameters": 375816704
+      },
+      "block_weights_removed": 0.5,
+      "parameters_removed": 0.3694878710830126,
+      "scores": {
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "device": "cuda",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "dtype": "float16"
+      },
+      "prune_seconds": 0.0,
+      "validation": {
+        "ppl": 15378.857421875,
+        "n_windows": 1,
+        "seconds": 0.3,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_drop4__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:49:13+00:00",
+      "plan_file": "plans/speed_check_drop4.json",
+      "saved_to": "checkpoints/pruned/speed_check_drop4",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "1": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "2": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "3": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "4": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "5": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "6": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "7": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "8": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "9": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "10": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "11": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "12": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "13": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "14": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "15": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "16": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "17": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "18": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "19": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "20": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "21": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "22": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "25": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "26": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "27": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        }
+      },
+      "dropped_layers": [
+        20,
+        21,
+        22,
+        23
+      ],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 377487360,
+        "block_zeros": 403,
+        "parameters": 533126144
+      },
+      "block_weights_removed": 0.1428571428571429,
+      "parameters_removed": 0.10556796316657502,
+      "scores": {
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+        "dtype": "float16",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "device": "cuda"
+      },
+      "prune_seconds": 0.0,
+      "validation": {
+        "ppl": 73.84840393066406,
+        "n_windows": 1,
+        "seconds": 0.5,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_drop8__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:50:35+00:00",
+      "plan_file": "plans/speed_check_drop8.json",
+      "saved_to": "checkpoints/pruned/speed_check_drop8",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "1": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "2": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "3": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "4": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "5": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "6": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "7": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "8": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "9": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "10": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "11": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "12": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "13": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "14": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "15": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "16": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "17": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "18": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "19": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "20": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "21": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "22": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "25": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "26": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "27": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        }
+      },
+      "dropped_layers": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 314572800,
+        "block_zeros": 325,
+        "parameters": 470202368
+      },
+      "block_weights_removed": 0.2857142857142857,
+      "parameters_removed": 0.21113592633315004,
+      "scores": {
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "device": "cuda",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "dtype": "float16",
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675"
+      },
+      "prune_seconds": 0.0,
+      "validation": {
+        "ppl": 3115.18408203125,
+        "n_windows": 1,
+        "seconds": 0.4,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_mix_heavy__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:52:20+00:00",
+      "plan_file": "plans/speed_check_mix_heavy.json",
+      "saved_to": "checkpoints/pruned/speed_check_mix_heavy",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "1": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "2": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "3": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "4": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "5": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "6": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "7": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "8": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "9": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "10": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "11": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "12": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "13": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "14": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "15": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "16": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "17": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "18": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "19": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "20": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "21": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "22": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "25": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "26": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "27": {
+          "mlp_keep": 1152,
+          "groups_keep": 4,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        }
+      },
+      "dropped_layers": [
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 147062784,
+        "block_zeros": 151,
+        "parameters": 302742016
+      },
+      "block_weights_removed": 0.6660714285714286,
+      "parameters_removed": 0.49208613936228696,
+      "scores": {
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "device": "cuda",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+        "dtype": "float16",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd"
+      },
+      "prune_seconds": 0.24,
+      "validation": {
+        "ppl": 13528.0400390625,
+        "n_windows": 1,
+        "seconds": 0.3,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_mix_light__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:53:31+00:00",
+      "plan_file": "plans/speed_check_mix_light.json",
+      "saved_to": "checkpoints/pruned/speed_check_mix_light",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "1": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "2": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "3": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "4": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "5": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "6": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "7": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "8": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "9": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "10": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "11": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "12": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "13": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "14": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "15": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "16": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "17": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "18": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "19": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "20": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "21": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "22": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "25": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "26": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "27": {
+          "mlp_keep": 2432,
+          "groups_keep": 6,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        }
+      },
+      "dropped_layers": [
+        22,
+        23
+      ],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 316932096,
+        "block_zeros": 63205376,
+        "parameters": 472628736
+      },
+      "block_weights_removed": 0.28035714285714286,
+      "parameters_removed": 0.20706518004398022,
+      "scores": {
+        "device": "cuda",
+        "dtype": "float16",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base"
+      },
+      "prune_seconds": 0.44,
+      "validation": {
+        "ppl": 170.22088623046875,
+        "n_windows": 1,
+        "seconds": 0.4,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_mlp25__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:55:46+00:00",
+      "plan_file": "plans/speed_check_mlp25.json",
+      "saved_to": "checkpoints/pruned/speed_check_mlp25",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "1": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "2": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "3": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "4": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "5": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "6": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "7": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "8": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "9": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "10": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "11": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "12": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "13": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "14": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "15": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "16": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "17": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "18": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "19": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "20": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "21": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "22": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "25": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "26": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "27": {
+          "mlp_keep": 768,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        }
+      },
+      "dropped_layers": [],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 242221056,
+        "block_zeros": 278,
+        "parameters": 397897728
+      },
+      "block_weights_removed": 0.44999999999999996,
+      "parameters_removed": 0.3324422759758109,
+      "scores": {
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "device": "cuda",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "dtype": "float16"
+      },
+      "prune_seconds": 0.1,
+      "validation": {
+        "ppl": 2837.44775390625,
+        "n_windows": 1,
+        "seconds": 0.4,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_mlp50__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:57:18+00:00",
+      "plan_file": "plans/speed_check_mlp50.json",
+      "saved_to": "checkpoints/pruned/speed_check_mlp50",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "1": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "2": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "3": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "4": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "5": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "6": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "7": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "8": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "9": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "10": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "11": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "12": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "13": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "14": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "15": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "16": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "17": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "18": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "19": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "20": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "21": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "22": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "25": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "26": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "27": {
+          "mlp_keep": 1536,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        }
+      },
+      "dropped_layers": [],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 308281344,
+        "block_zeros": 342,
+        "parameters": 463958016
+      },
+      "block_weights_removed": 0.30000000000000004,
+      "parameters_removed": 0.22161214953271025,
+      "scores": {
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+        "device": "cuda",
+        "dtype": "float16",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base"
+      },
+      "prune_seconds": 0.11,
+      "validation": {
+        "ppl": 24.894201278686523,
+        "n_windows": 1,
+        "seconds": 0.4,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed_check/prune_log/qwen3-0.6b-base__speed_check_wanda50__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:59:31+00:00",
+      "plan_file": "plans/speed_check_wanda50.json",
+      "saved_to": "checkpoints/pruned/speed_check_wanda50",
+      "steps": [],
+      "plan": {
+        "0": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "1": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "2": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "3": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "4": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "5": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "6": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "7": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "8": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "9": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "10": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "11": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "12": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "13": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "14": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "15": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "16": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "17": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "18": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "19": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "20": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "21": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "22": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "23": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "24": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "25": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "26": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        },
+        "27": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.5
+        }
+      },
+      "dropped_layers": [],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 440401920,
+        "block_zeros": 220200960,
+        "parameters": 596049920
+      },
+      "block_weights_removed": 0.0,
+      "parameters_removed": 0.0,
+      "scores": {
+        "device": "cuda",
+        "dtype": "float16",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675"
+      },
+      "prune_seconds": 0.42,
+      "validation": {
+        "ppl": 14.14136028289795,
+        "n_windows": 1,
+        "seconds": 0.5,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    }
+  }
+}

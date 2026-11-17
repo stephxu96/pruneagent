@@ -12,7 +12,7 @@
     },
     "results/speed/devices/m4.json": {
       "name": "m4",
-      "memory_limit_gb": 25.769803776,
+      "memory_limit_gb": 24,
       "bandwidth_gb_s": 94.8,
       "compute_tflops": 3.48,
       "backend": "gpu",
