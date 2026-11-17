@@ -28,3 +28,6 @@ board/board.json.tmp
 .DS_Store
 .idea/
 .vscode/
+
+# llm-compressor logs
+sparse_logs/
