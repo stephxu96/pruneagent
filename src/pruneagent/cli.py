@@ -1,4 +1,4 @@
-"""Command-line entry point. Further subcommands (bar, run, resume, baselines, report) arrive in later tasks."""
+"""Command-line entry point. Further subcommands (bar, run, resume, report) arrive in later tasks."""
 
 from pathlib import Path
 from typing import Annotated
@@ -466,6 +466,152 @@ def ppl_saved_cmd(
     out = results / f"{path.name}__saved__{device}__{dtype}.json"
     out.write_text(json.dumps(record, indent=2) + "\n")
     typer.echo(f"Saved {out}")
+
+
+BAR_WANDA_PPL = Path("results/wanda/qwen3-0.6b-base__wanda50__mps__float16.json")
+BAR_MC = Path("results/mc/qwen3-0.6b-base__colab.json")
+BAR_MC_RUN = "qwen3-0.6b-base__wanda50__cuda__float16.json"
+
+
+@app.command("baseline")
+def baseline_cmd(
+    methods: Annotated[list[str] | None, typer.Option("--method", help="flap and/or wanda-sp (default: both).")] = None,
+    model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
+    lo: Annotated[float, typer.Option(help="Ratio assumed to meet the bar (not evaluated).")] = 0.0,
+    hi: Annotated[float, typer.Option(help="Ratio expected to fail the bar (evaluated first).")] = 0.5,
+    tol: Annotated[float, typer.Option(help="Stop bisecting when the ratio interval is this narrow.")] = 0.005,
+    step: Annotated[float, typer.Option(help="Ratio step down when accuracy fails at the bisected ratio.")] = 0.02,
+    max_steps: Annotated[int, typer.Option(help="Most steps down before giving up.")] = 2,
+    max_ppl: Annotated[float | None, typer.Option(help="Validation perplexity bar (default: 1.10 x Wanda-50%).")] = None,
+    min_acc: Annotated[float | None, typer.Option(help="Mean accuracy bar (default: Wanda-50% - 0.02).")] = None,
+    seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
+    windows: Annotated[int | None, typer.Option(help="Validation windows (default: all; fewer for quick checks).")] = None,
+    mc_limit: Annotated[int | None, typer.Option(help="Questions per task (quick checks only).")] = None,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/baselines"),
+) -> None:
+    """FLAP and uniform Wanda-sp pruned to the quality bar: bisect the ratio on validation perplexity, then check
+    accuracy there and step down if needed. Records the savings at the bar."""
+    import copy
+    import gc
+    import json
+    import time
+
+    import torch
+    from transformers import AutoTokenizer
+
+    from pruneagent import baselines as B
+    from pruneagent import data as d
+    from pruneagent import evaluate as ev
+    from pruneagent import flap, mc, wanda_sp
+
+    methods = methods or ["flap", "wanda-sp"]
+    if unknown := set(methods) - {"flap", "wanda-sp"}:
+        raise typer.BadParameter(f"unknown method(s): {sorted(unknown)}")
+    device = device or ev.pick_device()
+    manifest = d.read_manifest(data_dir)
+    revision = manifest["entries"][d.calib_name(model)]["tokenizer"]["revision"]
+    bar = B.bar_from_results(BAR_WANDA_PPL, BAR_MC, BAR_MC_RUN)
+    bar["max_validation_ppl"] = max_ppl if max_ppl is not None else bar["max_validation_ppl"]
+    bar["min_mean_acc"] = min_acc if min_acc is not None else bar["min_mean_acc"]
+    typer.echo(f"{model}@{revision[:8]} on {device} in {dtype}; bar: validation ppl <= "
+               f"{bar['max_validation_ppl']:.4f}, mean accuracy >= {bar['min_mean_acc']:.4f}")
+    dense = ev.load_model(model, revision, dtype, device)
+    tok = AutoTokenizer.from_pretrained(model, revision=revision)
+    before = {**B.memory(dense), "block_weights": flap.block_params(dense)}
+    val_ids = d.load_tokens(d.wikitext_name("validation", model), data_dir).reshape(-1)
+    if windows:
+        val_ids = val_ids[: windows * seqlen]
+    test_ids = d.load_tokens(d.wikitext_name("test", model), data_dir)
+
+    for method in methods:
+        if method == "flap":
+            calib_name = d.flap_calib_name(model)
+            start = time.perf_counter()
+            stats = flap.collect(dense, d.load_tokens(calib_name, data_dir), device)
+            typer.echo(f"[flap] statistics collected once in {time.perf_counter() - start:.0f} s")
+
+            def prune_fn(net, ratio, stats=stats):
+                return flap.prune_flap_from_stats(net, stats, ratio)
+        else:
+            calib_name = d.wanda_sp_calib_name(model)
+            calib = d.load_tokens(calib_name, data_dir)
+
+            def prune_fn(net, ratio, calib=calib):
+                return wanda_sp.prune_wanda_sp(net, calib, ratio, device)
+        current: dict = {"ratio": None, "net": None}
+        info: dict[float, dict] = {}
+
+        def build(ratio: float, prune_fn=prune_fn, current=current, info=info) -> object:
+            if current["ratio"] == ratio:
+                return current["net"]
+            current["net"] = None
+            gc.collect()
+            if device == "cuda":
+                torch.cuda.empty_cache()
+            net = copy.deepcopy(dense)
+            start = time.perf_counter()
+            out = prune_fn(net, ratio)
+            ev.synchronize(device)
+            after = {**B.memory(net), "block_weights": flap.block_params(net)}
+            info[ratio] = {
+                "prune_seconds": round(time.perf_counter() - start, 1), "weights_after": after,
+                "block_weights_removed": 1 - after["block_weights"] / before["block_weights"],
+                "parameters_removed": 1 - after["parameters"] / before["parameters"],
+                "weight_bytes_removed": 1 - after["weight_bytes"] / before["weight_bytes"],
+                "groups_kept": out["attn_keep"].sum(dim=1).tolist(),
+                "neurons_kept": out["mlp_keep"].sum(dim=1).tolist(),
+            }
+            current.update(ratio=ratio, net=net)
+            return net
+
+        def val_ppl(ratio: float, method=method, info=info) -> float:
+            net = build(ratio)
+            r = ev.perplexity(net, val_ids, seqlen, device)
+            info[ratio]["validation"] = {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1)}
+            typer.echo(f"[{method}] ratio {ratio:.4f}: block weights removed {info[ratio]['block_weights_removed']:.4f}"
+                       f", validation ppl {r.ppl:.4f}")
+            return r.ppl
+
+        def mean_acc(ratio: float, method=method, info=info) -> float:
+            net = build(ratio)
+            start = time.perf_counter()
+            raw = mc.evaluate(net, tok, device, batch_size="auto", limit=mc_limit)
+            info[ratio]["mc"] = mc.summarize(raw) | {"seconds": round(time.perf_counter() - start, 1)}
+            typer.echo(f"[{method}] ratio {ratio:.4f}: mean accuracy {info[ratio]['mc']['mean_acc']:.4f}")
+            return info[ratio]["mc"]["mean_acc"]
+
+        search = B.search_bar(val_ppl, mean_acc, bar["max_validation_ppl"], bar["min_mean_acc"],
+                              lo=lo, hi=hi, tol=tol, step=step, max_steps=max_steps)
+        record = {"method": method, **_run_record(model, revision, device, dtype, seqlen), "bar": bar,
+                  "calibration": {"entry": calib_name, "sha256": manifest["entries"][calib_name]["sha256"]},
+                  "search": {"lo": lo, "hi": hi, "tol": tol, "step": step, "max_steps": max_steps,
+                             "windows": windows, "mc_limit": mc_limit, **search.to_json()},
+                  "weights_before": before}
+        if search.ratio is not None:
+            net = build(search.ratio)  # already built: the accuracy check was the last step at this ratio
+            at = info[search.ratio]
+            if windows is None:
+                r = ev.perplexity(net, test_ids, seqlen, device)
+                at["test"] = {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1)}
+            record["at_bar"] = {"ratio": search.ratio, **at}
+            typer.echo(f"[{method}] at the bar: ratio {search.ratio:.4f}, block weights removed "
+                       f"{at['block_weights_removed']:.4f}, weight bytes removed {at['weight_bytes_removed']:.4f}, "
+                       f"validation {at['validation']['ppl']:.4f}, test {at.get('test', {}).get('ppl', float('nan')):.4f}"
+                       f", mean accuracy {at['mc']['mean_acc']:.4f}")
+        else:
+            typer.echo(f"[{method}] bar not met: {search.note}")
+        record["trials"] = {f"{k:.4f}": v for k, v in sorted(info.items())}
+        current["net"] = None
+
+        results.mkdir(parents=True, exist_ok=True)
+        suffix = f"__windows{windows}" if windows else ""
+        suffix += f"__limit{mc_limit}" if mc_limit else ""
+        path = results / f"{d.slug(model)}__{method.replace('-', '')}-at-bar__{device}__{dtype}{suffix}.json"
+        path.write_text(json.dumps(record, indent=2) + "\n")
+        typer.echo(f"Saved {path}")
 
 
 @app.callback()
