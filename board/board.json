@@ -48,7 +48,7 @@
   ],
   "budget_caps": {
     "units": 200,
-    "llm": 100
+    "llm": null
   },
   "budget": [
     {
@@ -62,28 +62,28 @@
       "phase": 1,
       "units_planned": 25,
       "units_used": 0,
-      "llm_planned": 2,
+      "llm_planned": 10,
       "llm_used": 0
     },
     {
       "phase": 2,
       "units_planned": 20,
       "units_used": 0,
-      "llm_planned": 10,
+      "llm_planned": 200,
       "llm_used": 0
     },
     {
       "phase": 3,
       "units_planned": 45,
       "units_used": 0,
-      "llm_planned": 30,
+      "llm_planned": 600,
       "llm_used": 0
     },
     {
       "phase": 4,
       "units_planned": 90,
       "units_used": 0,
-      "llm_planned": 15,
+      "llm_planned": 150,
       "llm_used": 0
     },
     {
@@ -147,8 +147,8 @@
       ],
       "done_when": "Numbers recorded",
       "gpu": "Mac + T4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-16] Mac half done (M4, fp16): val ppl 22.19, test 20.96; ~2.1 s per 2,048-token window (~4.5 min per split). T4 half waits on 0.2"
     },
     {
       "id": "G0",
@@ -333,6 +333,20 @@
       "notes": ""
     },
     {
+      "id": "1.12",
+      "type": "task",
+      "phase": 1,
+      "title": "Gate subset: 32-window subset vs. full validation split on ~10 plans (A9)",
+      "owner": "Coding agent",
+      "deps": [
+        "1.4"
+      ],
+      "done_when": "Rank correlation recorded",
+      "gpu": "M4",
+      "status": "todo",
+      "notes": ""
+    },
+    {
       "id": "G1",
       "type": "gate",
       "phase": 1,
@@ -349,7 +363,8 @@
         "1.8",
         "1.9",
         "1.10",
-        "1.11"
+        "1.11",
+        "1.12"
       ],
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
@@ -399,6 +414,13 @@
           "observed": ""
         },
         {
+          "label": "32-window subset ranks like the full split (A9)",
+          "go_if": "Rank correlation ≥ 0.9",
+          "fallback": "Gate on 64 windows",
+          "result": "pending",
+          "observed": ""
+        },
+        {
           "label": "Bar is not trivial",
           "go_if": "Wanda-50% validation perplexity > 1.3 × dense",
           "fallback": "Weaker bar only if structured pruning reaches it at > 30% saving; fix before phase 4",
@@ -439,12 +461,12 @@
       "id": "2.3",
       "type": "task",
       "phase": 2,
-      "title": "Agent client: prompt, JSON parsing, LLM cache, cost ledger",
+      "title": "Agent client, two backends behind one interface: Codex CLI and LLM API; shared cache and usage ledger",
       "owner": "Coding agent",
       "deps": [
         "2.1"
       ],
-      "done_when": "Cached rerun costs $0",
+      "done_when": "Same contract tests pass for a fake and both real backends; cached rerun makes no calls",
       "gpu": "",
       "status": "todo",
       "notes": ""
@@ -468,13 +490,13 @@
       "id": "2.5",
       "type": "task",
       "phase": 2,
-      "title": "Parallel candidate evaluation (≤ 3), sequential fallback",
+      "title": "Candidate evaluation (≤ 3) on a 32-window subset with layer reuse; candidates spread across Mac and Colab",
       "owner": "Coding agent",
       "deps": [
         "2.4"
       ],
-      "done_when": "Same results in parallel and sequential mode",
-      "gpu": "T4",
+      "done_when": "Layer-reuse perplexity equals a full forward pass; same results in parallel and sequential mode",
+      "gpu": "M4 + T4",
       "status": "todo",
       "notes": ""
     },
@@ -538,12 +560,12 @@
       "id": "2.10",
       "type": "task",
       "phase": 2,
-      "title": "Choose and pin the agent LLM (Q1)",
+      "title": "Pick the default backend (Codex or API) and pin its model; trim Codex's context with a dedicated profile",
       "owner": "Steph",
       "deps": [
         "1.11"
       ],
-      "done_when": "Pinned model id in config",
+      "done_when": "Pinned in config; tokens per call recorded",
       "gpu": "",
       "status": "todo",
       "notes": ""
@@ -564,6 +586,21 @@
       "notes": ""
     },
     {
+      "id": "2.12",
+      "type": "task",
+      "phase": 2,
+      "title": "Usage limits: pre-run estimate, live readings, pause at 90% or on limit; `runs` list and `resume <run-id>` (no id only when exactly one run is paused)",
+      "owner": "Coding agent",
+      "deps": [
+        "2.3",
+        "2.8"
+      ],
+      "done_when": "Tests with recorded limit readings: fits, warns, pauses, resumes without repeating a call",
+      "gpu": "",
+      "status": "todo",
+      "notes": "Measured 2026-11-16: 5 calls ≈ 2% of the 5-hour window, < 1% weekly (Plus plan)"
+    },
+    {
       "id": "G2",
       "type": "gate",
       "phase": 2,
@@ -580,7 +617,8 @@
         "2.8",
         "2.9",
         "2.10",
-        "2.11"
+        "2.11",
+        "2.12"
       ],
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
@@ -589,7 +627,7 @@
       "checks": [
         {
           "label": "End-to-end run on 0.6B",
-          "go_if": "≥ 1 ACCEPT and ≥ 1 ROLLBACK, under $5 and 2 h",
+          "go_if": "≥ 1 ACCEPT and ≥ 1 ROLLBACK, under 2 h and 60 agent calls",
           "fallback": "One candidate per round (descoping step 3); retry the next morning",
           "result": "pending",
           "observed": ""

@@ -12,12 +12,12 @@ The goal is a model within a fixed margin of Wanda's quality that, unlike Wanda,
 ## Decision
 
 1. **Quality bar:** Wanda at 50% unstructured sparsity on the same model, same calibration data. Margin fixed before the production run: perplexity ≤ 10% above Wanda-50%; mean zero-shot accuracy ≤ 2 points below.
-2. **Gate (every candidate):** WikiText-2 **validation** split, fixed windows. Reject if perplexity > 1.10 × Wanda-50% validation perplexity, or rises > 15% over the last accepted plan. Accept the passing candidate that meets the device target with the lowest perplexity, or, if none meets it (or no target is set), the one with the largest weight-memory saving.
+2. **Gate (every candidate):** a fixed subset of 32 of the 128 WikiText-2 **validation** windows (checked in phase 1 to rank plans like the full split), evaluated from the first changed layer using saved inputs from the accepted model (exact). Reject if perplexity > 1.10 × Wanda-50% perplexity on the same subset, or rises > 15% over the last accepted plan. Accept the passing candidate that meets the device target with the lowest perplexity, or, if none meets it (or no target is set), the one with the largest weight-memory saving.
 3. **Final evaluation (end of run):** WikiText-2 **test** split; Wanda's seven zero-shot tasks (BoolQ, RTE, HellaSwag, WinoGrande, ARC-Easy, ARC-Challenge, OpenBookQA) via lm-evaluation-harness; MMLU. Memory and tokens per second on the M4 laptop and the T4 (ADR-006).
 4. **Runs:** the production run (Qwen3-1.7B) has no device target, so S1 and S2 measure the most pruning alone can save at the bar. Two device-target runs show the warnings: one target reachable within the bar, one not (FR13, FR14).
 5. **Compared methods:** dense model; Wanda-50% (the bar); FLAP and uniform Wanda-sp, each pruned to the largest ratio within the bar (found by bisection on validation perplexity); ShortGPT pruned the same way, reported alongside. Same calibration data (C4, 128 × 2,048 tokens), same tests. LLM-Pruner is cited, not run: it needs a recovery fine-tune.
 6. **Success criteria:** S1–S4 in ARCHITECTURE.md §1.3, fixed before the production run; a negative result with full logs is a valid outcome.
-7. **Search measures:** full-model evaluations, probe count, GPU time, LLM cost, and how often each strategy is proposed and accepted (prediction P1), from the decision log.
+7. **Search measures:** full-model evaluations, probe count, GPU time, agent calls and tokens, and how often each strategy is proposed and accepted (prediction P1), from the decision log.
 8. **Tuning discipline:** instructions tuned on Qwen3-0.6B only; frozen before the Qwen3-1.7B production run.
 9. **Reference checks first:** Wanda-50%, FLAP and uniform Wanda-sp through the system match the adapted reference code.
 

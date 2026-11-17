@@ -20,7 +20,7 @@ PruneAgent searches for a per-layer pruning plan that stays within Wanda-50% qua
 
 ## Decision
 
-**B.** `ORCHESTRATION: hybrid. The LLM agent chooses the next experiment and, per layer, the strategy and its setting. Code owns probing, validation, pruning, parallel evaluation of up to three candidates, the quality-bar gate, accept / rollback, the device-target feasibility check and warnings, and stopping when the device target is met.` LLM calls go through the project's own client (cache, cost meter, rationale log).
+**B.** `ORCHESTRATION: hybrid. The LLM agent chooses the next experiment and which strategy to apply to which layers; it never sets amounts. Code owns step sizes, the choice of weights to remove, probing, validation, pruning, parallel evaluation of up to three candidates, the quality-bar gate, accept / rollback, the device-target feasibility check and warnings, and stopping when the device target is met.` Agent calls go through the project's own client, which sends the same prompt and JSON schema to either Codex CLI (read-only, no tools) or an LLM API (cache, usage meter, rationale log; ADR-005).
 
 ## Consequences
 

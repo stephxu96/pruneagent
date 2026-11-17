@@ -137,7 +137,7 @@ textarea { min-height: 64px; resize: vertical; }
 <section class="budget">
   <h2>Budget</h2>
   <table>
-    <thead><tr><th>Phase</th><th>Compute units: plan</th><th>used</th><th>LLM $: plan</th><th>used</th></tr></thead>
+    <thead><tr><th>Phase</th><th>Compute units: plan</th><th>used</th><th>Agent calls: plan</th><th>used</th></tr></thead>
     <tbody id="budgetBody"></tbody>
     <tfoot id="budgetFoot"></tfoot>
   </table>
@@ -304,13 +304,13 @@ function renderBudget() {
       <td>${b.units_planned}</td>
       <td><input type="number" min="0" step="0.1" data-b="${i}" data-k="units_used" value="${b.units_used}" aria-label="Compute units used, phase ${b.phase}"></td>
       <td>${b.llm_planned}</td>
-      <td><input type="number" min="0" step="0.01" data-b="${i}" data-k="llm_used" value="${b.llm_used}" aria-label="LLM dollars used, phase ${b.phase}"></td></tr>`;
+      <td><input type="number" min="0" step="1" data-b="${i}" data-k="llm_used" value="${b.llm_used}" aria-label="Agent calls used, phase ${b.phase}"></td></tr>`;
   }).join("");
   const caps = board.budget_caps;
   const early = board.budget.filter((b) => b.phase <= 2).reduce((s, b) => s + b.units_used, 0);
-  $("#budgetFoot").innerHTML = `<tr><td>Total (cap ${caps.units} units, $${caps.llm})</td>
+  $("#budgetFoot").innerHTML = `<tr><td>Total (cap ${caps.units} units)</td>
     <td>${up}</td><td class="${uu > caps.units ? "over-cap" : ""}">${+uu.toFixed(2)}</td>
-    <td>${lp}</td><td class="${lu > caps.llm ? "over-cap" : ""}">${+lu.toFixed(2)}</td></tr>
+    <td>${lp}</td><td>${+lu.toFixed(0)}</td></tr>
     <tr><td>Phases 0–2 compute units (warning at 50)</td><td></td><td class="${early > 50 ? "over-cap" : ""}">${+early.toFixed(2)}</td><td></td><td></td></tr>`;
 }
 

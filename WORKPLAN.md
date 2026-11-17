@@ -6,7 +6,7 @@ Days are calendar days from the start of the build: D1 = Monday 16 November 2026
 
 **Pace.** Overtime compresses the building, not the machine time. GPU runs (tuning runs, the production run, final evaluation) take as long as they take, so queue them back to back and overnight, and run the Mac and Colab in parallel. Rough machine time per phase is in the table below; check it against the phase-1 timings.
 
-**Models:** Qwen3-0.6B for all development and tuning; Qwen3-1.7B only for the production run (phase 4).
+**Models:** Qwen3-0.6B-Base for all development and tuning; Qwen3-1.7B-Base only for the production run (phase 4). "Qwen3-0.6B" and "Qwen3-1.7B" elsewhere mean these Base checkpoints.
 
 ---
 
@@ -54,6 +54,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | 1.8 | Layer-local probes for all four strategies; compare their layer ranking with full-model perplexity | Coding agent | 1.4 | Rank correlation recorded (A1) |
 | 1.9 | FLAP and uniform Wanda-sp pruned to the bar by bisection on validation perplexity | Coding agent | 1.1–1.3 | Savings at the bar recorded (A7) |
 | 1.10 | Wanda at 50% on Qwen3-1.7B (A100, one session): production bar | Coding agent | 1.1 | Bar recorded for 1.7B |
+| 1.12 | Gate subset: 32-window subset vs. full validation split on ~10 plans (A9) | Coding agent | 1.4 | Rank correlation recorded |
 | 1.11 | One agent round wired by hand (no graph): sensitivity table → LLM → JSON with 3 candidates → evaluate | Steph (prompt draft), coding agent | 1.5, 1.8 | Valid JSON; candidates evaluate |
 
 ### G1: Go / fallback
@@ -66,6 +67,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | Speed estimate ranks like measured speed on M4 and T4 (A6) | Rank correlation ≥ 0.7 on both | Measure tokens/s on the accepted plan every 5 rounds and give the agent that instead |
 | Speed estimate close enough for phone estimates (A8) | Within ~25% of measured speed on both machines | Report phone targets as memory fit only |
 | Structured pruning reaches the bar with a real saving (A7) | FLAP at the bar saves ≥ 5% of weight memory | Continue; headline result becomes how the agent mixes strategies |
+| 32-window subset ranks like the full split (A9) | Rank correlation ≥ 0.9 | Gate on 64 windows |
 | Bar is not trivial | Wanda-50% validation perplexity > 1.3 × dense | Fall back to a weaker bar only if structured pruning reaches it at > 30% saving; fixed before phase 4 |
 
 ---
@@ -78,17 +80,18 @@ Everything runs on Qwen3-0.6B except task 1.10.
 |---|---|---|---|
 | 2.1 | State types (`RunConfig`, `QualityBar`, `LayerPlan`, `PruneState`, …) per ARCHITECTURE.md §4.3 and §7 | Coding agent | Type-checked |
 | 2.2 | Validator: structure, step-size and budget rules (§4.4) | Coding agent | Unit tests for every rule |
-| 2.3 | Agent client: prompt, JSON parsing, LLM cache, cost ledger ($5 per run, $100 total) | Coding agent | Cached rerun costs $0 |
+| 2.3 | Agent client with two backends behind one interface: Codex CLI (`codex exec`, read-only, ephemeral, JSON schema, pinned model) and LLM API (structured output, cost cap); shared cache and usage ledger (60 calls per run; $5 per run on the API) | Coding agent | Same contract tests pass for a fake and both real backends; cached rerun makes no calls; malformed answers rejected |
 | 2.4 | Graph: bar → score → probe fan-out → reduce → plan → validate → candidate fan-out → gate → rollback / stop → final | Coding agent | Graph compiles; each edge tested with a fake LLM |
-| 2.5 | Parallel candidate evaluation (≤ 3): memory and proxy from the plan, perplexity on GPU; falls back to sequence if GPU memory is short | Coding agent | Same results in parallel and sequential mode |
+| 2.5 | Candidate evaluation (≤ 3): memory and speed estimate from the plan; perplexity on the 32-window subset with layer reuse (saved input of each layer for the accepted plan; run from the first changed layer); candidates spread across Mac and Colab | Coding agent | Layer-reuse perplexity equals a full forward pass; same results in parallel and sequential mode |
 | 2.6 | Gate: quality bar, 15% per-step limit, pick largest memory saving | Coding agent | Gate unit tests |
 | 2.7 | Rollback to any earlier accepted plan | Coding agent | Rollback restores exact earlier perplexity |
 | 2.8 | Checkpoints (SQLite + plan JSON on Drive) and decision log (JSONL) | Coding agent | Log schema test |
 | 2.9 | Agent instructions v1: neutral strategy descriptions, objective stated, no ranking | Steph | Reviewed against ADR-007 neutrality rule |
-| 2.10 | Choose the agent LLM (Q1) | Steph | Pinned model id in config |
+| 2.12 | Usage limits: pre-run estimate, live limit readings after every Codex call, pause at 90% or on limit / API cap, `pruneagent resume` after reset or on the other backend (FR15) | Coding agent | Tests with recorded limit readings: fits, warns, pauses, resumes without repeating a call |
+| 2.10 | Pick the default backend and pin its model (and Codex reasoning effort); trim Codex's context with a dedicated profile | Steph | Pinned in config; tokens per call recorded |
 | 2.11 | Device target: feasibility check with early warning, stop when the target is met, final warning with closest plan and gap | Coding agent | Unit tests with an impossible, an already-met and a reachable target |
 
-**G2 (midpoint):** one real end-to-end run on Qwen3-0.6B with at least one ACCEPT and one ROLLBACK, under $5 and 2 h. If not reached by end of D4, cut to one candidate per round (descoping step 3) and retry the next morning.
+**G2 (midpoint):** one real end-to-end run on Qwen3-0.6B with at least one ACCEPT and one ROLLBACK, under 2 h and 60 agent calls. If not reached by end of D4, cut to one candidate per round (descoping step 3) and retry the next morning.
 
 ---
 
@@ -136,15 +139,15 @@ Sweep the tool across a range of device targets to map where pruning alone reach
 
 ## Budget by Phase
 
-| Phase | Machine time (rough) | Colab compute units | LLM spend |
+| Phase | Machine time (rough) | Colab compute units | Agent calls (API backend: ~$1–5 per run) |
 |---|---|---|---|
-| 0 | < 1 h | ~2 | $0 |
-| 1 | ~4–6 h GPU (bars, baselines to the bar, probe and speed checks) | ~25 (incl. one A100 session for 1.10) | < $2 |
-| 2 | ~2–3 h GPU (test runs) | ~20 | ~$10 |
-| 3 | ~8–10 h GPU (tuning runs) | ~45 | ~$30 |
-| 4 | ~10–12 h GPU (production run, 2 device-target runs, baselines, final evaluation) | ~90 (A100 for 4.1–4.4) | ~$15 |
-| Reserve | | ~18 | ~$43 |
-| **Cap** | | **200** | **$100** |
+| 0 | < 1 h | ~2 | 0 |
+| 1 | ~4–6 h GPU (bars, baselines to the bar, probe and speed checks) | ~25 (incl. one A100 session for 1.10) | ~10 |
+| 2 | ~2–3 h GPU (test runs) | ~20 | ~200 |
+| 3 | ~8–10 h GPU (tuning runs) | ~45 | ~600 |
+| 4 | ~10–12 h GPU (production run, 2 device-target runs, baselines, final evaluation) | ~90 (A100 for 4.1–4.4) | ~150 |
+| Reserve | | ~18 | |
+| **Cap** | | **200** | **60 per run** |
 
 **Early warning:** more than 50 units used by the end of phase 2 → T4 only for the rest of the project, with candidates evaluated in sequence (ADR-003).
 
@@ -163,6 +166,6 @@ Applied in this order when a gate slips by more than half a day:
 | Phase | Decision |
 |---|---|
 | 1 | Speed settings (Q3); accept or apply each G1 fallback |
-| 2 | Agent LLM (Q1); instructions v1; device targets for the two phase-4 runs (one reachable, one not), set from phase-1 results |
+| 2 | Default agent backend and model; instructions v1; device targets for the two phase-4 runs (one reachable, one not), set from phase-1 results |
 | 3 | When to freeze instructions (no later than end of D6) |
 | 4 | Demo format (Q2) |

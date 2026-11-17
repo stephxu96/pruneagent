@@ -5,7 +5,7 @@
   python3 board/cli.py status 1.4 done          # todo | doing | blocked | done
   python3 board/cli.py note 1.4 "Round trip exact on T4"
   python3 board/cli.py check G1 2 go "rank correlation 0.81"   # gate check: pending | go | fallback
-  python3 board/cli.py spend 1 --units 6.5 --llm 0.40            # add to a phase's used budget
+  python3 board/cli.py spend 1 --units 6.5 --llm 12               # add compute units / agent calls to a phase
 
 An open browser tab picks up these changes within a few seconds.
 """

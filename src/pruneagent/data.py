@@ -28,7 +28,7 @@ C4_SHARD = "en/c4-train.00000-of-01024.json.gz"
 WIKITEXT_REPO = "Salesforce/wikitext"
 WIKITEXT_CONFIG = "wikitext-2-raw-v1"
 WIKITEXT_JOIN = "\n\n"
-DEFAULT_MODEL = "Qwen/Qwen3-0.6B"
+DEFAULT_MODEL = "Qwen/Qwen3-0.6B-Base"
 MANIFEST = "manifest.json"
 TENSOR_KEY = "input_ids"
 

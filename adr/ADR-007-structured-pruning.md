@@ -26,7 +26,7 @@ Qwen3 constraints: grouped-query attention, with 16 query heads sharing 8 key/va
 
 **B.**
 
-- **Per layer, the agent sets:** MLP width (in units of 64 neurons); key/value groups kept (1–8; each group removed takes 2 query heads with it); drop the whole layer; unstructured Wanda sparsity on the remaining weights (0–70%, in steps of 10%).
+- **Per layer, the agent chooses a strategy; code does the rest.** Strategies: narrow the MLP, remove an attention group (each takes 2 query heads with it), drop the layer, or add unstructured Wanda sparsity. Code applies one fixed step per choice (10% of the original MLP width rounded to 64 neurons; one group; the whole layer; +10 points of sparsity up to 70%), picks what is removed by score, and performs the pruning. The agent never sets a number.
 - **Neutral instructions:** each strategy is described by what it does to the weights, at the same level of detail, with the objective stated (stay within the quality bar while reducing measured memory and latency). No ranking or hints.
 - **Scoring:** FLAP's fluctuation metric and bias compensation for neurons and groups; Wanda's weight score for unstructured sparsity; ShortGPT's Block Influence for layers. All computed once on the dense model and cached (ADR-002).
 - **Prediction P1:** the agent will rarely choose Wanda, since it saves no memory. Measured by strategy counts in the log, not enforced.

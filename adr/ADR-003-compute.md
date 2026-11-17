@@ -36,5 +36,5 @@ Available hardware: an M4 Mac, and Colab Pro with 270.34 compute units (units ex
 ## Evidence That Would Reverse This Decision
 
 - More than 50 units used by the end of phase 2 → T4 only, including the production run, with candidates evaluated in sequence.
-- A run exceeds 2 h or $5 → Qwen3-0.6B only.
+- A run exceeds 2 h → Qwen3-0.6B only.
 - Mac GPU speed is unstable across repeat runs (> 10% variation) → report M4 as memory only; T4 stays the measured speed reference.
