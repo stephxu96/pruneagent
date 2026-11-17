@@ -1,6 +1,7 @@
 """Estimate-vs-measured speed check: rank correlation, errors, the in-sample fit, and the speed-check command."""
 
 import json
+from pathlib import Path
 
 import pytest
 from transformers import AutoConfig, Qwen3Config
@@ -10,6 +11,8 @@ from pruneagent import estimate as E
 from pruneagent import speed
 from pruneagent import speed_check as S
 from pruneagent.cli import app
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_ranks_average_ties():
@@ -49,13 +52,27 @@ def test_fit_overhead_recovers_fixed_overhead():
     assert fit["max_abs_error"] == pytest.approx(0, abs=1e-9)
 
 
-def test_load_target_reads_device_test_file(tmp_path):
+@pytest.mark.parametrize("total", [None, 25.8])
+def test_load_target_reads_device_test_file(tmp_path, monkeypatch, total):
+    # machine_info depends on the OS (sysctl is missing on Linux CI), so fix what it reports
+    monkeypatch.setattr(speed, "machine_info", lambda device: {"device_name": "test", "memory_total_gb": total})
     test = {"bandwidth": {"median": 94.8}, "compute": {"median": 3.48}}
-    f = tmp_path / "m4.json"
-    f.write_text(json.dumps(speed.device_target("m4", "mps", test)))
-    t = E.load_target(str(f))
-    assert (t.bandwidth_gb_s, t.compute_tflops, t.backend) == (94.8, 3.48, "gpu")
-    assert t.memory_limit_gb > 0
+    for name, limit in [("m4", E.PRESETS["m4"].memory_limit_gb), ("other", total)]:
+        f = tmp_path / f"{name}.json"
+        f.write_text(json.dumps(speed.device_target(name, "mps", test)))
+        if limit is None:
+            with pytest.raises(ValueError, match="no memory_limit_gb"):
+                E.load_target(str(f))
+            continue
+        t = E.load_target(str(f))
+        assert (t.bandwidth_gb_s, t.compute_tflops, t.backend, t.memory_limit_gb) == (94.8, 3.48, "gpu", limit)
+
+
+def test_load_target_reads_committed_device_files():
+    for name in ("m4", "t4"):
+        t = E.load_target(str(ROOT / "results/speed/devices" / f"{name}.json"))
+        assert t.memory_limit_gb == E.PRESETS[name].memory_limit_gb
+        assert t.bandwidth_gb_s < E.PRESETS[name].bandwidth_gb_s
 
 
 def _measurement(label, decode, prefill):
