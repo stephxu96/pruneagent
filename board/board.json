@@ -284,8 +284,8 @@
       ],
       "done_when": "Rank correlation recorded",
       "gpu": "T4",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started 10:12 on its own branch"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch\n[2026-11-17] Merged. Probe vs full perplexity, Spearman: all 112 pairs 0.80; drop_layer 0.64, wanda 0.38, attention group 0.24, narrow_mlp -0.21. Good for choosing between strategies, weak within a strategy. Decision for G1"
     },
     {
       "id": "1.9",
