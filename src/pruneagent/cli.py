@@ -330,6 +330,144 @@ def mc_cmd(
     typer.echo(f"Saved {out}")
 
 
+def _run_record(model: str, revision: str, device: str, dtype: str, seqlen: int) -> dict:
+    import platform
+    from datetime import UTC, datetime
+    from importlib.metadata import version as pkg_version
+
+    return {"model": model, "revision": revision, "device": device, "dtype": dtype, "seqlen": seqlen,
+            "machine": platform.platform(), "torch": pkg_version("torch"),
+            "transformers": pkg_version("transformers"),
+            "created_at": datetime.now(UTC).isoformat(timespec="seconds")}
+
+
+def _val_ppl(net, model: str, seqlen: int, windows: int | None, device: str, data_dir: Path | None) -> dict:
+    from pruneagent import data as d
+    from pruneagent import evaluate as ev
+
+    name = d.wikitext_name("validation", model)
+    ids = d.load_tokens(name, data_dir).reshape(-1)
+    if windows:
+        ids = ids[: windows * seqlen]
+    r = ev.perplexity(net, ids, seqlen, device)
+    sha = d.read_manifest(data_dir)["entries"][name]["sha256"]
+    return {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1), "data_sha256": sha}
+
+
+@app.command("prune")
+def prune_cmd(
+    plan: Annotated[Path, typer.Option(help="Plan JSON: {'plan': {layer: {...}}} and/or {'steps': [...]}.")],
+    out: Annotated[Path, typer.Option(help="Directory for model.safetensors and plan.json.")],
+    model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
+    seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
+    windows: Annotated[int | None, typer.Option(help="Validation windows to evaluate (default: all).")] = None,
+    reload_check: Annotated[bool, typer.Option(help="Reload from disk and evaluate again.")] = False,
+    scores_path: Annotated[Path | None, typer.Option("--scores", help="Cached scores (computed if missing).")] = None,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/pruned"),
+) -> None:
+    """Prune the unpruned model to a per-layer plan, save it, and report WikiText-2 validation perplexity."""
+    import gc
+    import json
+    import time
+
+    from pruneagent import data as d
+    from pruneagent import evaluate as ev
+    from pruneagent import loader, pruner
+    from pruneagent import plan as P
+
+    device = device or ev.pick_device()
+    manifest = d.read_manifest(data_dir)
+    revision = manifest["entries"][d.calib_name(model)]["tokenizer"]["revision"]
+    spec = json.loads(plan.read_text())
+    typer.echo(f"{model}@{revision[:8]} on {device} in {dtype}: plan {plan}")
+    net = ev.load_model(model, revision, dtype, device)
+    layer_plan = P.apply_steps(P.validate(spec.get("plan", {}), net.config), spec.get("steps", []), net.config)
+
+    scores_path = scores_path or Path("checkpoints/scores") / f"{d.slug(model)}__{device}__{dtype}.safetensors"
+    if scores_path.exists():
+        scores = pruner.load_scores(scores_path)
+        typer.echo(f"  scores from {scores_path}")
+    else:
+        start = time.perf_counter()
+        meta = {"model": model, "revision": revision, "device": device, "dtype": dtype,
+                "flap_calib": d.flap_calib_name(model),
+                "flap_calib_sha256": manifest["entries"][d.flap_calib_name(model)]["sha256"],
+                "wanda_calib": d.calib_name(model),
+                "wanda_calib_sha256": manifest["entries"][d.calib_name(model)]["sha256"]}
+        scores = pruner.compute_scores(net, d.load_tokens(d.flap_calib_name(model), data_dir),
+                                       d.load_tokens(d.calib_name(model), data_dir), device, meta=meta)
+        scores_path.parent.mkdir(parents=True, exist_ok=True)
+        pruner.save_scores(scores, scores_path)
+        typer.echo(f"  scores computed in {time.perf_counter() - start:.0f} s -> {scores_path}")
+
+    before = pruner.weight_counts(net)
+    start = time.perf_counter()
+    pruner.apply_plan(net, layer_plan, scores)
+    ev.synchronize(device)
+    prune_seconds = time.perf_counter() - start
+    after = pruner.weight_counts(net)
+    loader.save(net, out, model_id=model, revision=revision, extra={"scores": scores.meta})
+    removed = 1 - after["block_weights"] / before["block_weights"]
+    typer.echo(f"  pruned in {prune_seconds:.1f} s; block weights removed {removed:.4f}; "
+               f"zeros {after['block_zeros'] / after['block_weights']:.4f} of the rest; saved {out}")
+
+    record = {"method": "plan", **_run_record(model, revision, device, dtype, seqlen),
+              "plan_file": str(plan), "saved_to": str(out), "steps": spec.get("steps", []),
+              "plan": P.to_json(layer_plan),
+              "dropped_layers": [i for i, p in layer_plan.items() if p["dropped"]],
+              "weights_before": before, "weights_after": after, "block_weights_removed": removed,
+              "parameters_removed": 1 - after["parameters"] / before["parameters"],
+              "scores": scores.meta, "prune_seconds": round(prune_seconds, 2)}
+    record["validation"] = _val_ppl(net, model, seqlen, windows, device, data_dir)
+    typer.echo(f"  validation ppl {record['validation']['ppl']:.6f} ({record['validation']['n_windows']} windows)")
+    if reload_check:
+        del net
+        gc.collect()
+        back = loader.load(out, device=device)
+        record["validation_after_reload"] = _val_ppl(back, model, seqlen, windows, device, data_dir)
+        record["identical_after_reload"] = record["validation_after_reload"]["ppl"] == record["validation"]["ppl"]
+        typer.echo(f"  after reload   {record['validation_after_reload']['ppl']:.6f}  "
+                   f"identical: {record['identical_after_reload']}")
+
+    results.mkdir(parents=True, exist_ok=True)
+    path = results / f"{d.slug(model)}__{plan.stem}__{device}__{dtype}.json"
+    path.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {path}")
+
+
+@app.command("ppl-saved")
+def ppl_saved_cmd(
+    path: Annotated[Path, typer.Option(help="Saved pruned model directory (model.safetensors + plan.json).")],
+    seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
+    windows: Annotated[int | None, typer.Option(help="Validation windows to evaluate (default: all).")] = None,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/pruned"),
+) -> None:
+    """WikiText-2 validation perplexity of a saved pruned model, rebuilt from its plan JSON."""
+    import json
+
+    from pruneagent import evaluate as ev
+    from pruneagent import loader
+
+    device = device or ev.pick_device()
+    net = loader.load(path, device=device)
+    info = net.pruneagent
+    dtype = str(next(net.parameters()).dtype).removeprefix("torch.")
+    typer.echo(f"{path}: {info['model_id']}@{(info['revision'] or '')[:8]} on {device} in {dtype}")
+    record = {"method": "saved plan", **_run_record(info["model_id"], info["revision"], device, dtype, seqlen),
+              "path": str(path), "weights_sha256": loader.read_plan(path)["weights"]["sha256"],
+              "validation": _val_ppl(net, info["model_id"], seqlen, windows, device, data_dir)}
+    typer.echo(f"  validation ppl {record['validation']['ppl']:.6f} ({record['validation']['n_windows']} windows)")
+    results.mkdir(parents=True, exist_ok=True)
+    out = results / f"{path.name}__saved__{device}__{dtype}.json"
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {out}")
+
+
 @app.callback()
 def main() -> None:
     """PruneAgent command line."""
