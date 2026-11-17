@@ -1,0 +1,4 @@
+{
+ "description": "Estimate-vs-measured speed check (task 1.7). Unpruned model, saved and reloaded through the same path as the pruned plans.",
+ "plan": {}
+}

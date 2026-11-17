@@ -56,6 +56,13 @@ class DeviceTarget:
 
     @classmethod
     def from_dict(cls, d: dict) -> DeviceTarget:
+        """Also reads a measured device file from `pruneagent device-test` (speed.device_target), whose keys are
+        bandwidth_gbs, kind and memory_total_gb."""
+        d = dict(d)
+        for alias, field in (("bandwidth_gbs", "bandwidth_gb_s"), ("kind", "backend"),
+                             ("memory_total_gb", "memory_limit_gb")):
+            if alias in d and field not in d:
+                d[field] = d[alias]
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 

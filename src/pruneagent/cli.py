@@ -885,3 +885,74 @@ def device_test_cmd(
 @app.callback()
 def main() -> None:
     """PruneAgent command line."""
+
+
+@app.command("speed-check")
+def speed_check_cmd(
+    device: Annotated[str, typer.Option(help="Device the measurements were taken on (mps, cuda); selects their files.")],
+    targets: Annotated[list[str], typer.Option("--target", help="Device target to estimate against: preset (m4, t4) "
+                                               "or device JSON (results/speed/devices/m4.json). Repeat for several.")],
+    machine: Annotated[str, typer.Option(help="Machine name for the results file, e.g. m4 or t4.")],
+    measured: Annotated[Path, typer.Option(help="Directory of speed-meter results.")] = Path(
+        "results/speed_check/measured"),
+    plans: Annotated[Path, typer.Option(help="Directory holding the plans named by the measurements' labels.")] = Path(
+        "plans"),
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/speed_check"),
+) -> None:
+    """Estimated vs measured decode and prefill tokens/s over the measured plans: Spearman and % error (A6, A8)."""
+    import json
+    from dataclasses import asdict
+
+    from transformers import AutoConfig
+
+    from pruneagent import estimate as E
+    from pruneagent import plan as P
+    from pruneagent import speed_check as S
+
+    files = sorted(measured.glob(f"*__{device}__*.json"))
+    if len(files) < 2:
+        raise typer.BadParameter(f"need at least two measurements for {device} in {measured}")
+    devs = {t: E.load_target(t) for t in targets}
+    configs: dict = {}
+    rows = []
+    for f in files:
+        m = json.loads(f.read_text())
+        key = (m["model"], m["revision"])
+        if key not in configs:
+            configs[key] = AutoConfig.from_pretrained(m["model"], revision=m["revision"]).to_dict()
+        config = configs[key]
+        spec = json.loads((plans / f"{m['label']}.json").read_text())
+        layer_plan = P.apply_steps(P.validate(spec.get("plan", {}), config), spec.get("steps", []), config)
+        dtype_bytes = {"float16": 2, "bfloat16": 2, "float32": 4}[m["dtype"]]
+        row = {"plan": m["label"], "measured_file": str(f), "device_name": m["device_name"],
+               "measured": {"decode": m["decode_tok_s"]["median"], "prefill": m["prefill_tok_s"]["median"]},
+               "measured_spread": {"decode": m["decode_tok_s"]["spread"], "prefill": m["prefill_tok_s"]["spread"]},
+               "weight_bytes": {"measured": m["weight_bytes"]}, "estimated": {}}
+        for t, dev in devs.items():
+            e = E.estimate(config, layer_plan, dev, dtype_bytes=dtype_bytes, prompt=m["settings"]["prompt_len"])
+            row["estimated"][t] = {"decode": e.est_decode_tok_s, "prefill": e.est_prefill_tok_s}
+            row["weight_bytes"]["estimated"] = e.weight_bytes
+        rows.append(row)
+    summary = S.compare(rows, targets)
+    record = {"machine": machine, "device": device, "targets": {t: asdict(dev) for t, dev in devs.items()},
+              "plans": rows, "summary": summary,
+              "definitions": {"error": "(estimated - measured) / measured; positive = estimate too fast",
+                              "fit": "in-sample least-squares line, measured s/token = scale x estimated s/token "
+                                     "+ overhead; an extra column only, not used for A6 / A8"}}
+    for t in targets:
+        typer.echo(f"{machine} against {t} ({devs[t].bandwidth_gb_s} GB/s, {devs[t].compute_tflops} TFLOPs):")
+        typer.echo(f"  {'plan':<26}{'decode est':>11}{'meas':>8}{'err':>8}{'prefill est':>13}{'meas':>8}{'err':>8}")
+        for i, r in enumerate(rows):
+            typer.echo(f"  {r['plan']:<26}{r['estimated'][t]['decode']:>11.1f}{r['measured']['decode']:>8.1f}"
+                       f"{summary[t]['decode']['error'][i]:>+8.0%}{r['estimated'][t]['prefill']:>13.0f}"
+                       f"{r['measured']['prefill']:>8.0f}{summary[t]['prefill']['error'][i]:>+8.0%}")
+        for ms in S.MEASURES:
+            s, fit = summary[t][ms], summary[t][ms]["fit"]
+            rho = "n/a" if s["spearman"] is None else f"{s['spearman']:.3f}"
+            typer.echo(f"  {ms:<8} Spearman {rho}  mean |error| {s['mean_abs_error']:.1%}  max |error| "
+                       f"{s['max_abs_error']:.1%}  | fitted line (in-sample): mean |error| "
+                       f"{fit['mean_abs_error']:.1%}, max {fit['max_abs_error']:.1%}")
+    results.mkdir(parents=True, exist_ok=True)
+    out = results / f"{machine}.json"
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {out}")

@@ -1,0 +1,89 @@
+{
+ "description": "Estimate-vs-measured speed check (task 1.7). remove_attention_group only: every layer keeps 4 of 8 key/value groups.",
+ "plan": {
+  "0": {
+   "groups_keep": 4
+  },
+  "1": {
+   "groups_keep": 4
+  },
+  "2": {
+   "groups_keep": 4
+  },
+  "3": {
+   "groups_keep": 4
+  },
+  "4": {
+   "groups_keep": 4
+  },
+  "5": {
+   "groups_keep": 4
+  },
+  "6": {
+   "groups_keep": 4
+  },
+  "7": {
+   "groups_keep": 4
+  },
+  "8": {
+   "groups_keep": 4
+  },
+  "9": {
+   "groups_keep": 4
+  },
+  "10": {
+   "groups_keep": 4
+  },
+  "11": {
+   "groups_keep": 4
+  },
+  "12": {
+   "groups_keep": 4
+  },
+  "13": {
+   "groups_keep": 4
+  },
+  "14": {
+   "groups_keep": 4
+  },
+  "15": {
+   "groups_keep": 4
+  },
+  "16": {
+   "groups_keep": 4
+  },
+  "17": {
+   "groups_keep": 4
+  },
+  "18": {
+   "groups_keep": 4
+  },
+  "19": {
+   "groups_keep": 4
+  },
+  "20": {
+   "groups_keep": 4
+  },
+  "21": {
+   "groups_keep": 4
+  },
+  "22": {
+   "groups_keep": 4
+  },
+  "23": {
+   "groups_keep": 4
+  },
+  "24": {
+   "groups_keep": 4
+  },
+  "25": {
+   "groups_keep": 4
+  },
+  "26": {
+   "groups_keep": 4
+  },
+  "27": {
+   "groups_keep": 4
+  }
+ }
+}
