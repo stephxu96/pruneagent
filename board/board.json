@@ -270,8 +270,8 @@
       ],
       "done_when": "Rank correlation and % error recorded per machine",
       "gpu": "M4 + T4",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started on its own branch"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started on its own branch\n[2026-11-17] Done. Rank agreement M4 0.97 generating / 0.99 prompt; T4 0.72 / 0.80. Estimate too fast everywhere: M4 by 56-63% on average with measured device figures, T4 by 200-800%. On T4, speed of generating is set mostly by the number of layers left (~1.65 ms per layer per token), not by weight size. 21.5 min of T4."
     },
     {
       "id": "1.8",
@@ -397,14 +397,14 @@
           "go_if": "Rank correlation ≥ 0.7 on both",
           "fallback": "Measure tokens/s on the accepted plan every 5 rounds",
           "result": "pending",
-          "observed": ""
+          "observed": "Rank agreement M4: 0.97 generating, 0.99 prompt; T4: 0.72 generating (just over 0.7; single T4 runs vary 11-25%), 0.80 prompt"
         },
         {
           "label": "Speed estimate close enough for phone estimates (A8)",
           "go_if": "Within ~25% of measured speed on both machines",
           "fallback": "Report phone targets as memory fit only",
           "result": "pending",
-          "observed": ""
+          "observed": "Not close: estimate too fast by ~56-63% on M4 and ~200-830% on T4 on average, even with measured device figures. A fitted per-token overhead gets M4 within 25% but not T4"
         },
         {
           "label": "Structured pruning reaches the bar with a real saving (A7)",
