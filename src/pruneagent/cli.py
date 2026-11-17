@@ -468,6 +468,71 @@ def ppl_saved_cmd(
     typer.echo(f"Saved {out}")
 
 
+@app.command("estimate")
+def estimate_cmd(
+    plan: Annotated[Path, typer.Option(help="Plan JSON ({'plan': ...} and/or {'steps': [...]}), or a saved model's "
+                                            "plan.json or directory (then compared with its file size).")],
+    target: Annotated[str | None, typer.Option(help="Device target: preset (m4, t4), JSON file or inline JSON.")] = None,
+    model: Annotated[str, typer.Option(help="Hugging Face model id (ignored for a saved model).")] = "Qwen/Qwen3-0.6B-Base",
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32 (ignored for a saved model).")] = "float16",
+    context: Annotated[int, typer.Option(help="Tokens of history when generating (key/value cache).")] = 512,
+    prompt: Annotated[int, typer.Option(help="Prompt length for prefill FLOPs.")] = 512,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/estimate"),
+) -> None:
+    """Weight bytes, bytes read per generated token, prompt FLOPs and estimated speed for a plan; no weights needed."""
+    import json
+
+    from pruneagent import data as d
+    from pruneagent import estimate as E
+    from pruneagent import loader
+    from pruneagent import plan as P
+
+    path = plan / loader.PLAN if plan.is_dir() else plan
+    spec = json.loads(path.read_text())
+    is_saved = spec.get("format") == loader.FORMAT
+    record: dict = {"plan_file": str(path)}
+    if is_saved:
+        saved = loader.read_plan(path.parent)
+        config, layer_plan, dtype = saved["dense_config"], saved["plan"], saved["dtype"]
+        model, revision = saved["model_id"], saved["revision"]
+    else:
+        from transformers import AutoConfig
+
+        revision = d.read_manifest(data_dir)["entries"][d.calib_name(model)]["tokenizer"]["revision"]
+        config = AutoConfig.from_pretrained(model, revision=revision).to_dict()
+        layer_plan = P.apply_steps(P.validate(spec.get("plan", {}), config), spec.get("steps", []), config)
+    dtype_bytes = {"float16": 2, "bfloat16": 2, "float32": 4}[dtype]
+    dev = E.load_target(target) if target else None
+    est = E.estimate(config, layer_plan, dev, dtype_bytes=dtype_bytes, context=context, prompt=prompt)
+    dense = E.estimate(config, {}, dev, dtype_bytes=dtype_bytes, context=context, prompt=prompt)
+    record |= {"model": model, "revision": revision, "dtype": dtype, "plan": P.to_json(layer_plan),
+               "estimate": est.to_dict(), "dense": dense.to_dict()}
+    typer.echo(f"{model} in {dtype}: {path}")
+    typer.echo(f"  weight bytes      {est.weight_bytes:,} ({est.weight_bytes / dense.weight_bytes:.4f} of dense)")
+    typer.echo(f"  read per token    {est.decode_bytes_per_token:,} at a {context}-token context")
+    typer.echo(f"  prompt FLOPs      {est.prefill_flops:.4g} for {prompt} tokens")
+    weights_file = path.parent / loader.WEIGHTS
+    if is_saved and weights_file.exists():
+        size = weights_file.stat().st_size
+        diff = (est.weight_bytes - size) / size
+        record["file"] = {"path": str(weights_file), "bytes": size, "relative_difference": diff}
+        typer.echo(f"  saved file        {size:,} (estimate {diff:+.4%})")
+    if dev:
+        c = E.check(dev, config, layer_plan, dtype_bytes=dtype_bytes, context=context, prompt=prompt)
+        record["check"] = c.to_dict()
+        typer.echo(f"  on {dev.name}: decode {est.est_decode_tok_s:.1f} tokens/s (unpruned "
+                   f"{dense.est_decode_tok_s:.1f}), prompt {est.est_prefill_tok_s:.0f} tokens/s; "
+                   f"fits {c.fits_memory} (over by {c.memory_gap_gb:.3f} GB), speed met {c.meets_speed} "
+                   f"(short by {c.speed_gap_tok_s:.1f} tokens/s)")
+    results.mkdir(parents=True, exist_ok=True)
+    name = path.parent.name if is_saved else path.stem
+    suffix = f"__{target}" if target in E.PRESETS else ""
+    out = results / f"{d.slug(model)}__{name}__{dtype}{suffix}.json"
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {out}")
+
+
 @app.callback()
 def main() -> None:
     """PruneAgent command line."""
