@@ -2,6 +2,9 @@
 
 - Calibration: 128 random 2,048-token windows from the first C4 English training shard, sampled with
   the same procedure (and seed) as the Wanda and SparseGPT reference code, so their results reproduce.
+- Wanda-sp calibration: 128 random 128-token windows from the same shard and by the same procedure (FLAP's
+  `get_c4` is Wanda's), as FLAP's `prune_wanda_sp` loads them.
+- FLAP calibration: 1,024 random 128-token windows of the WikiText-2 training split (FLAP's `get_wikitext2`).
 - Evaluation: WikiText-2 (raw) validation and test splits, each joined with blank lines and tokenized
   as one sequence, as in the reference code.
 
@@ -31,6 +34,8 @@ WIKITEXT_JOIN = "\n\n"
 FLAP_JOIN = " "  # FLAP's get_wikitext2 joins the training split with single spaces
 FLAP_NSAMPLES = 1024  # FLAP's published scripts: --nsamples 1024
 FLAP_SEQLEN = 128  # FLAP's main.py: model.seqlen = 128
+WANDA_SP_NSAMPLES = 128  # FLAP's prune_wanda_sp: get_loaders("c4", nsamples=128, seqlen=model.seqlen)
+WANDA_SP_SEQLEN = 128
 DEFAULT_MODEL = "Qwen/Qwen3-0.6B-Base"
 MANIFEST = "manifest.json"
 TENSOR_KEY = "input_ids"
@@ -55,6 +60,10 @@ def calib_name(model_id: str = DEFAULT_MODEL) -> str:
 
 def flap_calib_name(model_id: str = DEFAULT_MODEL) -> str:
     return f"wikitext2_train_flap_calib__{slug(model_id)}"
+
+
+def wanda_sp_calib_name(model_id: str = DEFAULT_MODEL) -> str:
+    return f"c4_wanda_sp_calib__{slug(model_id)}"
 
 
 def wikitext_name(split: str, model_id: str = DEFAULT_MODEL) -> str:
@@ -212,6 +221,22 @@ def build_cache(
         },
     )
     log(f"  calibration {tuple(calib.shape)}")
+
+    wsp = sample_calibration(_Column(c4, "text"), tokenize, WANDA_SP_NSAMPLES, WANDA_SP_SEQLEN, seed)
+    write_entry(
+        out,
+        wanda_sp_calib_name(model_id),
+        wsp,
+        {
+            "source": {"repo": C4_REPO, "revision": c4_rev, "data_files": C4_SHARD, "split": "train"},
+            "params": {
+                "nsamples": WANDA_SP_NSAMPLES, "seqlen": WANDA_SP_SEQLEN, "seed": seed,
+                "procedure": "flap get_c4 (as wanda/sparsegpt), for wanda-sp",
+            },
+            "tokenizer": tokenizer_meta,
+        },
+    )
+    log(f"  Wanda-sp calibration {tuple(wsp.shape)}")
 
     for split in ("validation", "test"):
         ds = load_dataset(WIKITEXT_REPO, WIKITEXT_CONFIG, split=split, revision=wt_rev)

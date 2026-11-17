@@ -175,6 +175,32 @@
         "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd"
       },
       "created_at": "2026-11-17T14:25:57+00:00"
+    },
+    "c4_wanda_sp_calib__qwen3-0.6b-base": {
+      "file": "c4_wanda_sp_calib__qwen3-0.6b-base.safetensors",
+      "sha256": "021201a4f53d27414b149ddda9a33002d334b70c896fed9e69a3b4ee04a9ea62",
+      "shape": [
+        128,
+        128
+      ],
+      "dtype": "int64",
+      "source": {
+        "repo": "allenai/c4",
+        "revision": "1588ec454efa1a09f29cd18ddd04fe05fc8653a2",
+        "data_files": "en/c4-train.00000-of-01024.json.gz",
+        "split": "train"
+      },
+      "params": {
+        "nsamples": 128,
+        "seqlen": 128,
+        "seed": 0,
+        "procedure": "flap get_c4 (as wanda/sparsegpt), for wanda-sp"
+      },
+      "tokenizer": {
+        "id": "Qwen/Qwen3-0.6B-Base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd"
+      },
+      "created_at": "2026-11-17T14:46:16+00:00"
     }
   },
   "libraries": {

@@ -97,6 +97,30 @@ def test_real_cache_verifies():
     assert result and all(result.values())
 
 
+def test_wanda_sp_sampling_matches_flap_get_c4(texts):
+    """FLAP lib/data.py `get_c4` (commit 3bb57db), verbatim apart from the dataset rows and tokenizer."""
+
+    def tokenizer(text, return_tensors):
+        return type("Enc", (), {"input_ids": torch.tensor([fake_tokenize(text)])})
+
+    traindata = [{"text": t} for t in texts]
+    nsamples, seed, seqlen = 12, 0, 16
+    random.seed(seed)
+    trainloader = []
+    for _ in range(nsamples):
+        while True:
+            i = random.randint(0, len(traindata) - 1)
+            trainenc = tokenizer(traindata[i]["text"], return_tensors="pt")
+            if trainenc.input_ids.shape[1] > seqlen:
+                break
+        i = random.randint(0, trainenc.input_ids.shape[1] - seqlen - 1)
+        j = i + seqlen
+        inp = trainenc.input_ids[:, i:j]
+        trainloader.append(inp)
+    got = d.sample_calibration(texts, fake_tokenize, nsamples, seqlen, seed)
+    assert torch.equal(got, torch.cat(trainloader))
+
+
 def test_stream_sampling_matches_flap_reference():
 
     ids = torch.arange(1000).unsqueeze(0)
