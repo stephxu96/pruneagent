@@ -301,7 +301,7 @@
       "done_when": "Savings at the bar recorded",
       "gpu": "T4",
       "status": "doing",
-      "notes": "[2026-11-17] Agent started 10:12 on its own branch"
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch\n[2026-11-17] Two Colab runs failed on agent bugs (fixed). Wanda-sp at the bar: ratio 0.203, 17.2% of block weights, val ppl 25.89, mean acc 42.88%. FLAP held back by accuracy, not perplexity: 23.5% removed still 40.51% acc (< 41.80). Third run launched ~11:50, about 75 min"
     },
     {
       "id": "1.10",
