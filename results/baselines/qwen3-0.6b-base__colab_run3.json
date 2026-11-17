@@ -1,0 +1,1435 @@
+{
+  "git_ref": "5b5469ffbd66e73336e14cdc1b89de69b275ab55",
+  "runs": {
+    "results/wanda/qwen3-1.7b-base__wanda50__cuda__float16.json": {
+      "method": "wanda",
+      "target_sparsity": 0.5,
+      "achieved_linear_sparsity": 0.5,
+      "model": "Qwen/Qwen3-1.7B-Base",
+      "revision": "ea980cb0a6c2ae4b936e82123acc929f1cec04c1",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "calibration": {
+        "entry": "c4_calib__qwen3-1.7b-base",
+        "sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "shape": [
+          128,
+          2048
+        ]
+      },
+      "prune_seconds": 51.5,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T14:51:55+00:00",
+      "splits": {
+        "validation": {
+          "ppl": 15.377445220947266,
+          "n_windows": 128,
+          "seconds": 26.5,
+          "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+        },
+        "test": {
+          "ppl": 14.531475067138672,
+          "n_windows": 146,
+          "seconds": 30.3,
+          "data_sha256": "0cc0fe0f7629af5389d77a3e48575f4eb3b1070f420b9fa659410c0af9105818"
+        }
+      },
+      "git_ref": "504d6533cc7178179a44ce56c91e67871d65be23"
+    },
+    "results/baselines/qwen3-0.6b-base__wandasp-at-bar__cuda__float16.json": {
+      "method": "wanda-sp",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T17:00:44+00:00",
+      "bar": {
+        "wanda50_validation_ppl": 23.682626724243164,
+        "wanda50_test_ppl": 22.56914710998535,
+        "wanda50_mean_acc": 0.438038703166515,
+        "max_validation_ppl": 26.050889396667483,
+        "min_mean_acc": 0.418038703166515,
+        "sources": {
+          "ppl": "results/wanda/qwen3-0.6b-base__wanda50__mps__float16.json",
+          "mc": "results/mc/qwen3-0.6b-base__colab.json#qwen3-0.6b-base__wanda50__cuda__float16.json"
+        }
+      },
+      "calibration": {
+        "entry": "c4_wanda_sp_calib__qwen3-0.6b-base",
+        "sha256": "021201a4f53d27414b149ddda9a33002d334b70c896fed9e69a3b4ee04a9ea62"
+      },
+      "search": {
+        "lo": 0.2031,
+        "hi": 0.207,
+        "tol": 0.005,
+        "acc_lo": 0.0,
+        "acc_tol": 0.01,
+        "acc_fails_at": null,
+        "windows": null,
+        "mc_limit": null,
+        "status": "done",
+        "ratio": 0.2031,
+        "ppl_trials": [
+          {
+            "ratio": 0.207,
+            "value": 26.097253799438477,
+            "passed": false
+          },
+          {
+            "ratio": 0.2031,
+            "value": 25.885496139526367,
+            "passed": true
+          }
+        ],
+        "acc_trials": [
+          {
+            "ratio": 0.2031,
+            "value": 0.42882913563804176,
+            "passed": true
+          }
+        ],
+        "meets_bar": true,
+        "note": ""
+      },
+      "weights_before": {
+        "parameters": 596049920,
+        "weight_bytes": 1192099840,
+        "block_weights": 440401920
+      },
+      "trials": {
+        "0.2031": {
+          "builds": 1,
+          "prune_seconds": 12.5,
+          "weights_after": {
+            "parameters": 520441856,
+            "weight_bytes": 1040883712,
+            "block_weights": 364793856
+          },
+          "block_weights_removed": 0.17167968749999996,
+          "parameters_removed": 0.12684854315558003,
+          "weight_bytes_removed": 0.12684854315558003,
+          "groups_kept": [
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7
+          ],
+          "neurons_kept": [
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449,
+            2449
+          ],
+          "validation": {
+            "ppl": 25.885496139526367,
+            "n_windows": 128,
+            "seconds": 36.1
+          },
+          "mc": {
+            "tasks": {
+              "boolq": {
+                "acc": 0.6159021406727829,
+                "acc_norm": null,
+                "acc_stderr": 0.008506861063860427
+              },
+              "rte": {
+                "acc": 0.5379061371841155,
+                "acc_norm": null,
+                "acc_stderr": 0.030009848912529075
+              },
+              "hellaswag": {
+                "acc": 0.3436566421031667,
+                "acc_norm": 0.4282015534754033,
+                "acc_stderr": 0.0047395753805088295
+              },
+              "winogrande": {
+                "acc": 0.5438042620363063,
+                "acc_norm": null,
+                "acc_stderr": 0.0139984536109243
+              },
+              "arc_easy": {
+                "acc": 0.5328282828282829,
+                "acc_norm": 0.4819023569023569,
+                "acc_stderr": 0.01023764577885378
+              },
+              "arc_challenge": {
+                "acc": 0.25170648464163825,
+                "acc_norm": 0.28668941979522183,
+                "acc_stderr": 0.012682496334042911
+              },
+              "openbookqa": {
+                "acc": 0.176,
+                "acc_norm": 0.292,
+                "acc_stderr": 0.01704785202062225
+              }
+            },
+            "mean_acc": 0.42882913563804176,
+            "seconds": 814.3
+          },
+          "validation_final_model": {
+            "ppl": 25.885496139526367,
+            "n_windows": 128
+          },
+          "test": {
+            "ppl": 25.200986862182617,
+            "n_windows": 146,
+            "seconds": 42.4
+          }
+        },
+        "0.2070": {
+          "builds": 1,
+          "prune_seconds": 13.2,
+          "weights_after": {
+            "parameters": 519409664,
+            "weight_bytes": 1038819328,
+            "block_weights": 363761664
+          },
+          "block_weights_removed": 0.17402343750000004,
+          "parameters_removed": 0.12858026388125343,
+          "weight_bytes_removed": 0.12858026388125343,
+          "groups_kept": [
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7
+          ],
+          "neurons_kept": [
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437
+          ],
+          "validation": {
+            "ppl": 26.097253799438477,
+            "n_windows": 128,
+            "seconds": 33.9
+          }
+        }
+      },
+      "at_bar": {
+        "ratio": 0.2031,
+        "builds": 1,
+        "prune_seconds": 12.5,
+        "weights_after": {
+          "parameters": 520441856,
+          "weight_bytes": 1040883712,
+          "block_weights": 364793856
+        },
+        "block_weights_removed": 0.17167968749999996,
+        "parameters_removed": 0.12684854315558003,
+        "weight_bytes_removed": 0.12684854315558003,
+        "groups_kept": [
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7
+        ],
+        "neurons_kept": [
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449,
+          2449
+        ],
+        "validation": {
+          "ppl": 25.885496139526367,
+          "n_windows": 128,
+          "seconds": 36.1
+        },
+        "mc": {
+          "tasks": {
+            "boolq": {
+              "acc": 0.6159021406727829,
+              "acc_norm": null,
+              "acc_stderr": 0.008506861063860427
+            },
+            "rte": {
+              "acc": 0.5379061371841155,
+              "acc_norm": null,
+              "acc_stderr": 0.030009848912529075
+            },
+            "hellaswag": {
+              "acc": 0.3436566421031667,
+              "acc_norm": 0.4282015534754033,
+              "acc_stderr": 0.0047395753805088295
+            },
+            "winogrande": {
+              "acc": 0.5438042620363063,
+              "acc_norm": null,
+              "acc_stderr": 0.0139984536109243
+            },
+            "arc_easy": {
+              "acc": 0.5328282828282829,
+              "acc_norm": 0.4819023569023569,
+              "acc_stderr": 0.01023764577885378
+            },
+            "arc_challenge": {
+              "acc": 0.25170648464163825,
+              "acc_norm": 0.28668941979522183,
+              "acc_stderr": 0.012682496334042911
+            },
+            "openbookqa": {
+              "acc": 0.176,
+              "acc_norm": 0.292,
+              "acc_stderr": 0.01704785202062225
+            }
+          },
+          "mean_acc": 0.42882913563804176,
+          "seconds": 814.3
+        },
+        "validation_final_model": {
+          "ppl": 25.885496139526367,
+          "n_windows": 128
+        },
+        "test": {
+          "ppl": 25.200986862182617,
+          "n_windows": 146,
+          "seconds": 42.4
+        }
+      }
+    },
+    "results/baselines/qwen3-0.6b-base__flap-at-bar__cuda__float16.json": {
+      "method": "flap",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T17:18:26+00:00",
+      "bar": {
+        "wanda50_validation_ppl": 23.682626724243164,
+        "wanda50_test_ppl": 22.56914710998535,
+        "wanda50_mean_acc": 0.438038703166515,
+        "max_validation_ppl": 26.050889396667483,
+        "min_mean_acc": 0.418038703166515,
+        "sources": {
+          "ppl": "results/wanda/qwen3-0.6b-base__wanda50__mps__float16.json",
+          "mc": "results/mc/qwen3-0.6b-base__colab.json#qwen3-0.6b-base__wanda50__cuda__float16.json"
+        }
+      },
+      "calibration": {
+        "entry": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675"
+      },
+      "search": {
+        "lo": 0.2734,
+        "hi": 0.2773,
+        "tol": 0.005,
+        "acc_lo": 0.13,
+        "acc_tol": 0.0065,
+        "acc_fails_at": 0.2334,
+        "windows": null,
+        "mc_limit": null,
+        "status": "done",
+        "ratio": 0.2044,
+        "ppl_trials": [
+          {
+            "ratio": 0.2773,
+            "value": 26.598838806152344,
+            "passed": false
+          },
+          {
+            "ratio": 0.2734,
+            "value": 25.815162658691406,
+            "passed": true
+          },
+          {
+            "ratio": 0.1817,
+            "value": 18.33484649658203,
+            "passed": true
+          },
+          {
+            "ratio": 0.2076,
+            "value": 20.33776092529297,
+            "passed": true
+          },
+          {
+            "ratio": 0.1946,
+            "value": 19.360891342163086,
+            "passed": true
+          },
+          {
+            "ratio": 0.2011,
+            "value": 19.568115234375,
+            "passed": true
+          },
+          {
+            "ratio": 0.2044,
+            "value": 19.978673934936523,
+            "passed": true
+          }
+        ],
+        "acc_trials": [
+          {
+            "ratio": 0.1817,
+            "value": 0.4303875943196386,
+            "passed": true
+          },
+          {
+            "ratio": 0.2076,
+            "value": 0.41554632184616586,
+            "passed": false
+          },
+          {
+            "ratio": 0.1946,
+            "value": 0.42309910532582096,
+            "passed": true
+          },
+          {
+            "ratio": 0.2011,
+            "value": 0.41919680000792897,
+            "passed": true
+          },
+          {
+            "ratio": 0.2044,
+            "value": 0.41891031957244307,
+            "passed": true
+          }
+        ],
+        "meets_bar": true,
+        "note": ""
+      },
+      "weights_before": {
+        "parameters": 596049920,
+        "weight_bytes": 1192099840,
+        "block_weights": 440401920
+      },
+      "trials": {
+        "0.1817": {
+          "builds": 1,
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 516081664,
+            "weight_bytes": 1032163328,
+            "block_weights": 360376320
+          },
+          "block_weights_removed": 0.1817103794642857,
+          "parameters_removed": 0.13416368884002194,
+          "weight_bytes_removed": 0.13416368884002194,
+          "groups_kept": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            5,
+            5,
+            7,
+            8,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            2508,
+            2270,
+            3072,
+            2832,
+            2014,
+            1975,
+            2214,
+            3072,
+            2351,
+            2157,
+            3072,
+            3072,
+            1742,
+            1643,
+            1912,
+            1744,
+            1826,
+            2037,
+            1901,
+            1862,
+            1700,
+            1796,
+            1725,
+            1871,
+            1980,
+            2290,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 18.33484649658203,
+            "n_windows": 128,
+            "seconds": 33.5
+          },
+          "mc": {
+            "tasks": {
+              "boolq": {
+                "acc": 0.6162079510703364,
+                "acc_norm": null,
+                "acc_stderr": 0.008505584729104822
+              },
+              "rte": {
+                "acc": 0.5270758122743683,
+                "acc_norm": null,
+                "acc_stderr": 0.030052303463143734
+              },
+              "hellaswag": {
+                "acc": 0.33210515833499304,
+                "acc_norm": 0.40948018323043217,
+                "acc_stderr": 0.004700059671374276
+              },
+              "winogrande": {
+                "acc": 0.56353591160221,
+                "acc_norm": null,
+                "acc_stderr": 0.013938569465677146
+              },
+              "arc_easy": {
+                "acc": 0.5505050505050505,
+                "acc_norm": 0.47769360269360267,
+                "acc_stderr": 0.010207308833916014
+              },
+              "arc_challenge": {
+                "acc": 0.21928327645051193,
+                "acc_norm": 0.25853242320819114,
+                "acc_stderr": 0.012091245787615647
+              },
+              "openbookqa": {
+                "acc": 0.204,
+                "acc_norm": 0.3,
+                "acc_stderr": 0.01803936910413861
+              }
+            },
+            "mean_acc": 0.4303875943196386,
+            "seconds": 713.2
+          }
+        },
+        "0.1946": {
+          "builds": 1,
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 510321664,
+            "weight_bytes": 1020643328,
+            "block_weights": 354616320
+          },
+          "block_weights_removed": 0.1947893415178571,
+          "parameters_removed": 0.14382730896096751,
+          "weight_bytes_removed": 0.14382730896096751,
+          "groups_kept": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            4,
+            5,
+            7,
+            8,
+            7,
+            8,
+            7,
+            8,
+            6,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            2455,
+            2222,
+            3072,
+            2809,
+            1982,
+            1940,
+            2171,
+            3072,
+            2313,
+            2119,
+            3072,
+            3072,
+            1706,
+            1629,
+            1880,
+            1723,
+            1785,
+            1981,
+            1855,
+            1826,
+            1657,
+            1759,
+            1679,
+            1833,
+            1932,
+            2243,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 19.360891342163086,
+            "n_windows": 128,
+            "seconds": 34.1
+          },
+          "mc": {
+            "tasks": {
+              "boolq": {
+                "acc": 0.5969418960244648,
+                "acc_norm": null,
+                "acc_stderr": 0.00857911321056629
+              },
+              "rte": {
+                "acc": 0.5270758122743683,
+                "acc_norm": null,
+                "acc_stderr": 0.030052303463143734
+              },
+              "hellaswag": {
+                "acc": 0.3263294164509062,
+                "acc_norm": 0.40131447918741286,
+                "acc_stderr": 0.004679111783653776
+              },
+              "winogrande": {
+                "acc": 0.569060773480663,
+                "acc_norm": null,
+                "acc_stderr": 0.013917796623335919
+              },
+              "arc_easy": {
+                "acc": 0.5395622895622896,
+                "acc_norm": 0.4713804713804714,
+                "acc_stderr": 0.01022761638628915
+              },
+              "arc_challenge": {
+                "acc": 0.2167235494880546,
+                "acc_norm": 0.2568259385665529,
+                "acc_stderr": 0.012040156713481203
+              },
+              "openbookqa": {
+                "acc": 0.186,
+                "acc_norm": 0.292,
+                "acc_stderr": 0.01741880678058399
+              }
+            },
+            "mean_acc": 0.42309910532582096,
+            "seconds": 721.3
+          }
+        },
+        "0.2011": {
+          "builds": 1,
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 506970112,
+            "weight_bytes": 1013940224,
+            "block_weights": 351264768
+          },
+          "block_weights_removed": 0.20239955357142858,
+          "parameters_removed": 0.14945024738867507,
+          "weight_bytes_removed": 0.14945024738867507,
+          "groups_kept": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            4,
+            5,
+            7,
+            8,
+            7,
+            8,
+            5,
+            8,
+            6,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            2408,
+            2185,
+            3072,
+            2791,
+            1958,
+            1913,
+            2144,
+            3072,
+            2287,
+            2090,
+            3072,
+            3068,
+            1686,
+            1618,
+            1860,
+            1703,
+            1754,
+            1957,
+            1824,
+            1800,
+            1638,
+            1723,
+            1659,
+            1806,
+            1904,
+            2216,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 19.568115234375,
+            "n_windows": 128,
+            "seconds": 32.8
+          },
+          "mc": {
+            "tasks": {
+              "boolq": {
+                "acc": 0.5837920489296636,
+                "acc_norm": null,
+                "acc_stderr": 0.008621380519419186
+              },
+              "rte": {
+                "acc": 0.5270758122743683,
+                "acc_norm": null,
+                "acc_stderr": 0.030052303463143734
+              },
+              "hellaswag": {
+                "acc": 0.32513443537143993,
+                "acc_norm": 0.3995220075682135,
+                "acc_stderr": 0.004674677287148671
+              },
+              "winogrande": {
+                "acc": 0.5698500394632992,
+                "acc_norm": null,
+                "acc_stderr": 0.013914685094716689
+              },
+              "arc_easy": {
+                "acc": 0.5357744107744108,
+                "acc_norm": 0.4701178451178451,
+                "acc_stderr": 0.01023348870972664
+              },
+              "arc_challenge": {
+                "acc": 0.21075085324232082,
+                "acc_norm": 0.26023890784982934,
+                "acc_stderr": 0.01191827175485213
+              },
+              "openbookqa": {
+                "acc": 0.182,
+                "acc_norm": 0.292,
+                "acc_stderr": 0.017272773297730436
+              }
+            },
+            "mean_acc": 0.41919680000792897,
+            "seconds": 692.6
+          }
+        },
+        "0.2044": {
+          "builds": 1,
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 505560064,
+            "weight_bytes": 1011120128,
+            "block_weights": 349854720
+          },
+          "block_weights_removed": 0.2056012834821429,
+          "parameters_removed": 0.1518159015942826,
+          "weight_bytes_removed": 0.1518159015942826,
+          "groups_kept": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            4,
+            5,
+            7,
+            8,
+            6,
+            8,
+            5,
+            8,
+            6,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            2396,
+            2178,
+            3072,
+            2783,
+            1951,
+            1905,
+            2139,
+            3072,
+            2279,
+            2084,
+            3072,
+            3068,
+            1679,
+            1611,
+            1849,
+            1693,
+            1743,
+            1943,
+            1812,
+            1787,
+            1627,
+            1719,
+            1649,
+            1796,
+            1894,
+            2204,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 19.978673934936523,
+            "n_windows": 128,
+            "seconds": 33.8
+          },
+          "mc": {
+            "tasks": {
+              "boolq": {
+                "acc": 0.5770642201834862,
+                "acc_norm": null,
+                "acc_stderr": 0.008640558744656307
+              },
+              "rte": {
+                "acc": 0.5270758122743683,
+                "acc_norm": null,
+                "acc_stderr": 0.030052303463143734
+              },
+              "hellaswag": {
+                "acc": 0.3253335988846843,
+                "acc_norm": 0.40141406094403503,
+                "acc_stderr": 0.004675418774314233
+              },
+              "winogrande": {
+                "acc": 0.56353591160221,
+                "acc_norm": null,
+                "acc_stderr": 0.013938569465677146
+              },
+              "arc_easy": {
+                "acc": 0.5349326599326599,
+                "acc_norm": 0.4713804713804714,
+                "acc_stderr": 0.010234713052723618
+              },
+              "arc_challenge": {
+                "acc": 0.21843003412969283,
+                "acc_norm": 0.26109215017064846,
+                "acc_stderr": 0.012074291605700917
+              },
+              "openbookqa": {
+                "acc": 0.186,
+                "acc_norm": 0.294,
+                "acc_stderr": 0.01741880678058399
+              }
+            },
+            "mean_acc": 0.41891031957244307,
+            "seconds": 706.1
+          },
+          "validation_final_model": {
+            "ppl": 19.978673934936523,
+            "n_windows": 128
+          },
+          "test": {
+            "ppl": 19.245431900024414,
+            "n_windows": 146,
+            "seconds": 39.1
+          }
+        },
+        "0.2076": {
+          "builds": 1,
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 504577024,
+            "weight_bytes": 1009154048,
+            "block_weights": 348871680
+          },
+          "block_weights_removed": 0.2078334263392857,
+          "parameters_removed": 0.15346515942825734,
+          "weight_bytes_removed": 0.15346515942825734,
+          "groups_kept": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            4,
+            5,
+            6,
+            8,
+            6,
+            8,
+            5,
+            8,
+            6,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            2388,
+            2176,
+            3072,
+            2779,
+            1946,
+            1901,
+            2134,
+            3072,
+            2278,
+            2081,
+            3072,
+            3068,
+            1678,
+            1611,
+            1846,
+            1692,
+            1740,
+            1940,
+            1809,
+            1787,
+            1625,
+            1715,
+            1646,
+            1791,
+            1893,
+            2201,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 20.33776092529297,
+            "n_windows": 128,
+            "seconds": 37.3
+          },
+          "mc": {
+            "tasks": {
+              "boolq": {
+                "acc": 0.5691131498470948,
+                "acc_norm": null,
+                "acc_stderr": 0.008661108320775528
+              },
+              "rte": {
+                "acc": 0.5270758122743683,
+                "acc_norm": null,
+                "acc_stderr": 0.030052303463143734
+              },
+              "hellaswag": {
+                "acc": 0.32284405496912966,
+                "acc_norm": 0.39762995419239194,
+                "acc_stderr": 0.004666080865179718
+              },
+              "winogrande": {
+                "acc": 0.5619573796369376,
+                "acc_norm": null,
+                "acc_stderr": 0.013944181296470948
+              },
+              "arc_easy": {
+                "acc": 0.5336700336700336,
+                "acc_norm": 0.46885521885521886,
+                "acc_stderr": 0.010236494647406535
+              },
+              "arc_challenge": {
+                "acc": 0.21416382252559726,
+                "acc_norm": 0.2593856655290102,
+                "acc_stderr": 0.011988383205966574
+              },
+              "openbookqa": {
+                "acc": 0.18,
+                "acc_norm": 0.296,
+                "acc_stderr": 0.017198592476314237
+              }
+            },
+            "mean_acc": 0.41554632184616586,
+            "seconds": 728.6
+          }
+        },
+        "0.2734": {
+          "builds": 1,
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 475239424,
+            "weight_bytes": 950478848,
+            "block_weights": 319534080
+          },
+          "block_weights_removed": 0.2744489397321429,
+          "parameters_removed": 0.20268519791094008,
+          "weight_bytes_removed": 0.20268519791094008,
+          "groups_kept": [
+            8,
+            6,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            8,
+            6,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            6,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            6,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            1949,
+            1854,
+            3072,
+            2396,
+            1658,
+            1651,
+            1817,
+            3072,
+            1963,
+            1812,
+            3072,
+            2927,
+            1499,
+            1476,
+            1605,
+            1493,
+            1427,
+            1644,
+            1556,
+            1523,
+            1415,
+            1440,
+            1409,
+            1514,
+            1624,
+            1851,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 25.815162658691406,
+            "n_windows": 128,
+            "seconds": 31.4
+          }
+        },
+        "0.2773": {
+          "builds": 1,
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 473439232,
+            "weight_bytes": 946878464,
+            "block_weights": 317733888
+          },
+          "block_weights_removed": 0.2785365513392857,
+          "parameters_removed": 0.2057054013194063,
+          "weight_bytes_removed": 0.2057054013194063,
+          "groups_kept": [
+            8,
+            6,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            8,
+            5,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            6,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            6,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            1928,
+            1833,
+            3072,
+            2372,
+            1650,
+            1639,
+            1807,
+            3072,
+            1952,
+            1792,
+            3072,
+            2906,
+            1495,
+            1469,
+            1592,
+            1485,
+            1407,
+            1630,
+            1546,
+            1509,
+            1402,
+            1423,
+            1395,
+            1499,
+            1610,
+            1832,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 26.598838806152344,
+            "n_windows": 128,
+            "seconds": 30.3
+          }
+        }
+      },
+      "at_bar": {
+        "ratio": 0.2044,
+        "builds": 1,
+        "prune_seconds": 0.1,
+        "weights_after": {
+          "parameters": 505560064,
+          "weight_bytes": 1011120128,
+          "block_weights": 349854720
+        },
+        "block_weights_removed": 0.2056012834821429,
+        "parameters_removed": 0.1518159015942826,
+        "weight_bytes_removed": 0.1518159015942826,
+        "groups_kept": [
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          4,
+          5,
+          7,
+          8,
+          6,
+          8,
+          5,
+          8,
+          6,
+          8,
+          5
+        ],
+        "neurons_kept": [
+          2396,
+          2178,
+          3072,
+          2783,
+          1951,
+          1905,
+          2139,
+          3072,
+          2279,
+          2084,
+          3072,
+          3068,
+          1679,
+          1611,
+          1849,
+          1693,
+          1743,
+          1943,
+          1812,
+          1787,
+          1627,
+          1719,
+          1649,
+          1796,
+          1894,
+          2204,
+          3072,
+          3072
+        ],
+        "validation": {
+          "ppl": 19.978673934936523,
+          "n_windows": 128,
+          "seconds": 33.8
+        },
+        "mc": {
+          "tasks": {
+            "boolq": {
+              "acc": 0.5770642201834862,
+              "acc_norm": null,
+              "acc_stderr": 0.008640558744656307
+            },
+            "rte": {
+              "acc": 0.5270758122743683,
+              "acc_norm": null,
+              "acc_stderr": 0.030052303463143734
+            },
+            "hellaswag": {
+              "acc": 0.3253335988846843,
+              "acc_norm": 0.40141406094403503,
+              "acc_stderr": 0.004675418774314233
+            },
+            "winogrande": {
+              "acc": 0.56353591160221,
+              "acc_norm": null,
+              "acc_stderr": 0.013938569465677146
+            },
+            "arc_easy": {
+              "acc": 0.5349326599326599,
+              "acc_norm": 0.4713804713804714,
+              "acc_stderr": 0.010234713052723618
+            },
+            "arc_challenge": {
+              "acc": 0.21843003412969283,
+              "acc_norm": 0.26109215017064846,
+              "acc_stderr": 0.012074291605700917
+            },
+            "openbookqa": {
+              "acc": 0.186,
+              "acc_norm": 0.294,
+              "acc_stderr": 0.01741880678058399
+            }
+          },
+          "mean_acc": 0.41891031957244307,
+          "seconds": 706.1
+        },
+        "validation_final_model": {
+          "ppl": 19.978673934936523,
+          "n_windows": 128
+        },
+        "test": {
+          "ppl": 19.245431900024414,
+          "n_windows": 146,
+          "seconds": 39.1
+        }
+      }
+    }
+  }
+}

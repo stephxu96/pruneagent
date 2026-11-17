@@ -188,7 +188,13 @@ def remove_attention_groups(block, keep_groups: torch.Tensor, mean: torch.Tensor
 def prune_flap(model, calib: torch.Tensor, ratio: float, device: str, log=None) -> dict:
     """Prune `model` in place with FLAP (WIFV, AL-AM, bias compensation) at `ratio` of block parameters.
     Returns the keep-masks and the statistics."""
-    stats = collect(model, calib, device, log=log)
+    return prune_flap_from_stats(model, collect(model, calib, device, log=log), ratio)
+
+
+@torch.no_grad()
+def prune_flap_from_stats(model, stats: FlapStats, ratio: float) -> dict:
+    """As `prune_flap`, with statistics already collected on this (unpruned) model. Only the global threshold
+    depends on `ratio`, so one `collect` serves every ratio."""
     attn, mlp = scores(model, stats)
     attn_keep, mlp_keep = allocate(attn, mlp, ratio, group_weight(model))
     for i, block in enumerate(model.model.layers):

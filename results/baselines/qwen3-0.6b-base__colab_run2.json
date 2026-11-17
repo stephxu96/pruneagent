@@ -1,0 +1,269 @@
+{
+  "git_ref": "3652d923ec7e68d91962ee2ac3a0fa2eb97344b5",
+  "runs": {
+    "results/baselines/qwen3-0.6b-base__wandasp-at-bar__cuda__float16.json": {
+      "method": "wanda-sp",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T16:50:38+00:00",
+      "bar": {
+        "wanda50_validation_ppl": 23.682626724243164,
+        "wanda50_test_ppl": 22.56914710998535,
+        "wanda50_mean_acc": 0.438038703166515,
+        "max_validation_ppl": 26.050889396667483,
+        "min_mean_acc": 0.418038703166515,
+        "sources": {
+          "ppl": "results/wanda/qwen3-0.6b-base__wanda50__mps__float16.json",
+          "mc": "results/mc/qwen3-0.6b-base__colab.json#qwen3-0.6b-base__wanda50__cuda__float16.json"
+        }
+      },
+      "calibration": {
+        "entry": "c4_wanda_sp_calib__qwen3-0.6b-base",
+        "sha256": "021201a4f53d27414b149ddda9a33002d334b70c896fed9e69a3b4ee04a9ea62"
+      },
+      "search": {
+        "lo": 0.2031,
+        "hi": 0.207,
+        "tol": 0.005,
+        "acc_lo": 0.0,
+        "acc_tol": 0.01,
+        "acc_fails_at": null,
+        "windows": null,
+        "mc_limit": null,
+        "ratio": null,
+        "ppl_trials": [
+          {
+            "ratio": 0.207,
+            "value": 26.097253799438477,
+            "passed": false
+          }
+        ],
+        "acc_trials": [],
+        "meets_bar": false,
+        "note": "no evaluated ratio meets the perplexity bar (bisection stopped at 0.2031)"
+      },
+      "weights_before": {
+        "parameters": 596049920,
+        "weight_bytes": 1192099840,
+        "block_weights": 440401920
+      },
+      "trials": {
+        "0.2070": {
+          "builds": 1,
+          "prune_seconds": 12.7,
+          "weights_after": {
+            "parameters": 519409664,
+            "weight_bytes": 1038819328,
+            "block_weights": 363761664
+          },
+          "block_weights_removed": 0.17402343750000004,
+          "parameters_removed": 0.12858026388125343,
+          "weight_bytes_removed": 0.12858026388125343,
+          "groups_kept": [
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7
+          ],
+          "neurons_kept": [
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437,
+            2437
+          ],
+          "validation": {
+            "ppl": 26.097253799438477,
+            "n_windows": 128,
+            "seconds": 32.4
+          }
+        }
+      }
+    },
+    "results/baselines/qwen3-0.6b-base__flap-at-bar__cuda__float16.json": {
+      "method": "flap",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T16:52:14+00:00",
+      "bar": {
+        "wanda50_validation_ppl": 23.682626724243164,
+        "wanda50_test_ppl": 22.56914710998535,
+        "wanda50_mean_acc": 0.438038703166515,
+        "max_validation_ppl": 26.050889396667483,
+        "min_mean_acc": 0.418038703166515,
+        "sources": {
+          "ppl": "results/wanda/qwen3-0.6b-base__wanda50__mps__float16.json",
+          "mc": "results/mc/qwen3-0.6b-base__colab.json#qwen3-0.6b-base__wanda50__cuda__float16.json"
+        }
+      },
+      "calibration": {
+        "entry": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675"
+      },
+      "search": {
+        "lo": 0.2734,
+        "hi": 0.2773,
+        "tol": 0.005,
+        "acc_lo": 0.13,
+        "acc_tol": 0.0065,
+        "acc_fails_at": 0.2334,
+        "windows": null,
+        "mc_limit": null,
+        "ratio": null,
+        "ppl_trials": [
+          {
+            "ratio": 0.2773,
+            "value": 26.598838806152344,
+            "passed": false
+          }
+        ],
+        "acc_trials": [],
+        "meets_bar": false,
+        "note": "no evaluated ratio meets the perplexity bar (bisection stopped at 0.2734)"
+      },
+      "weights_before": {
+        "parameters": 596049920,
+        "weight_bytes": 1192099840,
+        "block_weights": 440401920
+      },
+      "trials": {
+        "0.2773": {
+          "builds": 1,
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 473439232,
+            "weight_bytes": 946878464,
+            "block_weights": 317733888
+          },
+          "block_weights_removed": 0.2785365513392857,
+          "parameters_removed": 0.2057054013194063,
+          "weight_bytes_removed": 0.2057054013194063,
+          "groups_kept": [
+            8,
+            6,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            8,
+            5,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            6,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            6,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            1928,
+            1833,
+            3072,
+            2372,
+            1650,
+            1639,
+            1807,
+            3072,
+            1952,
+            1792,
+            3072,
+            2906,
+            1495,
+            1469,
+            1592,
+            1485,
+            1407,
+            1630,
+            1546,
+            1509,
+            1402,
+            1423,
+            1395,
+            1499,
+            1610,
+            1832,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 26.598838806152344,
+            "n_windows": 128,
+            "seconds": 29.3
+          }
+        }
+      }
+    }
+  }
+}
