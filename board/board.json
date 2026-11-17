@@ -376,21 +376,21 @@
           "go_if": "Within 2% of reference perplexity",
           "fallback": "Reimplement fluctuation metric and bias compensation (A4); at most half a day",
           "result": "pending",
-          "observed": ""
+          "observed": "Wanda within 0.02% of llm-compressor; FLAP: 0 of 224 groups, 9 of 86,016 neurons differ; Wanda-sp: identical"
         },
         {
           "label": "Save-and-reload (1.4)",
           "go_if": "Identical perplexity",
           "fallback": "Block phase 2 until fixed",
           "result": "pending",
-          "observed": ""
+          "observed": "Identical: 16.720146 before and after reload"
         },
         {
           "label": "Probes rank like full evaluation (A1)",
           "go_if": "Rank correlation ≥ 0.7",
           "fallback": "Probes as hints only; more full evaluations per round",
           "result": "pending",
-          "observed": ""
+          "observed": "0.80 across all 112 layer-strategy pairs; within one strategy: drop layer 0.64, Wanda 0.38, attention group 0.24, narrow MLP -0.21"
         },
         {
           "label": "Speed estimate ranks like measured speed on M4 and T4 (A6)",
@@ -418,14 +418,14 @@
           "go_if": "Rank correlation ≥ 0.9",
           "fallback": "Gate on 64 windows",
           "result": "pending",
-          "observed": ""
+          "observed": "1.000 on 14 plans (32 and 64 windows); no accept/reject decision changes"
         },
         {
           "label": "Bar is not trivial",
           "go_if": "Wanda-50% validation perplexity > 1.3 × dense",
           "fallback": "Weaker bar only if structured pruning reaches it at > 30% saving; fix before phase 4",
           "result": "pending",
-          "observed": ""
+          "observed": "Wanda-50% 23.68 vs unpruned 13.27 = 1.79x"
         }
       ]
     },
