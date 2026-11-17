@@ -227,8 +227,8 @@
       ],
       "done_when": "Save-and-reload gives identical perplexity",
       "gpu": "T4",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started 09:45 on its own branch"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started 09:45 on its own branch\n[2026-11-17] Merged. Save-and-reload exact: validation ppl 16.720146 both (mixed plan: 3 MLP narrowings + 1 double, 3 groups removed, layer 23 dropped, Wanda on 3 layers; 5.2% of block weights removed). Wanda scores from the dense model, per ADR-002"
     },
     {
       "id": "1.5",
