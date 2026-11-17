@@ -283,6 +283,7 @@ def mc_cmd(
     device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
     data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
     results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/mc"),
+    per_question: Annotated[bool, typer.Option(help="Also save which questions were answered correctly.")] = False,
 ) -> None:
     """Multiple-choice accuracy on the seven Wanda-paper question sets, optionally after Wanda pruning."""
     import json
@@ -311,14 +312,19 @@ def mc_cmd(
         typer.echo(f"  block linear sparsity {record['achieved_linear_sparsity']:.4f}")
 
     start = time.perf_counter()
-    raw = mc.evaluate(net, tok, device, batch_size=int(batch_size) if batch_size.isdigit() else batch_size,
-                      limit=limit)
+    bs = int(batch_size) if batch_size.isdigit() else batch_size
+    if per_question:
+        raw, correct = mc.evaluate_per_question(net, tok, device, batch_size=bs, limit=limit)
+    else:
+        raw, correct = mc.evaluate(net, tok, device, batch_size=bs, limit=limit), None
     record |= mc.summarize(raw)
     record |= {
         "num_fewshot": 0, "limit": limit, "seconds": round(time.perf_counter() - start, 1),
         "machine": platform.platform(), "torch": pkg_version("torch"), "transformers": pkg_version("transformers"),
         "lm_eval": pkg_version("lm_eval"), "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
+    if correct is not None:
+        record["per_question"] = correct
     for task, r in record["tasks"].items():
         typer.echo(f"  {task:<14} acc {r['acc']:.4f}")
     typer.echo(f"  {'mean':<14} acc {record['mean_acc']:.4f}  ({record['seconds']:.0f} s)")
@@ -504,6 +510,7 @@ def baseline_cmd(
     device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
     data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
     results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/baselines"),
+    per_question: Annotated[bool, typer.Option(help="Also save which questions each accuracy check got right.")] = False,
 ) -> None:
     """FLAP and uniform Wanda-sp pruned to the quality bar: bisect the ratio on validation perplexity, then check
     accuracy there and bisect lower on the whole bar if needed. Records the savings at the bar."""
@@ -609,8 +616,13 @@ def baseline_cmd(
         def mean_acc(ratio: float, method=method, info=info) -> float:
             net = build(ratio)
             start = time.perf_counter()
-            raw = mc.evaluate(net, tok, device, batch_size="auto", limit=mc_limit)
+            if per_question:
+                raw, correct = mc.evaluate_per_question(net, tok, device, batch_size="auto", limit=mc_limit)
+            else:
+                raw, correct = mc.evaluate(net, tok, device, batch_size="auto", limit=mc_limit), None
             info[ratio]["mc"] = mc.summarize(raw) | {"seconds": round(time.perf_counter() - start, 1)}
+            if correct is not None:
+                info[ratio]["mc"]["per_question"] = correct
             typer.echo(f"[{method}] ratio {ratio:.4f}: mean accuracy {info[ratio]['mc']['mean_acc']:.4f}; " + ", ".join(
                 f"{t} {v['acc']:.4f}" for t, v in info[ratio]["mc"]["tasks"].items()))
             save()
