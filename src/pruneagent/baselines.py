@@ -77,8 +77,12 @@ def search_bar(
     ratio, ppl_trials = bisect_ratio(ppl, max_ppl, lo, hi, tol)
     out = BarSearch(ratio=None, ppl_trials=ppl_trials)
     if not any(t.passed for t in ppl_trials):
-        out.note = f"no evaluated ratio meets the perplexity bar (bisection stopped at {ratio})"
-        return out
+        if ratio > 0:  # the search ended on lo, which was assumed to pass: check it
+            v = ppl(ratio)
+            out.ppl_trials.append(Trial(ratio, v, v <= max_ppl))
+        if not any(t.passed for t in out.ppl_trials):
+            out.note = f"no evaluated ratio meets the perplexity bar (bisection stopped at {ratio})"
+            return out
 
     def both(r: float) -> bool:
         v = ppl(r)

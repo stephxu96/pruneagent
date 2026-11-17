@@ -84,6 +84,19 @@ def test_search_gives_up_when_accuracy_never_holds():
     assert not s.meets_bar and s.ratio is None and "accuracy" in s.note
 
 
+def test_search_from_a_known_interval_checks_lo():
+    # resuming from an earlier run's final interval: hi fails, lo is assumed, so it is evaluated once
+    ev, acc = Counter(ppl_curve), Counter(lambda r: 0.45)
+    s = B.search_bar(ev, acc, 26.05, 0.418, lo=0.2734, hi=0.2773, tol=0.005)
+    assert s.meets_bar and s.ratio == 0.2734
+    assert ev.calls == [0.2773, 0.2734] and acc.calls == [0.2734]
+
+
+def test_search_reports_when_assumed_lo_fails():
+    s = B.search_bar(lambda r: 99.0, lambda r: 1.0, 26.05, 0.418, lo=0.2, hi=0.21, tol=0.05)
+    assert not s.meets_bar and "perplexity" in s.note and len(s.ppl_trials) == 2
+
+
 def test_search_reports_when_perplexity_never_passes():
     acc = Counter(lambda r: 1.0)
     s = B.search_bar(lambda r: 99.0, acc, 26.05, 0.418, tol=0.05)

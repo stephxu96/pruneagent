@@ -1,0 +1,31 @@
+# Colab T4 run 1 (commit d5be693): progress lines from the job log. The Wanda-sp record was not saved (KeyError after its accuracy check); these lines are its only record.
+  validation ppl 23.6932  (128 windows, 32 s)
+  test       ppl 22.5801  (146 windows, 38 s)
+Qwen/Qwen3-0.6B-Base@da87bfb6 on cuda in float16; bar: validation ppl <= 26.0509, mean accuracy >= 0.4180
+[flap] statistics collected once in 58 s
+[flap] ratio 0.5000: block weights removed 0.5000, validation ppl 293.5557
+[flap] ratio 0.2500: block weights removed 0.2508, validation ppl 23.4764
+[flap] ratio 0.3750: block weights removed 0.3750, validation ppl 102.5839
+[flap] ratio 0.3125: block weights removed 0.3125, validation ppl 32.0875
+[flap] ratio 0.2812: block weights removed 0.2812, validation ppl 27.0389
+[flap] ratio 0.2656: block weights removed 0.2656, validation ppl 24.8596
+[flap] ratio 0.2734: block weights removed 0.2744, validation ppl 25.8152
+[flap] ratio 0.2773: block weights removed 0.2785, validation ppl 26.5988
+[flap] ratio 0.2734: mean accuracy 0.3805
+[flap] ratio 0.2534: block weights removed 0.2537, validation ppl 23.6891
+[flap] ratio 0.2534: mean accuracy 0.3889
+[flap] ratio 0.2334: block weights removed 0.2345, validation ppl 22.2931
+[flap] ratio 0.2334: mean accuracy 0.4051
+[flap] bar not met: accuracy bar not met after stepping down 2 x 0.02
+Qwen/Qwen3-0.6B-Base@da87bfb6 on cuda in float16; bar: validation ppl <= 26.0509, mean accuracy >= 0.4180
+[wanda-sp] ratio 0.5000: block weights removed 0.5000, validation ppl 962.4431
+[wanda-sp] ratio 0.2500: block weights removed 0.2500, validation ppl 52.2461
+[wanda-sp] ratio 0.1250: block weights removed 0.1250, validation ppl 21.1186
+[wanda-sp] ratio 0.1875: block weights removed 0.1625, validation ppl 24.8998
+[wanda-sp] ratio 0.2188: block weights removed 0.1813, validation ppl 27.1948
+[wanda-sp] ratio 0.2031: block weights removed 0.1717, validation ppl 25.8855
+[wanda-sp] ratio 0.2109: block weights removed 0.1764, validation ppl 26.3911
+[wanda-sp] ratio 0.2070: block weights removed 0.1740, validation ppl 26.0973
+[wanda-sp] ratio 0.2031: mean accuracy 0.4288
+│   600 │   │   │   typer.echo(f"[{method}] at the bar: ratio                  │
+KeyError: 'validation'
