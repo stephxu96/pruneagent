@@ -1,0 +1,141 @@
+{
+ "description": "Estimate-vs-measured speed check (task 1.7). Mix: drop 2 layers (22, 23); every other layer keeps 2,432 MLP neurons, 6 of 8 groups and gets 20% Wanda zeros.",
+ "plan": {
+  "0": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "1": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "2": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "3": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "4": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "5": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "6": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "7": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "8": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "9": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "10": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "11": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "12": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "13": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "14": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "15": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "16": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "17": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "18": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "19": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "20": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "21": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "22": {
+   "dropped": true
+  },
+  "23": {
+   "dropped": true
+  },
+  "24": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "25": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "26": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  },
+  "27": {
+   "mlp_keep": 2432,
+   "groups_keep": 6,
+   "wanda_sparsity": 0.2
+  }
+ }
+}

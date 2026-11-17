@@ -1,0 +1,56 @@
+{
+  "label": "speed_check_mlp25",
+  "model": "Qwen/Qwen3-0.6B-Base",
+  "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+  "device": "cuda",
+  "dtype": "float16",
+  "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+  "torch": "2.15.0",
+  "transformers": "5.23.0",
+  "created_at": "2026-11-17T18:56:48+00:00",
+  "path": "checkpoints/pruned/speed_check_mlp25",
+  "file_bytes": 795833080,
+  "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+  "device_name": "Tesla T4",
+  "settings": {
+    "prompt_len": 512,
+    "batch": 1,
+    "gen": 128,
+    "decode_steps": 127,
+    "repeats": 5,
+    "warmup": 3,
+    "seed": 0,
+    "decoding": "greedy, key/value cache"
+  },
+  "parameters": 397897728,
+  "weight_bytes": 795795968,
+  "generated_tokens": 128,
+  "prefill_tok_s": {
+    "median": 9988.947580650458,
+    "min": 9266.768901601028,
+    "max": 10564.035956938735,
+    "spread": 0.12987024357307034,
+    "runs": [
+      10564.035956938735,
+      9673.517097540705,
+      10383.626108670493,
+      9266.768901601028,
+      9988.947580650458
+    ]
+  },
+  "decode_tok_s": {
+    "median": 22.792102443970506,
+    "min": 20.757573915941936,
+    "max": 24.19795277252318,
+    "spread": 0.150946094816776,
+    "runs": [
+      20.757573915941936,
+      24.19795277252318,
+      21.90099434083953,
+      22.792102443970506,
+      23.389272456853455
+    ]
+  },
+  "peak_memory_bytes": 890892800,
+  "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+}

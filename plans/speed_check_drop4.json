@@ -1,0 +1,17 @@
+{
+ "description": "Estimate-vs-measured speed check (task 1.7). drop_layer only: 4 of 28 layers (20-23).",
+ "plan": {
+  "20": {
+   "dropped": true
+  },
+  "21": {
+   "dropped": true
+  },
+  "22": {
+   "dropped": true
+  },
+  "23": {
+   "dropped": true
+  }
+ }
+}

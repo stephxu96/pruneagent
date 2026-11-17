@@ -1,0 +1,89 @@
+{
+ "description": "Estimate-vs-measured speed check (task 1.7). narrow_mlp only: every layer keeps 768 of 3,072 MLP neurons.",
+ "plan": {
+  "0": {
+   "mlp_keep": 768
+  },
+  "1": {
+   "mlp_keep": 768
+  },
+  "2": {
+   "mlp_keep": 768
+  },
+  "3": {
+   "mlp_keep": 768
+  },
+  "4": {
+   "mlp_keep": 768
+  },
+  "5": {
+   "mlp_keep": 768
+  },
+  "6": {
+   "mlp_keep": 768
+  },
+  "7": {
+   "mlp_keep": 768
+  },
+  "8": {
+   "mlp_keep": 768
+  },
+  "9": {
+   "mlp_keep": 768
+  },
+  "10": {
+   "mlp_keep": 768
+  },
+  "11": {
+   "mlp_keep": 768
+  },
+  "12": {
+   "mlp_keep": 768
+  },
+  "13": {
+   "mlp_keep": 768
+  },
+  "14": {
+   "mlp_keep": 768
+  },
+  "15": {
+   "mlp_keep": 768
+  },
+  "16": {
+   "mlp_keep": 768
+  },
+  "17": {
+   "mlp_keep": 768
+  },
+  "18": {
+   "mlp_keep": 768
+  },
+  "19": {
+   "mlp_keep": 768
+  },
+  "20": {
+   "mlp_keep": 768
+  },
+  "21": {
+   "mlp_keep": 768
+  },
+  "22": {
+   "mlp_keep": 768
+  },
+  "23": {
+   "mlp_keep": 768
+  },
+  "24": {
+   "mlp_keep": 768
+  },
+  "25": {
+   "mlp_keep": 768
+  },
+  "26": {
+   "mlp_keep": 768
+  },
+  "27": {
+   "mlp_keep": 768
+  }
+ }
+}

@@ -56,6 +56,19 @@ class DeviceTarget:
 
     @classmethod
     def from_dict(cls, d: dict) -> DeviceTarget:
+        """Also reads a measured device file from `pruneagent device-test` (speed.device_target): bandwidth_gbs and
+        kind stand for bandwidth_gb_s and backend. Such a file measures speed only, so without memory_limit_gb the
+        limit is the same-named preset's (m4, t4: the memory a model may use there), else the reported
+        memory_total_gb; with neither, it is an error rather than a guess."""
+        d = dict(d)
+        for alias, field in (("bandwidth_gbs", "bandwidth_gb_s"), ("kind", "backend")):
+            if d.get(field) is None and d.get(alias) is not None:
+                d[field] = d[alias]
+        if d.get("memory_limit_gb") is None:
+            preset = PRESETS.get(d.get("name"))
+            d["memory_limit_gb"] = preset.memory_limit_gb if preset else d.get("memory_total_gb")
+            if d["memory_limit_gb"] is None:
+                raise ValueError(f"device target {d.get('name')!r} has no memory_limit_gb and no memory_total_gb")
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 

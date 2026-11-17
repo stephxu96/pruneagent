@@ -1,0 +1,57 @@
+{
+  "label": "speed_check_mix_light",
+  "model": "Qwen/Qwen3-0.6B-Base",
+  "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+  "device": "mps",
+  "dtype": "float16",
+  "machine": "macOS-15.6.1-arm64-arm-64bit",
+  "torch": "2.15.0",
+  "transformers": "5.23.0",
+  "created_at": "2026-11-17T18:40:36+00:00",
+  "path": "checkpoints/pruned/speed_check_mix_light",
+  "file_bytes": 945295240,
+  "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+  "device_name": "Apple M4 GPU",
+  "settings": {
+    "prompt_len": 512,
+    "batch": 1,
+    "gen": 128,
+    "decode_steps": 127,
+    "repeats": 5,
+    "warmup": 3,
+    "seed": 0,
+    "decoding": "greedy, key/value cache"
+  },
+  "parameters": 472628736,
+  "weight_bytes": 945257984,
+  "generated_tokens": 128,
+  "prefill_tok_s": {
+    "median": 3232.5060373386864,
+    "min": 3210.929702732191,
+    "max": 3253.007923286393,
+    "spread": 0.01301721329153191,
+    "runs": [
+      3223.7440424964193,
+      3232.5060373386864,
+      3253.007923286393,
+      3247.6156267119077,
+      3210.929702732191
+    ]
+  },
+  "decode_tok_s": {
+    "median": 59.97666460020992,
+    "min": 59.349949808126965,
+    "max": 60.361485691764216,
+    "spread": 0.016865490776786382,
+    "runs": [
+      59.934031284858925,
+      60.361485691764216,
+      59.97666460020992,
+      60.220556627357105,
+      59.349949808126965
+    ]
+  },
+  "peak_memory_bytes": 1004513536,
+  "peak_driver_memory_bytes": 7315603456,
+  "peak_memory_method": "max of torch.mps.current_allocated_memory (tensors only) sampled after every module forward; driver figure from torch.mps.driver_allocated_memory"
+}
