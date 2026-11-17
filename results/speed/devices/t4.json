@@ -1,0 +1,51 @@
+{
+  "name": "t4",
+  "kind": "gpu",
+  "bandwidth_gbs": 233.4,
+  "compute_tflops": 21.87,
+  "measured_at": "2026-11-17T18:30:08+00:00",
+  "device": "cuda",
+  "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+  "processor": "x86_64",
+  "torch": "2.15.0+cu132",
+  "device_name": "Tesla T4",
+  "memory_total_gb": 15.637086208,
+  "test": {
+    "bandwidth": {
+      "median": 233.43164291704545,
+      "min": 233.38873949940088,
+      "max": 233.5332149643592,
+      "spread": 0.0006189197966174915,
+      "runs": [
+        233.3993944329126,
+        233.46697146132266,
+        233.43164291704545,
+        233.38873949940088,
+        233.5332149643592
+      ]
+    },
+    "compute": {
+      "median": 21.867636984475705,
+      "min": 21.52308585771119,
+      "max": 21.957658106226422,
+      "spread": 0.01987284903365383,
+      "runs": [
+        21.86839863326634,
+        21.696326479915097,
+        21.957658106226422,
+        21.867636984475705,
+        21.52308585771119
+      ]
+    },
+    "method": {
+      "copy_mb": 1024,
+      "matmul_n": 4096,
+      "matmul_dtype": "float16",
+      "iters": 20,
+      "repeats": 5,
+      "warmup": 3,
+      "bandwidth": "2 x bytes copied / s (read + write), GB = 1e9 bytes",
+      "compute": "2 n^3 / s for an n x n matmul, TFLOPs = 1e12 FLOPs/s"
+    }
+  }
+}

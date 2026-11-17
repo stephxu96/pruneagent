@@ -1,0 +1,51 @@
+{
+  "name": "m4",
+  "kind": "gpu",
+  "bandwidth_gbs": 94.8,
+  "compute_tflops": 3.48,
+  "measured_at": "2026-11-17T15:36:27+00:00",
+  "device": "mps",
+  "platform": "macOS-15.6.1-arm64-arm-64bit",
+  "processor": "arm",
+  "torch": "2.15.0",
+  "device_name": "Apple M4 GPU",
+  "memory_total_gb": 25.769803776,
+  "test": {
+    "bandwidth": {
+      "median": 94.79815970610306,
+      "min": 92.69436012473372,
+      "max": 95.37253270697566,
+      "spread": 0.028251314060788905,
+      "runs": [
+        94.79815970610306,
+        94.73305308207331,
+        95.37253270697566,
+        95.06937314748009,
+        92.69436012473372
+      ]
+    },
+    "compute": {
+      "median": 3.475239701796835,
+      "min": 3.459117677574461,
+      "max": 3.484974025701201,
+      "spread": 0.007440162505444225,
+      "runs": [
+        3.459117677574461,
+        3.468750090748039,
+        3.4787635370918912,
+        3.484974025701201,
+        3.475239701796835
+      ]
+    },
+    "method": {
+      "copy_mb": 1024,
+      "matmul_n": 4096,
+      "matmul_dtype": "float16",
+      "iters": 20,
+      "repeats": 5,
+      "warmup": 3,
+      "bandwidth": "2 x bytes copied / s (read + write), GB = 1e9 bytes",
+      "compute": "2 n^3 / s for an n x n matmul, TFLOPs = 1e12 FLOPs/s"
+    }
+  }
+}
