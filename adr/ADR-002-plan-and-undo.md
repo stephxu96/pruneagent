@@ -23,7 +23,7 @@ Rollback must be exact and cheap, and the agent may roll back further than one s
 
 ## Consequences
 
-- Positive: exact multi-step rollback; small checkpoints; any round reproducible from the log; a rebuild takes seconds, not a calibration pass.
+- Positive: exact multi-step rollback; small checkpoints; any round reproducible from the log; a rebuild takes seconds, not a calibration pass (rerunning the example text through the model).
 - Negative: dense copy in CPU RAM (~3.4 GB for 1.7B in fp16).
 - Negative: scores come from the dense model, so they do not update after earlier layers are pruned or dropped. The full-model gate catches the effect; phase 1 compares against FLAP's and Wanda's own one-pass procedures.
 

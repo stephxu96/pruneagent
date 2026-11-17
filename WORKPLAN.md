@@ -29,7 +29,7 @@ Days are calendar days from the start of the build: D1 = Monday 16 November 2026
 |---|---|---|---|
 | 0.1 | Repo, `uv` lock file (PyTorch, Transformers, LangGraph, lm-eval), pytest, GitHub Actions | Coding agent | CI runs an empty test suite |
 | 0.2 | Colab job runner with the Google Colab CLI (`scripts/colab_job.sh`): named GPU session, clone + `uv sync --locked`, reconnect on a dropped connection, download the result, always stop the session | Coding agent | A job runs on the T4 end to end and the session is released |
-| 0.3 | Download and cache C4 calibration set (128 × 2,048 tokens, fixed seed) and WikiText-2 validation and test splits | Coding agent | Cached files hashed in the manifest |
+| 0.3 | Download and cache C4 calibration data (example text run through the model to measure which inputs are large; it decides which weights are removed, and is kept separate from the test text) set (128 × 2,048 tokens, fixed seed) and WikiText-2 validation and test splits | Coding agent | Cached files hashed in the manifest |
 | 0.4 | Dense Qwen3-0.6B: validation and test perplexity on Mac and T4 | Coding agent | Numbers recorded |
 
 **G0:** Mac and T4 perplexity for the dense model agree within 1%. If not, fix the evaluation code before anything else.
@@ -44,7 +44,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 
 | # | Task | Owner | Depends on | Done when |
 |---|---|---|---|---|
-| 1.1 | Adapt Wanda to Qwen3 layer names; run Wanda at 50% on 0.6B: the quality bar | Coding agent | 0.3 | Bar recorded: validation and test perplexity, 7 zero-shot tasks |
+| 1.1 | Adapt Wanda to Qwen3 layer names; run Wanda at 50% on 0.6B: the quality bar | Coding agent | 0.3 | Bar recorded: validation and test perplexity, 7 multiple-choice question sets |
 | 1.2 | Adapt FLAP scoring and bias compensation to grouped-query attention (prune key/value groups with their query heads) | Coding agent | 0.3 | FLAP at its own allocation matches the adapted reference |
 | 1.3 | Uniform Wanda-sp on Qwen3 | Coding agent | 1.2 | Matches its reference at a uniform cut |
 | 1.4 | Pruner from a per-layer plan (all four strategies) + loader (safetensors + plan JSON) | Coding agent | 1.1, 1.2 | Save-and-reload gives identical perplexity |
@@ -82,7 +82,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | 2.2 | Validator: structure, step-size and budget rules (§4.4) | Coding agent | Unit tests for every rule |
 | 2.3 | Agent client with two backends behind one interface: Codex CLI (`codex exec`, read-only, ephemeral, JSON schema, pinned model) and LLM API (structured output, cost cap); shared cache and usage ledger (60 calls per run; $5 per run on the API) | Coding agent | Same contract tests pass for a fake and both real backends; cached rerun makes no calls; malformed answers rejected |
 | 2.4 | Graph: bar → score → probe fan-out → reduce → plan → validate → candidate fan-out → gate → rollback / stop → final | Coding agent | Graph compiles; each edge tested with a fake LLM |
-| 2.5 | Candidate evaluation (≤ 3): memory and speed estimate from the plan; perplexity on the 32-window subset with layer reuse (saved input of each layer for the accepted plan; run from the first changed layer); candidates spread across Mac and Colab | Coding agent | Layer-reuse perplexity equals a full forward pass; same results in parallel and sequential mode |
+| 2.5 | Candidate evaluation (≤ 3): memory and speed estimate from the plan; perplexity on the 32-window subset, skipping the unchanged layers before each candidate's first change (their output is saved once from the accepted model; every layer from the first change onward is recomputed); candidates spread across Mac and Colab | Coding agent | Skipping unchanged early layers gives the same perplexity as running every layer; same results in parallel and sequential mode |
 | 2.6 | Gate: quality bar, 15% per-step limit, pick largest memory saving | Coding agent | Gate unit tests |
 | 2.7 | Rollback to any earlier accepted plan | Coding agent | Rollback restores exact earlier perplexity |
 | 2.8 | Checkpoints (SQLite + plan JSON on Drive) and decision log (JSONL) | Coding agent | Log schema test |
@@ -117,7 +117,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | 4.1 | FLAP, uniform Wanda-sp and ShortGPT pruned to the 1.7B bar | A100 | Plans saved |
 | 4.2 | Production run on Qwen3-1.7B with frozen instructions and no device target | A100 | Run complete; log and plan saved |
 | 4.3 | Two device-target runs on Qwen3-1.7B: one target reachable within the bar, one not | A100 | Reachable run stops at the target; the other ends with a final warning and gap |
-| 4.4 | Final evaluation of every method: test perplexity, 7 zero-shot tasks, MMLU | A100 | Scores recorded |
+| 4.4 | Final evaluation of every method: test perplexity, 7 multiple-choice question sets, MMLU | A100 | Scores recorded |
 | 4.5 | Memory and tokens/s for every method | M4 + T4 | Measurement per method per machine |
 | 4.6 | Score S1–S4 and prediction P1; device reports for 4.3 | — | Table in the report |
 | 4.7 | Report, README with reproduction steps, demo | — | A fresh clone reproduces the report from saved logs |

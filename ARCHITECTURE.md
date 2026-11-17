@@ -53,8 +53,8 @@
 |---|---|
 | Name **who chooses the next step** | `ORCHESTRATION: hybrid.` The LLM agent chooses the next experiment and which strategy to apply to which layers; code owns step sizes, which weights are removed, pruning, validation, pruning, evaluation and accept / rollback. |
 | **Evidence gates** with explicit states | Every round ends ACCEPT, ROLLBACK or INVALID by a fixed rule. |
-| **Evidence must match the claim** | Quality from perplexity and zero-shot accuracy; size from measured memory; speed estimated for the target device during search and measured in tokens per second on an M4 laptop and a T4 at the end. Never judged by an LLM. |
-| **Fair test**, criteria fixed in advance | Quality bar and margin fixed before the production run; every method held to the same bar, same calibration data, same tests, same machines for speed. |
+| **Evidence must match the claim** | Quality from perplexity and multiple-choice accuracy; size from measured memory; speed estimated for the target device during search and measured in tokens per second on an M4 laptop and a T4 at the end. Never judged by an LLM. |
+| **Fair test**, criteria fixed in advance | Quality bar and margin fixed before the production run; every method held to the same bar, same calibration data (example text run through the model to measure which inputs are large; it decides which weights are removed, and is kept separate from the test text), same tests, same machines for speed. |
 | **Validate before relying on it** | Phase 1 reproduces Wanda, FLAP and uniform Wanda-sp on Qwen3, checks layer-local probes against full evaluation, and checks the device speed estimate against measured speed on the M4 and T4. |
 | **Smallest system that meets the needs** | One model family; quantization deferred; LangGraph used for parallel probes, parallel candidate evaluation and the experiment-choice branches (ADR-001). |
 
@@ -79,7 +79,7 @@
 
 | | |
 |---|---|
-| **Input** | Qwen3 model; quality bar: Wanda at 50% unstructured sparsity on the same model; margin: perplexity ≤ 10% above the bar, mean zero-shot accuracy ≤ 2 points below |
+| **Input** | Qwen3 model; quality bar: Wanda at 50% unstructured sparsity on the same model; margin: perplexity ≤ 10% above the bar, average multiple-choice accuracy ≤ 2 points below |
 | **Device target (optional)** | Memory limit (GB); minimum decode speed (tokens/s); the device's memory bandwidth (GB/s), compute (TFLOPs) and CPU or GPU. Without a target, the run saves as much as the bar allows |
 | **Constraints** | Validation perplexity within the bar after every accepted step; ≤ 15% perplexity rise per step; ≤ 60 agent calls per run; with the API backend, also ≤ $5 per run |
 | **Output** | Pruned model, per-layer plan, decision rationale log, device report (fits or not, estimated speed, warnings), comparison vs. baselines at the same quality bar with measured memory and tokens per second |
@@ -94,7 +94,7 @@
 | FR3 | Agent selects the next experiment (probe, apply 1–3 candidates, start from FLAP, roll back or stop) and, for apply and probe, which strategy for which layers; its output contains no amounts | Agent-graph test with a fake LLM |
 | FR4 | Validator enforces structure, step-size and budget rules | Validator unit tests |
 | FR5 | Prune to the plan: FLAP scoring and bias compensation for structured cuts (adapted to Qwen3 grouped-query attention), Wanda scoring for unstructured sparsity | Matches adapted FLAP and Wanda references |
-| FR6 | Evaluate each candidate in parallel: weight memory, estimated speed on the target device, validation perplexity on a fixed 32-window subset, starting from the saved input of the first layer that differs from the accepted plan | Parallel-evaluation test; layer-reuse perplexity equals a full forward pass |
+| FR6 | Evaluate each candidate in parallel: weight memory, estimated speed on the target device, validation perplexity on a fixed 32-window subset, skipping the unchanged layers before the candidate's first change (their saved output is reused; every later layer is recomputed) | Parallel-evaluation test; skipping unchanged early layers gives the same perplexity as running every layer |
 | FR7 | Gate: among candidates within the bar and the per-step limit, accept the one that meets the device target with the lowest perplexity, or else the one with the largest memory saving; otherwise roll back | Rollback test |
 | FR8 | Stop when the device target is met, on a stop action, 5 rounds without an accepted step, 40 rounds or call cap | Graph tests |
 | FR9 | Log every decision with its rationale, strategies chosen, evaluation count and GPU time | Log schema test |
@@ -109,7 +109,7 @@
 
 | # | Criterion |
 |---|---|
-| S1 | Meets the quality bar on held-out data: WikiText-2 test perplexity ≤ 1.10 × Wanda-50% and mean zero-shot accuracy ≥ Wanda-50% − 2 points |
+| S1 | Meets the quality bar on held-out data: WikiText-2 test perplexity ≤ 1.10 × Wanda-50% and average multiple-choice accuracy ≥ Wanda-50% − 2 points |
 | S2 | At that bar, with no device target, larger measured weight-memory reduction than FLAP and uniform Wanda-sp pruned to the same bar; faster than the dense model in measured decode tokens per second on the M4 laptop and the T4 |
 | S3 | ≤ 2 h per run; within the ChatGPT plan's usage limits (Codex backend) or ≤ $5 (API backend); resumes after interruption |
 | S4 | A well-supported negative result is a valid outcome |
@@ -227,7 +227,7 @@ flowchart TB
 | uv + lock file | Pinned PyTorch, Transformers, LangGraph, lm-eval |
 | PyTorch + Hugging Face Transformers | Model loading and inference |
 | Wanda and FLAP reference code (adapted to Qwen3) | Quality bar, scoring, bias compensation, FLAP and Wanda-sp baselines |
-| lm-evaluation-harness | Zero-shot tasks and MMLU |
+| lm-evaluation-harness | Multiple-choice question sets and MMLU |
 | Colab Pro (T4 / A100) | T4 for development and speed measurement; A100 for the production run; 200 of 270 compute units |
 | Google Drive or local drive | Checkpoints, logs, outputs |
 | Mac (M4) | Development on Qwen3-0.6B (PyTorch fp16); speed measurement on the Mac GPU |
@@ -244,7 +244,7 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    S([START]) --> BR["bar<br/><i>once: Wanda 50% on the model;<br/>validation and test perplexity, zero-shot accuracy</i>"]
+    S([START]) --> BR["bar<br/><i>once: Wanda 50% on the model;<br/>validation and test perplexity, multiple-choice accuracy</i>"]
     BR --> SC["score<br/><i>once: FLAP metric, bias values,<br/>Wanda scores, Block Influence on dense model</i>"]
     SC --> FE{"feasibility<br/><i>code: is the device target reachable<br/>by pruning at all? already met?</i>"}
     FE -- "early warning: out of reach / already met" --> FN
@@ -269,7 +269,7 @@ flowchart TD
 
 **Parallelism.** Two fan-outs. Probes are layer-local: each changes one layer (or layer group) and measures that layer's output error on cached calibration activations, so many run at once on one GPU. Candidate evaluation runs up to three candidate plans at once; for each, memory and estimated speed on the target device are computed from the plan without the GPU, and validation perplexity runs on the GPU. Rebuilding a model from a plan is a fast slicing and masking step (ADR-002).
 
-**Layer reuse.** All candidates are scored on the same fixed validation windows, so every layer before a candidate's first change produces exactly what the accepted model produces. The evaluator saves each layer's input for the accepted model (about 134 MB per layer for 32 windows on Qwen3-0.6B, ~3.8 GB in total) and runs a candidate only from its first changed layer onward. The saved inputs from that layer onward are refreshed when a plan is accepted, and fully rebuilt after a rollback. On the M4, one candidate takes ~15–63 s depending on where its first change is (~40 s on average), against 265 s for a full validation pass. Running several candidates on one machine does not help: the M4 GPU is already saturated at one window at a time, so parallel candidates go to separate machines (Mac and Colab).
+**Skip unchanged early layers.** A candidate usually changes only a few layers, say from layer 20 on. Layers 0–19 are identical to the last accepted model and get the same input text, so their output is identical too: it is saved once (from the accepted model) and loaded instead of recomputed. Every layer from the first changed layer onward is always recomputed, because its input changes. If a candidate changes layer 0, nothing is skipped. The saved outputs take about 134 MB per layer for 32 windows on Qwen3-0.6B (~3.8 GB in total); after a plan is accepted they are refreshed from its first changed layer onward, and after a rollback they are rebuilt. On the M4, checking one candidate takes ~15–63 s depending on where its first change is (~40 s on average), against 265 s for a full validation pass. Running several candidates on one machine does not help: the M4 GPU is already fully busy with one window at a time, so parallel candidates go to separate machines (Mac and Colab).
 
 **Grouped-query attention.** Qwen3-0.6B and 1.7B have 16 query heads and 8 key/value heads per layer. Attention is pruned one key/value group at a time: removing a group removes its key and value heads and the 2 query heads that share them, with the matching columns of the output projection.
 
@@ -357,7 +357,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 
 | Component | Responsibility | Interface |
 |---|---|---|
-| Bar | Run Wanda at 50% on the model; record validation and test perplexity and zero-shot accuracy | `bar(model, calib) -> QualityBar` |
+| Bar | Run Wanda at 50% on the model; record validation and test perplexity and multiple-choice accuracy | `bar(model, calib) -> QualityBar` |
 | Scorer | FLAP fluctuation scores per MLP neuron and attention group; bias compensation values; Wanda weight scores; Block Influence per layer; computed once on the dense model | `score(model, calib) -> Scores` |
 | Layer Probes | Layer-local output error for each chosen strategy at 1, 2 and 3 steps (settings set by code) | `probe(layer, strategies, cached_acts, scores) -> LayerProbe` |
 | Agent Client | Prompt, JSON schema, parse, cache, usage meter; calls one backend: `CodexBackend` (`codex exec`, read-only, ephemeral) or `ApiBackend` (provider SDK, structured output, cost meter) | `decide(state) -> AgentAction`; `Backend.complete(prompt, schema) -> (json, usage)` |
@@ -380,7 +380,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 | Calibration (bar, scoring, probes, baselines) | C4 `en`, 128 samples × 2,048 tokens | https://huggingface.co/datasets/allenai/c4 |
 | Gate (every candidate) | WikiText-2 validation split, a fixed subset of 32 of its 128 windows (full split for the bar and baseline pruning) | https://huggingface.co/datasets/Salesforce/wikitext (`wikitext-2-raw-v1`) |
 | Final perplexity | WikiText-2 test split | same |
-| Final zero-shot (Wanda's 7) | BoolQ, RTE, HellaSwag, WinoGrande, ARC-Easy, ARC-Challenge, OpenBookQA via lm-evaluation-harness | https://github.com/EleutherAI/lm-evaluation-harness |
+| Final multiple-choice accuracy (Wanda's 7 question sets; no practice examples given) | BoolQ, RTE, HellaSwag, WinoGrande, ARC-Easy, ARC-Challenge, OpenBookQA via lm-evaluation-harness | https://github.com/EleutherAI/lm-evaluation-harness |
 | Knowledge | MMLU | https://huggingface.co/datasets/cais/mmlu |
 | Models | Qwen3-0.6B-Base (development), Qwen3-1.7B-Base (production run), Apache 2.0 | Hugging Face Hub |
 
@@ -400,7 +400,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 
 **Search measures.** Full-model evaluations, probe count, GPU time, agent calls and tokens, and how often each strategy is proposed and accepted, from the decision log.
 
-**System tests.** Layer-reuse perplexity equals a full forward pass; validator rules; rollback restores the exact earlier perplexity; save-and-reload gives the same perplexity; pruner matches adapted FLAP and Wanda references; probe ranking vs. full evaluation; speed-estimate ranking vs. measured tokens/s on M4 and T4; early-warning cases; kill-and-resume; graph with a fake LLM.
+**System tests.** Perplexity with unchanged early layers skipped equals a full run through every layer; validator rules; rollback restores the exact earlier perplexity; save-and-reload gives the same perplexity; pruner matches adapted FLAP and Wanda references; probe ranking vs. full evaluation; speed-estimate ranking vs. measured tokens/s on M4 and T4; early-warning cases; kill-and-resume; graph with a fake LLM.
 
 ---
 
@@ -411,7 +411,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 | `RunConfig` | model_id, bar_sparsity (0.5), ppl_margin (0.10), acc_margin_points (2), device: DeviceTarget \| None, step_limit, max_candidates, max_rounds, agent_backend (codex / api), agent_provider, agent_model, agent_reasoning_effort, max_agent_calls, max_cost_usd (API), seed, dtype, gpu |
 | `DeviceTarget` | name, memory_limit_gb, min_decode_tok_s (optional), bandwidth_gb_s, compute_tflops, backend (cpu / gpu) |
 | `DeviceWarning` | kind (out_of_reach / already_met / not_met_within_bar), closest_plan, memory_gap_gb, speed_gap_tok_s, message |
-| `QualityBar` | val_ppl, test_ppl, zero_shot_mean, val_ppl_limit, test_ppl_limit, acc_floor |
+| `QualityBar` | val_ppl, test_ppl, multiple_choice_mean, val_ppl_limit, test_ppl_limit, acc_floor |
 | `Scores` | channel_fluct per layer, group_fluct per layer, bias_baseline per layer, wanda_scores per layer, block_influence per layer |
 | `LayerProbe` | layer, candidates (strategy, setting), local_error per candidate, block_influence |
 | `LayerPlan` | mlp_keep, groups_keep, dropped, wanda_sparsity |
