@@ -95,3 +95,14 @@ def test_missing_entry(tmp_path):
 def test_real_cache_verifies():
     result = d.verify()
     assert result and all(result.values())
+
+
+def test_stream_sampling_matches_flap_reference():
+
+    ids = torch.arange(1000).unsqueeze(0)
+    random.seed(0)  # FLAP get_wikitext2, verbatim
+    ref = []
+    for _ in range(5):
+        i = random.randint(0, ids.shape[1] - 16 - 1)
+        ref.append(ids[:, i : i + 16])
+    assert torch.equal(d.sample_stream(ids, 5, 16, 0), torch.cat(ref))

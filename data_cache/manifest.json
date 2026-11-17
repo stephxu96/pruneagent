@@ -99,7 +99,7 @@
         "id": "Qwen/Qwen3-0.6B-Base",
         "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd"
       },
-      "created_at": "2026-11-17T02:26:21+00:00"
+      "created_at": "2026-11-17T14:25:48+00:00"
     },
     "wikitext2_validation__qwen3-0.6b-base": {
       "file": "wikitext2_validation__qwen3-0.6b-base.safetensors",
@@ -123,7 +123,7 @@
         "id": "Qwen/Qwen3-0.6B-Base",
         "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd"
       },
-      "created_at": "2026-11-17T02:26:23+00:00"
+      "created_at": "2026-11-17T14:25:49+00:00"
     },
     "wikitext2_test__qwen3-0.6b-base": {
       "file": "wikitext2_test__qwen3-0.6b-base.safetensors",
@@ -147,7 +147,34 @@
         "id": "Qwen/Qwen3-0.6B-Base",
         "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd"
       },
-      "created_at": "2026-11-17T02:26:23+00:00"
+      "created_at": "2026-11-17T14:25:50+00:00"
+    },
+    "wikitext2_train_flap_calib__qwen3-0.6b-base": {
+      "file": "wikitext2_train_flap_calib__qwen3-0.6b-base.safetensors",
+      "sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+      "shape": [
+        1024,
+        128
+      ],
+      "dtype": "int64",
+      "source": {
+        "repo": "Salesforce/wikitext",
+        "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+        "config": "wikitext-2-raw-v1",
+        "split": "train"
+      },
+      "params": {
+        "nsamples": 1024,
+        "seqlen": 128,
+        "seed": 0,
+        "join": " ",
+        "procedure": "flap get_wikitext2"
+      },
+      "tokenizer": {
+        "id": "Qwen/Qwen3-0.6B-Base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd"
+      },
+      "created_at": "2026-11-17T14:25:57+00:00"
     }
   },
   "libraries": {

@@ -147,6 +147,69 @@ def wanda_cmd(
     typer.echo(f"Saved {out}")
 
 
+@app.command("flap")
+def flap_cmd(
+    model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",
+    ratio: Annotated[float, typer.Option(help="Share of block weights FLAP removes.")] = 0.2,
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
+    seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/flap"),
+) -> None:
+    """Prune with FLAP at its own allocation (WIFV, AL-AM, bias compensation) and report WikiText-2 perplexity."""
+    import json
+    import platform
+    import time
+    from datetime import UTC, datetime
+    from importlib.metadata import version as pkg_version
+
+    from pruneagent import data as d
+    from pruneagent import evaluate as ev
+    from pruneagent import flap
+
+    device = device or ev.pick_device()
+    manifest = d.read_manifest(data_dir)
+    calib_entry = manifest["entries"][d.flap_calib_name(model)]
+    revision = calib_entry["tokenizer"]["revision"]
+    typer.echo(f"{model}@{revision[:8]} on {device} in {dtype}: FLAP at {ratio:.0%}")
+    net = ev.load_model(model, revision, dtype, device)
+    before = flap.block_params(net)
+
+    start = time.perf_counter()
+    out = flap.prune_flap(net, d.load_tokens(d.flap_calib_name(model), data_dir), ratio, device)
+    ev.synchronize(device)
+    prune_seconds = time.perf_counter() - start
+    removed = 1 - flap.block_params(net) / before
+    groups = out["attn_keep"].sum(dim=1).tolist()
+    neurons = out["mlp_keep"].sum(dim=1).tolist()
+    typer.echo(f"  pruned in {prune_seconds:.0f} s; block weights removed {removed:.4f}")
+    typer.echo(f"  groups kept per layer  {groups}")
+    typer.echo(f"  neurons kept per layer {neurons}")
+
+    record = {
+        "method": "flap (WIFV, AL-AM, bias compensation)", "target_ratio": ratio, "block_weights_removed": removed,
+        "groups_kept": groups, "neurons_kept": neurons,
+        "model": model, "revision": revision, "device": device, "dtype": dtype, "seqlen": seqlen,
+        "calibration": {"entry": d.flap_calib_name(model), "sha256": calib_entry["sha256"],
+                        "shape": calib_entry["shape"]},
+        "prune_seconds": round(prune_seconds, 1), "machine": platform.platform(),
+        "torch": pkg_version("torch"), "transformers": pkg_version("transformers"),
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"), "splits": {},
+    }
+    for split in ("validation", "test"):
+        name = d.wikitext_name(split, model)
+        r = ev.perplexity(net, d.load_tokens(name, data_dir), seqlen, device)
+        record["splits"][split] = {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1),
+                                   "data_sha256": manifest["entries"][name]["sha256"]}
+        typer.echo(f"  {split:<10} ppl {r.ppl:.4f}  ({r.n_windows} windows, {r.seconds:.0f} s)")
+
+    results.mkdir(parents=True, exist_ok=True)
+    out_path = results / f"{d.slug(model)}__flap{round(ratio * 100)}__{device}__{dtype}.json"
+    out_path.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {out_path}")
+
+
 @app.command("mc")
 def mc_cmd(
     model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",

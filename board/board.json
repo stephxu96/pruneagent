@@ -198,8 +198,8 @@
       ],
       "done_when": "FLAP at its own allocation matches the adapted reference",
       "gpu": "T4",
-      "status": "doing",
-      "notes": ""
+      "status": "done",
+      "notes": "[2026-11-17] FLAP module, CLI and 9 tests written; FLAP calibration (WikiText-2 train, 1024×128) added to the data cache; reference check running on the Mac\n[2026-11-17] Matches adapted reference: 0 of 224 groups and 9 of 86,016 neurons differ (half- vs full-precision means). FLAP 20%: validation ppl 19.60, test 18.84 (bar 26.05)"
     },
     {
       "id": "1.3",

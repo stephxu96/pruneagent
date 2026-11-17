@@ -1,0 +1,13 @@
+{
+  "ratio": 0.2,
+  "groups_total": 224,
+  "groups_kept_ref": 208,
+  "groups_kept_ours": 208,
+  "groups_differing": 0,
+  "neurons_total": 86016,
+  "neurons_kept_ref": 61402,
+  "neurons_kept_ours": 61397,
+  "neurons_differing": 9,
+  "attn_score_max_abs_diff": 0.00026172399520874023,
+  "mlp_score_max_abs_diff": 0.008226394653320312
+}

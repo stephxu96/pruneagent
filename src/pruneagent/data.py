@@ -28,6 +28,9 @@ C4_SHARD = "en/c4-train.00000-of-01024.json.gz"
 WIKITEXT_REPO = "Salesforce/wikitext"
 WIKITEXT_CONFIG = "wikitext-2-raw-v1"
 WIKITEXT_JOIN = "\n\n"
+FLAP_JOIN = " "  # FLAP's get_wikitext2 joins the training split with single spaces
+FLAP_NSAMPLES = 1024  # FLAP's published scripts: --nsamples 1024
+FLAP_SEQLEN = 128  # FLAP's main.py: model.seqlen = 128
 DEFAULT_MODEL = "Qwen/Qwen3-0.6B-Base"
 MANIFEST = "manifest.json"
 TENSOR_KEY = "input_ids"
@@ -48,6 +51,10 @@ def slug(model_id: str) -> str:
 
 def calib_name(model_id: str = DEFAULT_MODEL) -> str:
     return f"c4_calib__{slug(model_id)}"
+
+
+def flap_calib_name(model_id: str = DEFAULT_MODEL) -> str:
+    return f"wikitext2_train_flap_calib__{slug(model_id)}"
 
 
 def wikitext_name(split: str, model_id: str = DEFAULT_MODEL) -> str:
@@ -85,6 +92,13 @@ def sample_calibration(
         start = rng.randint(0, len(ids) - seqlen - 1)
         rows.append(ids[start : start + seqlen])
     return torch.tensor(rows, dtype=torch.int64)
+
+
+def sample_stream(ids: torch.Tensor, nsamples: int, seqlen: int, seed: int) -> torch.Tensor:
+    """FLAP `get_wikitext2`: `nsamples` random `seqlen` windows from one token stream [1, N]. int64 [nsamples, seqlen]."""
+    rng = random.Random(seed)
+    starts = [rng.randint(0, ids.shape[1] - seqlen - 1) for _ in range(nsamples)]
+    return torch.stack([ids[0, i : i + seqlen] for i in starts]).to(torch.int64)
 
 
 def tokenize_joined(lines: Sequence[str], tokenize: Callable[[str], list[int]]) -> torch.Tensor:
@@ -213,6 +227,24 @@ def build_cache(
             },
         )
         log(f"  wikitext-2 {split} {tuple(ids.shape)} → {ids.shape[1] // seqlen} windows of {seqlen}")
+
+    train = load_dataset(WIKITEXT_REPO, WIKITEXT_CONFIG, split="train", revision=wt_rev)
+    stream = torch.tensor([tokenize(FLAP_JOIN.join(train["text"]))], dtype=torch.int64)
+    flap = sample_stream(stream, FLAP_NSAMPLES, FLAP_SEQLEN, seed)
+    write_entry(
+        out,
+        flap_calib_name(model_id),
+        flap,
+        {
+            "source": {"repo": WIKITEXT_REPO, "revision": wt_rev, "config": WIKITEXT_CONFIG, "split": "train"},
+            "params": {
+                "nsamples": FLAP_NSAMPLES, "seqlen": FLAP_SEQLEN, "seed": seed, "join": FLAP_JOIN,
+                "procedure": "flap get_wikitext2",
+            },
+            "tokenizer": tokenizer_meta,
+        },
+    )
+    log(f"  FLAP calibration {tuple(flap.shape)} from wikitext-2 train ({stream.shape[1]} tokens)")
 
     return read_manifest(out)
 
