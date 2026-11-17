@@ -7,8 +7,8 @@ The bar (task 1.1) has two parts, both must hold:
 Search: bisect the ratio on validation perplexity alone (cheap: ~30 s per evaluation on a T4), assuming
 perplexity rises with the ratio. The interval [lo, hi] always has lo passing (or untested at 0) and hi failing;
 it halves until it is narrower than `tol`, and lo is the answer. Accuracy (~12 min) is then checked only at that
-ratio; if it fails, the ratio steps down by `step` (perplexity re-checked) until both parts hold or `max_steps`
-is used up.
+ratio; if it fails, a second bisection runs below that ratio on both parts of the bar together (perplexity first,
+accuracy only where perplexity passes), to within `acc_tol`.
 """
 
 from __future__ import annotations
@@ -68,30 +68,50 @@ def bisect_ratio(
 
 def search_bar(
     ppl: Callable[[float], float], acc: Callable[[float], float], max_ppl: float, min_acc: float,
-    lo: float = 0.0, hi: float = 0.5, tol: float = 0.005, step: float = 0.02, max_steps: int = 2,
+    lo: float = 0.0, hi: float = 0.5, tol: float = 0.005, acc_lo: float = 0.0, acc_tol: float = 0.01,
+    acc_fails_at: float | None = None,
 ) -> BarSearch:
-    """Bisect on perplexity, then check accuracy at the ratio found, stepping down until both hold."""
+    """Bisect on perplexity, check accuracy at the ratio found; if it fails there, bisect on the whole bar over
+    [acc_lo, that ratio] (to within `acc_tol`; acc_lo is evaluated if the search ends on it).
+    `acc_fails_at`: a ratio already known to fail accuracy, so ratios at or above it are not checked again."""
     ratio, ppl_trials = bisect_ratio(ppl, max_ppl, lo, hi, tol)
     out = BarSearch(ratio=None, ppl_trials=ppl_trials)
     if not any(t.passed for t in ppl_trials):
         out.note = f"no evaluated ratio meets the perplexity bar (bisection stopped at {ratio})"
         return out
-    for i in range(max_steps + 1):
-        if i:
-            ratio = round(ratio - step, 4)
-            if ratio <= 0:
-                out.note = "accuracy bar not met at any positive ratio tried"
-                return out
-            v = ppl(ratio)
-            out.ppl_trials.append(Trial(ratio, v, v <= max_ppl))
-            if v > max_ppl:
-                continue
+
+    def both(r: float) -> bool:
+        v = ppl(r)
+        out.ppl_trials.append(Trial(r, v, v <= max_ppl))
+        if v > max_ppl:
+            return False
+        a = acc(r)
+        out.acc_trials.append(Trial(r, a, a >= min_acc))
+        return a >= min_acc
+
+    if acc_fails_at is None or ratio < acc_fails_at:
         a = acc(ratio)
         out.acc_trials.append(Trial(ratio, a, a >= min_acc))
         if a >= min_acc:
             out.ratio, out.meets_bar = ratio, True
             return out
-    out.note = f"accuracy bar not met after stepping down {max_steps} x {step}"
+        acc_hi = ratio
+    else:
+        acc_hi = acc_fails_at
+    a_lo = acc_lo
+    while acc_hi - a_lo > acc_tol:
+        mid = round((a_lo + acc_hi) / 2, 4)
+        if both(mid):
+            a_lo = mid
+        else:
+            acc_hi = mid
+    if a_lo > 0 and not any(t.ratio == a_lo and t.passed for t in out.acc_trials) and not both(a_lo):
+        out.note = f"accuracy bar not met at any ratio tried down to {a_lo}"
+        return out
+    if a_lo == 0:
+        out.note = "accuracy bar not met at any positive ratio tried"
+        return out
+    out.ratio, out.meets_bar = a_lo, True
     return out
 
 

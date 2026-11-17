@@ -57,19 +57,31 @@ def test_search_accepts_when_accuracy_holds():
     assert len(acc.calls) == 1
 
 
-def test_search_steps_down_until_accuracy_holds():
-    # accuracy passes only at r <= 0.24: two steps of 0.02 down from ~0.2734
-    s = B.search_bar(ppl_curve, lambda r: 0.45 if r <= 0.24 else 0.40, 26.05, 0.418, step=0.02, max_steps=3)
-    assert s.meets_bar and s.ratio <= 0.24
-    assert [t.passed for t in s.acc_trials] == [False, False, True]
-    assert s.ratio == s.acc_trials[-1].ratio
-    assert all(t.passed for t in s.ppl_trials if t.ratio <= s.ratio)
+def test_search_bisects_accuracy_when_it_fails_at_the_perplexity_ratio():
+    acc = Counter(lambda r: 0.52 - 0.4 * r)  # crosses 0.418 at r = 0.255
+    s = B.search_bar(ppl_curve, acc, 26.05, 0.418, acc_tol=0.01)
+    assert s.meets_bar and 0.255 - 0.01 <= s.ratio <= 0.255
+    assert not s.acc_trials[0].passed  # failed at the perplexity ratio (~0.273)
+    assert s.ratio == max(t.ratio for t in s.acc_trials if t.passed)
+    assert all(t.ratio > s.ratio for t in s.acc_trials if not t.passed)
 
 
-def test_search_gives_up_after_max_steps():
-    s = B.search_bar(ppl_curve, lambda r: 0.30, 26.05, 0.418, step=0.02, max_steps=2)
-    assert not s.meets_bar and s.ratio is None
-    assert len(s.acc_trials) == 3 and "accuracy" in s.note
+def test_search_skips_ratio_known_to_fail_accuracy():
+    acc = Counter(lambda r: 0.52 - 0.4 * r)
+    s = B.search_bar(ppl_curve, acc, 26.05, 0.418, acc_lo=0.1, acc_tol=0.01, acc_fails_at=0.24)
+    assert all(r < 0.24 for r in acc.calls)
+    assert s.meets_bar and 0.23 <= s.ratio <= 0.24
+
+
+def test_search_verifies_acc_lo_when_it_is_the_answer():
+    acc = Counter(lambda r: 0.30)
+    s = B.search_bar(ppl_curve, acc, 26.05, 0.418, acc_lo=0.1, acc_tol=0.05)
+    assert not s.meets_bar and s.ratio is None and 0.1 in acc.calls and "accuracy" in s.note
+
+
+def test_search_gives_up_when_accuracy_never_holds():
+    s = B.search_bar(ppl_curve, lambda r: 0.30, 26.05, 0.418, acc_tol=0.02)
+    assert not s.meets_bar and s.ratio is None and "accuracy" in s.note
 
 
 def test_search_reports_when_perplexity_never_passes():

@@ -481,8 +481,9 @@ def baseline_cmd(
     lo: Annotated[float, typer.Option(help="Ratio assumed to meet the bar (not evaluated).")] = 0.0,
     hi: Annotated[float, typer.Option(help="Ratio expected to fail the bar (evaluated first).")] = 0.5,
     tol: Annotated[float, typer.Option(help="Stop bisecting when the ratio interval is this narrow.")] = 0.005,
-    step: Annotated[float, typer.Option(help="Ratio step down when accuracy fails at the bisected ratio.")] = 0.02,
-    max_steps: Annotated[int, typer.Option(help="Most steps down before giving up.")] = 2,
+    acc_lo: Annotated[float, typer.Option(help="Lowest ratio the accuracy bisection considers.")] = 0.0,
+    acc_tol: Annotated[float, typer.Option(help="Accuracy bisection stops at this interval width.")] = 0.01,
+    acc_fails_at: Annotated[float | None, typer.Option(help="Ratio already known to fail accuracy.")] = None,
     max_ppl: Annotated[float | None, typer.Option(help="Validation perplexity bar (default: 1.10 x Wanda-50%).")] = None,
     min_acc: Annotated[float | None, typer.Option(help="Mean accuracy bar (default: Wanda-50% - 0.02).")] = None,
     seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
@@ -493,7 +494,7 @@ def baseline_cmd(
     results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/baselines"),
 ) -> None:
     """FLAP and uniform Wanda-sp pruned to the quality bar: bisect the ratio on validation perplexity, then check
-    accuracy there and step down if needed. Records the savings at the bar."""
+    accuracy there and bisect lower on the whole bar if needed. Records the savings at the bar."""
     import copy
     import gc
     import json
@@ -556,7 +557,9 @@ def baseline_cmd(
             out = prune_fn(net, ratio)
             ev.synchronize(device)
             after = {**B.memory(net), "block_weights": flap.block_params(net)}
-            info[ratio] = {
+            entry = info.setdefault(ratio, {"builds": 0})  # a rebuild keeps earlier measurements at this ratio
+            entry["builds"] += 1
+            entry |= {
                 "prune_seconds": round(time.perf_counter() - start, 1), "weights_after": after,
                 "block_weights_removed": 1 - after["block_weights"] / before["block_weights"],
                 "parameters_removed": 1 - after["parameters"] / before["parameters"],
@@ -584,15 +587,18 @@ def baseline_cmd(
             return info[ratio]["mc"]["mean_acc"]
 
         search = B.search_bar(val_ppl, mean_acc, bar["max_validation_ppl"], bar["min_mean_acc"],
-                              lo=lo, hi=hi, tol=tol, step=step, max_steps=max_steps)
+                              lo=lo, hi=hi, tol=tol, acc_lo=acc_lo, acc_tol=acc_tol, acc_fails_at=acc_fails_at)
         record = {"method": method, **_run_record(model, revision, device, dtype, seqlen), "bar": bar,
                   "calibration": {"entry": calib_name, "sha256": manifest["entries"][calib_name]["sha256"]},
-                  "search": {"lo": lo, "hi": hi, "tol": tol, "step": step, "max_steps": max_steps,
+                  "search": {"lo": lo, "hi": hi, "tol": tol, "acc_lo": acc_lo, "acc_tol": acc_tol,
+                             "acc_fails_at": acc_fails_at,
                              "windows": windows, "mc_limit": mc_limit, **search.to_json()},
                   "weights_before": before}
         if search.ratio is not None:
-            net = build(search.ratio)  # already built: the accuracy check was the last step at this ratio
+            net = build(search.ratio)  # rebuilt only if a later trial replaced it
             at = info[search.ratio]
+            r = ev.perplexity(net, val_ids, seqlen, device)
+            at["validation_final_model"] = {"ppl": r.ppl, "n_windows": r.n_windows}
             if windows is None:
                 r = ev.perplexity(net, test_ids, seqlen, device)
                 at["test"] = {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1)}

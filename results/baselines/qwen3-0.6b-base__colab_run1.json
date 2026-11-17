@@ -1,0 +1,1035 @@
+{
+  "git_ref": "d5be6936552f8d805237fe133dc8b3551dac06f5",
+  "runs": {
+    "results/wanda/qwen3-0.6b-base__wanda50__cuda__float16.json": {
+      "method": "wanda",
+      "target_sparsity": 0.5,
+      "achieved_linear_sparsity": 0.5,
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "calibration": {
+        "entry": "c4_calib__qwen3-0.6b-base",
+        "sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+        "shape": [
+          128,
+          2048
+        ]
+      },
+      "prune_seconds": 54.9,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T15:42:18+00:00",
+      "splits": {
+        "validation": {
+          "ppl": 23.693187713623047,
+          "n_windows": 128,
+          "seconds": 31.9,
+          "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+        },
+        "test": {
+          "ppl": 22.580089569091797,
+          "n_windows": 146,
+          "seconds": 37.6,
+          "data_sha256": "0cc0fe0f7629af5389d77a3e48575f4eb3b1070f420b9fa659410c0af9105818"
+        }
+      }
+    },
+    "results/baselines/qwen3-0.6b-base__flap-at-bar__cuda__float16.json": {
+      "method": "flap",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T16:23:27+00:00",
+      "bar": {
+        "wanda50_validation_ppl": 23.682626724243164,
+        "wanda50_test_ppl": 22.56914710998535,
+        "wanda50_mean_acc": 0.438038703166515,
+        "max_validation_ppl": 26.050889396667483,
+        "min_mean_acc": 0.418038703166515,
+        "sources": {
+          "ppl": "results/wanda/qwen3-0.6b-base__wanda50__mps__float16.json",
+          "mc": "results/mc/qwen3-0.6b-base__colab.json#qwen3-0.6b-base__wanda50__cuda__float16.json"
+        }
+      },
+      "calibration": {
+        "entry": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675"
+      },
+      "search": {
+        "lo": 0.0,
+        "hi": 0.5,
+        "tol": 0.005,
+        "step": 0.02,
+        "max_steps": 2,
+        "windows": null,
+        "mc_limit": null,
+        "ratio": null,
+        "ppl_trials": [
+          {
+            "ratio": 0.5,
+            "value": 293.5556945800781,
+            "passed": false
+          },
+          {
+            "ratio": 0.25,
+            "value": 23.476449966430664,
+            "passed": true
+          },
+          {
+            "ratio": 0.375,
+            "value": 102.58385467529297,
+            "passed": false
+          },
+          {
+            "ratio": 0.3125,
+            "value": 32.0875129699707,
+            "passed": false
+          },
+          {
+            "ratio": 0.2812,
+            "value": 27.03885269165039,
+            "passed": false
+          },
+          {
+            "ratio": 0.2656,
+            "value": 24.85955238342285,
+            "passed": true
+          },
+          {
+            "ratio": 0.2734,
+            "value": 25.815162658691406,
+            "passed": true
+          },
+          {
+            "ratio": 0.2773,
+            "value": 26.598838806152344,
+            "passed": false
+          },
+          {
+            "ratio": 0.2534,
+            "value": 23.689104080200195,
+            "passed": true
+          },
+          {
+            "ratio": 0.2334,
+            "value": 22.29310417175293,
+            "passed": true
+          }
+        ],
+        "acc_trials": [
+          {
+            "ratio": 0.2734,
+            "value": 0.38049747556645913,
+            "passed": false
+          },
+          {
+            "ratio": 0.2534,
+            "value": 0.38892228457879596,
+            "passed": false
+          },
+          {
+            "ratio": 0.2334,
+            "value": 0.40512047719758,
+            "passed": false
+          }
+        ],
+        "meets_bar": false,
+        "note": "accuracy bar not met after stepping down 2 x 0.02"
+      },
+      "weights_before": {
+        "parameters": 596049920,
+        "weight_bytes": 1192099840,
+        "block_weights": 440401920
+      },
+      "trials": {
+        "0.2334": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 492826624,
+            "weight_bytes": 985653248,
+            "block_weights": 337121280
+          },
+          "block_weights_removed": 0.2345145089285714,
+          "parameters_removed": 0.17317894447498627,
+          "weight_bytes_removed": 0.17317894447498627,
+          "groups_kept": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            8,
+            6,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            2177,
+            2015,
+            3072,
+            2612,
+            1800,
+            1774,
+            1969,
+            3072,
+            2129,
+            1942,
+            3072,
+            3048,
+            1597,
+            1542,
+            1721,
+            1597,
+            1584,
+            1799,
+            1667,
+            1660,
+            1522,
+            1556,
+            1532,
+            1628,
+            1765,
+            2032,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 22.29310417175293,
+            "n_windows": 128,
+            "seconds": 31.7
+          },
+          "mc": {
+            "tasks": {
+              "boolq": {
+                "acc": 0.5412844036697247,
+                "acc_norm": null,
+                "acc_stderr": 0.0087151938157882
+              },
+              "rte": {
+                "acc": 0.5270758122743683,
+                "acc_norm": null,
+                "acc_stderr": 0.030052303463143734
+              },
+              "hellaswag": {
+                "acc": 0.31537542322246565,
+                "acc_norm": 0.3820952001593308,
+                "acc_stderr": 0.004637155743564404
+              },
+              "winogrande": {
+                "acc": 0.55327545382794,
+                "acc_norm": null,
+                "acc_stderr": 0.013972488371616777
+              },
+              "arc_easy": {
+                "acc": 0.5037878787878788,
+                "acc_norm": 0.4473905723905724,
+                "acc_stderr": 0.010259489101351636
+              },
+              "arc_challenge": {
+                "acc": 0.2090443686006826,
+                "acc_norm": 0.2508532423208191,
+                "acc_stderr": 0.011882746987406408
+              },
+              "openbookqa": {
+                "acc": 0.186,
+                "acc_norm": 0.29,
+                "acc_stderr": 0.01741880678058399
+              }
+            },
+            "mean_acc": 0.40512047719758,
+            "seconds": 663.8
+          }
+        },
+        "0.2500": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 485650432,
+            "weight_bytes": 971300864,
+            "block_weights": 329945088
+          },
+          "block_weights_removed": 0.2508091517857143,
+          "parameters_removed": 0.18521852666300165,
+          "weight_bytes_removed": 0.18521852666300165,
+          "groups_kept": [
+            8,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            8,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            2076,
+            1949,
+            3072,
+            2534,
+            1751,
+            1710,
+            1909,
+            3072,
+            2057,
+            1888,
+            3072,
+            3010,
+            1557,
+            1517,
+            1673,
+            1553,
+            1504,
+            1727,
+            1626,
+            1602,
+            1474,
+            1514,
+            1485,
+            1581,
+            1705,
+            1954,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 23.476449966430664,
+            "n_windows": 128,
+            "seconds": 31.8
+          }
+        },
+        "0.2534": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 484357120,
+            "weight_bytes": 968714240,
+            "block_weights": 328651776
+          },
+          "block_weights_removed": 0.25374581473214286,
+          "parameters_removed": 0.18738833150082468,
+          "weight_bytes_removed": 0.18738833150082468,
+          "groups_kept": [
+            8,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            8,
+            7,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            8,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            2065,
+            1937,
+            3072,
+            2521,
+            1740,
+            1708,
+            1901,
+            3072,
+            2050,
+            1874,
+            3072,
+            3007,
+            1550,
+            1516,
+            1666,
+            1547,
+            1501,
+            1720,
+            1623,
+            1597,
+            1469,
+            1505,
+            1477,
+            1577,
+            1697,
+            1943,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 23.689104080200195,
+            "n_windows": 128,
+            "seconds": 32.1
+          },
+          "mc": {
+            "tasks": {
+              "boolq": {
+                "acc": 0.4749235474006116,
+                "acc_norm": null,
+                "acc_stderr": 0.008734049772486695
+              },
+              "rte": {
+                "acc": 0.5270758122743683,
+                "acc_norm": null,
+                "acc_stderr": 0.030052303463143734
+              },
+              "hellaswag": {
+                "acc": 0.3091017725552679,
+                "acc_norm": 0.37333200557657836,
+                "acc_stderr": 0.00461178766590536
+              },
+              "winogrande": {
+                "acc": 0.5422257300710339,
+                "acc_norm": null,
+                "acc_stderr": 0.014002284504422372
+              },
+              "arc_easy": {
+                "acc": 0.4957912457912458,
+                "acc_norm": 0.4398148148148148,
+                "acc_stderr": 0.010259420038764072
+              },
+              "arc_challenge": {
+                "acc": 0.20733788395904437,
+                "acc_norm": 0.24658703071672355,
+                "acc_stderr": 0.011846905782971264
+              },
+              "openbookqa": {
+                "acc": 0.166,
+                "acc_norm": 0.276,
+                "acc_stderr": 0.016656616876531173
+              }
+            },
+            "mean_acc": 0.38892228457879596,
+            "seconds": 669.9
+          }
+        },
+        "0.2656": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 479134720,
+            "weight_bytes": 958269440,
+            "block_weights": 323429376
+          },
+          "block_weights_removed": 0.26560407366071426,
+          "parameters_removed": 0.19615001374381524,
+          "weight_bytes_removed": 0.19615001374381524,
+          "groups_kept": [
+            8,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            8,
+            7,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            6,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            8,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            1969,
+            1864,
+            3072,
+            2413,
+            1666,
+            1664,
+            1833,
+            3072,
+            1974,
+            1822,
+            3072,
+            2940,
+            1503,
+            1484,
+            1615,
+            1502,
+            1438,
+            1657,
+            1566,
+            1530,
+            1423,
+            1448,
+            1418,
+            1524,
+            1632,
+            1862,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 24.85955238342285,
+            "n_windows": 128,
+            "seconds": 30.3
+          }
+        },
+        "0.2734": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 475239424,
+            "weight_bytes": 950478848,
+            "block_weights": 319534080
+          },
+          "block_weights_removed": 0.2744489397321429,
+          "parameters_removed": 0.20268519791094008,
+          "weight_bytes_removed": 0.20268519791094008,
+          "groups_kept": [
+            8,
+            6,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            8,
+            6,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            6,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            6,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            1949,
+            1854,
+            3072,
+            2396,
+            1658,
+            1651,
+            1817,
+            3072,
+            1963,
+            1812,
+            3072,
+            2927,
+            1499,
+            1476,
+            1605,
+            1493,
+            1427,
+            1644,
+            1556,
+            1523,
+            1415,
+            1440,
+            1409,
+            1514,
+            1624,
+            1851,
+            3072,
+            3072
+          ],
+          "mc": {
+            "tasks": {
+              "boolq": {
+                "acc": 0.45535168195718656,
+                "acc_norm": null,
+                "acc_stderr": 0.008710119143608447
+              },
+              "rte": {
+                "acc": 0.5270758122743683,
+                "acc_norm": null,
+                "acc_stderr": 0.030052303463143734
+              },
+              "hellaswag": {
+                "acc": 0.30462059350726944,
+                "acc_norm": 0.3594901414060944,
+                "acc_stderr": 0.004593059367676336
+              },
+              "winogrande": {
+                "acc": 0.5343330702446725,
+                "acc_norm": null,
+                "acc_stderr": 0.014019317531542567
+              },
+              "arc_easy": {
+                "acc": 0.47558922558922556,
+                "acc_norm": 0.41835016835016836,
+                "acc_stderr": 0.010247548905242324
+              },
+              "arc_challenge": {
+                "acc": 0.20051194539249148,
+                "acc_norm": 0.23976109215017063,
+                "acc_stderr": 0.011700318050499469
+              },
+              "openbookqa": {
+                "acc": 0.166,
+                "acc_norm": 0.284,
+                "acc_stderr": 0.016656616876531173
+              }
+            },
+            "mean_acc": 0.38049747556645913,
+            "seconds": 694.1
+          }
+        },
+        "0.2773": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 473439232,
+            "weight_bytes": 946878464,
+            "block_weights": 317733888
+          },
+          "block_weights_removed": 0.2785365513392857,
+          "parameters_removed": 0.2057054013194063,
+          "weight_bytes_removed": 0.2057054013194063,
+          "groups_kept": [
+            8,
+            6,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            8,
+            5,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            6,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            6,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            1928,
+            1833,
+            3072,
+            2372,
+            1650,
+            1639,
+            1807,
+            3072,
+            1952,
+            1792,
+            3072,
+            2906,
+            1495,
+            1469,
+            1592,
+            1485,
+            1407,
+            1630,
+            1546,
+            1509,
+            1402,
+            1423,
+            1395,
+            1499,
+            1610,
+            1832,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 26.598838806152344,
+            "n_windows": 128,
+            "seconds": 30.4
+          }
+        },
+        "0.2812": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 472262656,
+            "weight_bytes": 944525312,
+            "block_weights": 316557312
+          },
+          "block_weights_removed": 0.2812081473214286,
+          "parameters_removed": 0.2076793567894447,
+          "weight_bytes_removed": 0.2076793567894447,
+          "groups_kept": [
+            8,
+            6,
+            8,
+            8,
+            8,
+            8,
+            8,
+            7,
+            8,
+            5,
+            6,
+            8,
+            8,
+            8,
+            8,
+            8,
+            6,
+            4,
+            5,
+            5,
+            8,
+            6,
+            7,
+            5,
+            6,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            1923,
+            1821,
+            3072,
+            2364,
+            1648,
+            1636,
+            1801,
+            3072,
+            1948,
+            1781,
+            3072,
+            2898,
+            1490,
+            1464,
+            1587,
+            1483,
+            1399,
+            1626,
+            1542,
+            1506,
+            1399,
+            1418,
+            1393,
+            1498,
+            1606,
+            1815,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 27.03885269165039,
+            "n_windows": 128,
+            "seconds": 30.5
+          }
+        },
+        "0.3125": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 458478592,
+            "weight_bytes": 916957184,
+            "block_weights": 302773248
+          },
+          "block_weights_removed": 0.3125069754464286,
+          "parameters_removed": 0.23080504398020896,
+          "weight_bytes_removed": 0.23080504398020896,
+          "groups_kept": [
+            8,
+            6,
+            8,
+            8,
+            8,
+            8,
+            7,
+            7,
+            8,
+            4,
+            6,
+            6,
+            8,
+            8,
+            8,
+            8,
+            5,
+            4,
+            5,
+            4,
+            8,
+            6,
+            5,
+            5,
+            5,
+            5,
+            8,
+            5
+          ],
+          "neurons_kept": [
+            1790,
+            1717,
+            3072,
+            2182,
+            1568,
+            1563,
+            1678,
+            3072,
+            1826,
+            1656,
+            3072,
+            2743,
+            1425,
+            1422,
+            1499,
+            1421,
+            1306,
+            1523,
+            1462,
+            1433,
+            1335,
+            1333,
+            1318,
+            1422,
+            1529,
+            1712,
+            3072,
+            3072
+          ],
+          "validation": {
+            "ppl": 32.0875129699707,
+            "n_windows": 128,
+            "seconds": 29.7
+          }
+        },
+        "0.3750": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 430953472,
+            "weight_bytes": 861906944,
+            "block_weights": 275248128
+          },
+          "block_weights_removed": 0.3750069754464286,
+          "parameters_removed": 0.27698426333150084,
+          "weight_bytes_removed": 0.27698426333150084,
+          "groups_kept": [
+            7,
+            5,
+            8,
+            8,
+            7,
+            8,
+            5,
+            6,
+            8,
+            4,
+            5,
+            2,
+            8,
+            7,
+            8,
+            8,
+            4,
+            4,
+            5,
+            4,
+            6,
+            5,
+            5,
+            5,
+            4,
+            5,
+            2,
+            5
+          ],
+          "neurons_kept": [
+            1613,
+            1561,
+            3072,
+            1943,
+            1432,
+            1464,
+            1549,
+            3072,
+            1671,
+            1510,
+            3064,
+            2482,
+            1340,
+            1361,
+            1399,
+            1328,
+            1181,
+            1382,
+            1362,
+            1335,
+            1254,
+            1236,
+            1236,
+            1313,
+            1410,
+            1556,
+            2953,
+            3072
+          ],
+          "validation": {
+            "ppl": 102.58385467529297,
+            "n_windows": 128,
+            "seconds": 27.2
+          }
+        },
+        "0.5000": {
+          "prune_seconds": 0.1,
+          "weights_after": {
+            "parameters": 375903232,
+            "weight_bytes": 751806464,
+            "block_weights": 220197888
+          },
+          "block_weights_removed": 0.5000069754464286,
+          "parameters_removed": 0.3693427020340847,
+          "weight_bytes_removed": 0.3693427020340847,
+          "groups_kept": [
+            6,
+            4,
+            8,
+            8,
+            3,
+            7,
+            3,
+            6,
+            2,
+            2,
+            5,
+            2,
+            6,
+            4,
+            8,
+            7,
+            3,
+            4,
+            4,
+            2,
+            4,
+            3,
+            4,
+            4,
+            3,
+            5,
+            1,
+            5
+          ],
+          "neurons_kept": [
+            1222,
+            1232,
+            3072,
+            1382,
+            1144,
+            1201,
+            1245,
+            3072,
+            1313,
+            1220,
+            2090,
+            1690,
+            1149,
+            1179,
+            1158,
+            1152,
+            930,
+            1134,
+            1124,
+            1101,
+            1063,
+            1025,
+            1030,
+            1103,
+            1138,
+            1214,
+            1736,
+            3072
+          ],
+          "validation": {
+            "ppl": 293.5556945800781,
+            "n_windows": 128,
+            "seconds": 23.7
+          }
+        }
+      }
+    }
+  }
+}

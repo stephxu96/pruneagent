@@ -3,8 +3,13 @@
     scripts/colab_job.sh pa-t4-bar T4 scripts/colab_baselines.py results/baselines/qwen3-0.6b-base__colab.json
 
 Clones branch `task-1.9`, installs the locked project, rebuilds the data cache and checks it against the committed
-manifest. Then: Wanda-50% perplexity on this GPU (for reference only; the bar itself is task 1.1's numbers), and
-`pruneagent baseline` for both methods. Everything goes into /content/result.json.
+manifest, then runs `pruneagent baseline` for both methods. Everything goes into /content/result.json.
+
+Run 2. Run 1 (results/baselines/qwen3-0.6b-base__colab_run1.json, commit d5be693) measured Wanda-50% on the T4
+(validation 23.69, for reference; the bar is task 1.1's numbers) and bisected both methods on perplexity over
+[0, 0.5]; it found FLAP failing accuracy at 0.2334 and lost the Wanda-sp record to a bookkeeping bug after its
+accuracy check. To fit one session, this run starts each search from run 1's final perplexity interval
+(FLAP 0.2734-0.2773, Wanda-sp 0.2031-0.2070) and bisects FLAP on the whole bar over [0.13, 0.2334].
 """
 
 import json
@@ -16,6 +21,11 @@ from pathlib import Path
 REPO = "https://github.com/stephxu96/pruneagent.git"
 BRANCH = "task-1.9"
 MODEL = "Qwen/Qwen3-0.6B-Base"
+RUNS = [
+    ("wanda-sp", ["--lo", "0.2031", "--hi", "0.2070"]),
+    ("flap", ["--lo", "0.2734", "--hi", "0.2773", "--acc-fails-at", "0.2334", "--acc-lo", "0.13",
+              "--acc-tol", "0.0065"]),
+]
 
 
 def sh(cmd: list[str]) -> None:
@@ -55,10 +65,9 @@ def main() -> None:
     git_ref = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
     combined = {"git_ref": git_ref, "runs": {}}
     try:
-        sh(["uv", "run", "pruneagent", "wanda", "--model", MODEL, "--sparsity", "0.5", "--device", "cuda"])
-        save(combined)
-        for method in ("flap", "wanda-sp"):
-            sh(["uv", "run", "pruneagent", "baseline", "--model", MODEL, "--method", method, "--device", "cuda"])
+        for method, extra in RUNS:
+            sh(["uv", "run", "pruneagent", "baseline", "--model", MODEL, "--method", method, "--device", "cuda",
+                *extra])
             save(combined)
     finally:
         save(combined)
