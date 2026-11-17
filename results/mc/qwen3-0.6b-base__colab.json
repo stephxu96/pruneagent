@@ -1,0 +1,112 @@
+{
+  "git_ref": "a1a8d55c6ad7ab3cea63367523006eca99b2a4fd",
+  "runs": {
+    "qwen3-0.6b-base__dense__cuda__float16.json": {
+      "method": "dense",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "tasks": {
+        "boolq": {
+          "acc": 0.6993883792048929,
+          "acc_norm": null,
+          "acc_stderr": 0.008019635474705432
+        },
+        "rte": {
+          "acc": 0.6967509025270758,
+          "acc_norm": null,
+          "acc_stderr": 0.02766839629359374
+        },
+        "hellaswag": {
+          "acc": 0.40987851025692096,
+          "acc_norm": 0.5374427404899422,
+          "acc_stderr": 0.004908059353503887
+        },
+        "winogrande": {
+          "acc": 0.584846093133386,
+          "acc_norm": null,
+          "acc_stderr": 0.013848684086658566
+        },
+        "arc_easy": {
+          "acc": 0.6519360269360269,
+          "acc_norm": 0.5795454545454546,
+          "acc_stderr": 0.00977462760025901
+        },
+        "arc_challenge": {
+          "acc": 0.3319112627986348,
+          "acc_norm": 0.38139931740614336,
+          "acc_stderr": 0.01376098820088056
+        },
+        "openbookqa": {
+          "acc": 0.246,
+          "acc_norm": 0.344,
+          "acc_stderr": 0.019279819056352458
+        }
+      },
+      "mean_acc": 0.517244453550991,
+      "num_fewshot": 0,
+      "limit": null,
+      "seconds": 740.1,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "lm_eval": "0.4.13",
+      "created_at": "2026-11-17T05:55:12+00:00"
+    },
+    "qwen3-0.6b-base__wanda50__cuda__float16.json": {
+      "method": "wanda50",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "achieved_linear_sparsity": 0.5,
+      "tasks": {
+        "boolq": {
+          "acc": 0.6269113149847095,
+          "acc_norm": null,
+          "acc_stderr": 0.008458661252058335
+        },
+        "rte": {
+          "acc": 0.5595667870036101,
+          "acc_norm": null,
+          "acc_stderr": 0.02988212336311874
+        },
+        "hellaswag": {
+          "acc": 0.33578968333001397,
+          "acc_norm": 0.4085839474208325,
+          "acc_stderr": 0.004713006072807543
+        },
+        "winogrande": {
+          "acc": 0.5430149960536701,
+          "acc_norm": null,
+          "acc_stderr": 0.01400038676159808
+        },
+        "arc_easy": {
+          "acc": 0.5618686868686869,
+          "acc_norm": 0.5092592592592593,
+          "acc_stderr": 0.010180937100600149
+        },
+        "arc_challenge": {
+          "acc": 0.2551194539249147,
+          "acc_norm": 0.27986348122866894,
+          "acc_stderr": 0.012739038695202038
+        },
+        "openbookqa": {
+          "acc": 0.184,
+          "acc_norm": 0.298,
+          "acc_stderr": 0.017346174781752842
+        }
+      },
+      "mean_acc": 0.438038703166515,
+      "num_fewshot": 0,
+      "limit": null,
+      "seconds": 682.8,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "lm_eval": "0.4.13",
+      "created_at": "2026-11-17T06:07:47+00:00"
+    }
+  }
+}
