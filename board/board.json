@@ -241,8 +241,8 @@
       ],
       "done_when": "Weight bytes match file size within 1%",
       "gpu": "",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started 10:12 on its own branch"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch\n[2026-11-17] Merged. Estimated size vs saved file: -0.003% (dense and mixed plan; the gap is the file header). Datasheet speed estimate, mixed plan vs dense: T4 266 vs 256 tokens/s, M4 100 vs 96. M4 preset set to 24 GB"
     },
     {
       "id": "1.6",

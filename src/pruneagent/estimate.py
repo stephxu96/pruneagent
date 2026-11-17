@@ -59,12 +59,12 @@ class DeviceTarget:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 
-# Datasheet values only; task 1.6 measures the real ones. Memory limit is the machine's memory (M4: the 16 GB
+# Datasheet values only; task 1.6 measures the real ones. Memory limit is the machine's memory (M4: the 24 GB
 # laptop's unified memory; T4: what Colab exposes of its 16 GB).
 PRESETS: dict[str, DeviceTarget] = {
     # Apple M4, 10-core GPU: 120 GB/s unified memory (Apple). Apple publishes no FLOPs figure; ~4.3 TFLOPs fp32 is
     # the commonly cited third-party number (10 cores x 128 ALUs x 2 x ~1.7 GHz).
-    "m4": DeviceTarget("Apple M4 10-core GPU (datasheet)", memory_limit_gb=16, bandwidth_gb_s=120,
+    "m4": DeviceTarget("Apple M4 10-core GPU (datasheet)", memory_limit_gb=24, bandwidth_gb_s=120,
                        compute_tflops=4.3, backend="gpu"),
     # NVIDIA Tesla T4: 320 GB/s GDDR6, 65 TFLOPs fp16 tensor cores (NVIDIA datasheet).
     "t4": DeviceTarget("NVIDIA Tesla T4 (datasheet)", memory_limit_gb=15, bandwidth_gb_s=320,
