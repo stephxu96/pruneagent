@@ -1,0 +1,18 @@
+{
+  "description": "Save-and-reload check (task 1.4): every strategy at least once, one layer with three.",
+  "steps": [
+    {"layer": 20, "strategy": "narrow_mlp"},
+    {"layer": 21, "strategy": "narrow_mlp"},
+    {"layer": 22, "strategy": "narrow_mlp"},
+    {"layer": 25, "strategy": "narrow_mlp"},
+    {"layer": 25, "strategy": "narrow_mlp"},
+    {"layer": 10, "strategy": "remove_attention_group"},
+    {"layer": 15, "strategy": "remove_attention_group"},
+    {"layer": 20, "strategy": "remove_attention_group"},
+    {"layer": 23, "strategy": "drop_layer"},
+    {"layer": 4, "strategy": "wanda_sparsity"},
+    {"layer": 4, "strategy": "wanda_sparsity"},
+    {"layer": 5, "strategy": "wanda_sparsity"},
+    {"layer": 20, "strategy": "wanda_sparsity"}
+  ]
+}
