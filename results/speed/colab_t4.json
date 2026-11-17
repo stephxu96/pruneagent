@@ -1,0 +1,550 @@
+{
+  "git_ref": "b4cb0fa77fdbb45746e8742eddca300624b01b13",
+  "files": {
+    "results/speed/devices/t4.json": {
+      "name": "t4",
+      "kind": "gpu",
+      "bandwidth_gbs": 233.4,
+      "compute_tflops": 21.87,
+      "measured_at": "2026-11-17T18:30:08+00:00",
+      "device": "cuda",
+      "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "torch": "2.15.0+cu132",
+      "device_name": "Tesla T4",
+      "memory_total_gb": 15.637086208,
+      "test": {
+        "bandwidth": {
+          "median": 233.43164291704545,
+          "min": 233.38873949940088,
+          "max": 233.5332149643592,
+          "spread": 0.0006189197966174915,
+          "runs": [
+            233.3993944329126,
+            233.46697146132266,
+            233.43164291704545,
+            233.38873949940088,
+            233.5332149643592
+          ]
+        },
+        "compute": {
+          "median": 21.867636984475705,
+          "min": 21.52308585771119,
+          "max": 21.957658106226422,
+          "spread": 0.01987284903365383,
+          "runs": [
+            21.86839863326634,
+            21.696326479915097,
+            21.957658106226422,
+            21.867636984475705,
+            21.52308585771119
+          ]
+        },
+        "method": {
+          "copy_mb": 1024,
+          "matmul_n": 4096,
+          "matmul_dtype": "float16",
+          "iters": 20,
+          "repeats": 5,
+          "warmup": 3,
+          "bandwidth": "2 x bytes copied / s (read + write), GB = 1e9 bytes",
+          "compute": "2 n^3 / s for an n x n matmul, TFLOPs = 1e12 FLOPs/s"
+        }
+      }
+    },
+    "results/speed/prune_log/qwen3-0.6b-base__mixed_check__cuda__float16.json": {
+      "method": "plan",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "seqlen": 2048,
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:29:59+00:00",
+      "plan_file": "plans/mixed_check.json",
+      "saved_to": "checkpoints/pruned/mixed_check",
+      "steps": [
+        {
+          "layer": 20,
+          "strategy": "narrow_mlp"
+        },
+        {
+          "layer": 21,
+          "strategy": "narrow_mlp"
+        },
+        {
+          "layer": 22,
+          "strategy": "narrow_mlp"
+        },
+        {
+          "layer": 25,
+          "strategy": "narrow_mlp"
+        },
+        {
+          "layer": 25,
+          "strategy": "narrow_mlp"
+        },
+        {
+          "layer": 10,
+          "strategy": "remove_attention_group"
+        },
+        {
+          "layer": 15,
+          "strategy": "remove_attention_group"
+        },
+        {
+          "layer": 20,
+          "strategy": "remove_attention_group"
+        },
+        {
+          "layer": 23,
+          "strategy": "drop_layer"
+        },
+        {
+          "layer": 4,
+          "strategy": "wanda_sparsity"
+        },
+        {
+          "layer": 4,
+          "strategy": "wanda_sparsity"
+        },
+        {
+          "layer": 5,
+          "strategy": "wanda_sparsity"
+        },
+        {
+          "layer": 20,
+          "strategy": "wanda_sparsity"
+        }
+      ],
+      "plan": {
+        "0": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "1": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "2": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "3": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "4": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.2
+        },
+        "5": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.1
+        },
+        "6": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "7": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "8": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "9": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "10": {
+          "mlp_keep": 3072,
+          "groups_keep": 7,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "11": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "12": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "13": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "14": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "15": {
+          "mlp_keep": 3072,
+          "groups_keep": 7,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "16": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "17": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "18": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "19": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "20": {
+          "mlp_keep": 2752,
+          "groups_keep": 7,
+          "dropped": false,
+          "wanda_sparsity": 0.1
+        },
+        "21": {
+          "mlp_keep": 2752,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "22": {
+          "mlp_keep": 2752,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "23": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": true,
+          "wanda_sparsity": 0.0
+        },
+        "24": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "25": {
+          "mlp_keep": 2432,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "26": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        },
+        "27": {
+          "mlp_keep": 3072,
+          "groups_keep": 8,
+          "dropped": false,
+          "wanda_sparsity": 0.0
+        }
+      },
+      "dropped_layers": [
+        23
+      ],
+      "weights_before": {
+        "block_weights": 440401920,
+        "block_zeros": 478,
+        "parameters": 596049920
+      },
+      "weights_after": {
+        "block_weights": 417398784,
+        "block_zeros": 6096525,
+        "parameters": 573051648
+      },
+      "block_weights_removed": 0.05223214285714284,
+      "parameters_removed": 0.03858447292468392,
+      "scores": {
+        "model": "Qwen/Qwen3-0.6B-Base",
+        "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+        "device": "cuda",
+        "dtype": "float16",
+        "flap_calib": "wikitext2_train_flap_calib__qwen3-0.6b-base",
+        "flap_calib_sha256": "f07efb8baab3b1b2e9b2f9ebad4e6bcef90e89ca5590e7817e687b793b415675",
+        "wanda_calib": "c4_calib__qwen3-0.6b-base",
+        "wanda_calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d"
+      },
+      "prune_seconds": 0.16,
+      "validation": {
+        "ppl": 10.564029693603516,
+        "n_windows": 1,
+        "seconds": 0.3,
+        "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+      }
+    },
+    "results/speed/qwen3-0.6b-base__dense__cuda__float16__a.json": {
+      "label": "dense",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:31:10+00:00",
+      "path": null,
+      "file_bytes": null,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 596049920,
+      "weight_bytes": 1192100352,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 9357.670318785555,
+        "min": 8783.665607221063,
+        "max": 9618.703328144307,
+        "spread": 0.08923564225669542,
+        "runs": [
+          8783.665607221063,
+          9479.951347112466,
+          9316.38902947069,
+          9357.670318785555,
+          9618.703328144307
+        ]
+      },
+      "decode_tok_s": {
+        "median": 23.54153743818546,
+        "min": 20.422013380924295,
+        "max": 24.225755775614793,
+        "spread": 0.16157578512780787,
+        "runs": [
+          23.776528019686598,
+          20.422013380924295,
+          23.54153743818546,
+          20.721461331648495,
+          24.225755775614793
+        ]
+      },
+      "peak_memory_bytes": 1294607360,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed/qwen3-0.6b-base__dense__cuda__float16__b.json": {
+      "label": "dense",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:33:10+00:00",
+      "path": null,
+      "file_bytes": null,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 596049920,
+      "weight_bytes": 1192100352,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 9710.316969030091,
+        "min": 8305.44992106585,
+        "max": 10064.971751622536,
+        "spread": 0.18120127655651944,
+        "runs": [
+          10064.971751622536,
+          8305.44992106585,
+          9741.834720447296,
+          9115.718671689683,
+          9710.316969030091
+        ]
+      },
+      "decode_tok_s": {
+        "median": 23.104127651261322,
+        "min": 21.29852637235138,
+        "max": 24.63336991292406,
+        "spread": 0.1443397297188419,
+        "runs": [
+          21.29852637235138,
+          23.71972102133425,
+          23.104127651261322,
+          22.589041328364516,
+          24.63336991292406
+        ]
+      },
+      "peak_memory_bytes": 1294607360,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed/qwen3-0.6b-base__mixed_check__cuda__float16__a.json": {
+      "label": "mixed_check",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:32:09+00:00",
+      "path": "checkpoints/pruned/mixed_check",
+      "file_bytes": 1146137680,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 573051648,
+      "weight_bytes": 1146103808,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 10046.277234239873,
+        "min": 8820.831123169537,
+        "max": 10553.295254052984,
+        "spread": 0.17244836972832453,
+        "runs": [
+          10038.146131647532,
+          10341.5198042873,
+          8820.831123169537,
+          10046.277234239873,
+          10553.295254052984
+        ]
+      },
+      "decode_tok_s": {
+        "median": 23.789909060723396,
+        "min": 21.920634920399667,
+        "max": 25.722706144280853,
+        "spread": 0.15981865311785992,
+        "runs": [
+          25.118556943413136,
+          23.233876944670516,
+          23.789909060723396,
+          25.722706144280853,
+          21.920634920399667
+        ]
+      },
+      "peak_memory_bytes": 1233231360,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    },
+    "results/speed/qwen3-0.6b-base__mixed_check__cuda__float16__b.json": {
+      "label": "mixed_check",
+      "model": "Qwen/Qwen3-0.6B-Base",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "device": "cuda",
+      "dtype": "float16",
+      "machine": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "torch": "2.15.0",
+      "transformers": "5.23.0",
+      "created_at": "2026-11-17T18:34:12+00:00",
+      "path": "checkpoints/pruned/mixed_check",
+      "file_bytes": 1146137680,
+      "prompt": "first 512 tokens of wikitext2_validation__qwen3-0.6b-base",
+      "device_name": "Tesla T4",
+      "settings": {
+        "prompt_len": 512,
+        "batch": 1,
+        "gen": 128,
+        "decode_steps": 127,
+        "repeats": 5,
+        "warmup": 3,
+        "seed": 0,
+        "decoding": "greedy, key/value cache"
+      },
+      "parameters": 573051648,
+      "weight_bytes": 1146103808,
+      "generated_tokens": 128,
+      "prefill_tok_s": {
+        "median": 9634.028472391976,
+        "min": 9041.160714102294,
+        "max": 10013.579548223504,
+        "spread": 0.10093584806271329,
+        "runs": [
+          9634.028472391976,
+          10013.579548223504,
+          9998.274126044502,
+          9041.160714102294,
+          9317.315896753573
+        ]
+      },
+      "decode_tok_s": {
+        "median": 24.71094576467733,
+        "min": 21.378267543817095,
+        "max": 24.94717531879127,
+        "spread": 0.14442619108798715,
+        "runs": [
+          24.81677651767216,
+          21.3892291751509,
+          24.94717531879127,
+          21.378267543817095,
+          24.71094576467733
+        ]
+      },
+      "peak_memory_bytes": 1233231360,
+      "peak_memory_method": "torch.cuda.max_memory_allocated (tensors only)"
+    }
+  }
+}
