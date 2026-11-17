@@ -1,0 +1,89 @@
+{
+ "description": "Gate-subset check (task 1.12): Wanda 50% on every layer, the reference for the quality bar.",
+ "plan": {
+  "0": {
+   "wanda_sparsity": 0.5
+  },
+  "1": {
+   "wanda_sparsity": 0.5
+  },
+  "2": {
+   "wanda_sparsity": 0.5
+  },
+  "3": {
+   "wanda_sparsity": 0.5
+  },
+  "4": {
+   "wanda_sparsity": 0.5
+  },
+  "5": {
+   "wanda_sparsity": 0.5
+  },
+  "6": {
+   "wanda_sparsity": 0.5
+  },
+  "7": {
+   "wanda_sparsity": 0.5
+  },
+  "8": {
+   "wanda_sparsity": 0.5
+  },
+  "9": {
+   "wanda_sparsity": 0.5
+  },
+  "10": {
+   "wanda_sparsity": 0.5
+  },
+  "11": {
+   "wanda_sparsity": 0.5
+  },
+  "12": {
+   "wanda_sparsity": 0.5
+  },
+  "13": {
+   "wanda_sparsity": 0.5
+  },
+  "14": {
+   "wanda_sparsity": 0.5
+  },
+  "15": {
+   "wanda_sparsity": 0.5
+  },
+  "16": {
+   "wanda_sparsity": 0.5
+  },
+  "17": {
+   "wanda_sparsity": 0.5
+  },
+  "18": {
+   "wanda_sparsity": 0.5
+  },
+  "19": {
+   "wanda_sparsity": 0.5
+  },
+  "20": {
+   "wanda_sparsity": 0.5
+  },
+  "21": {
+   "wanda_sparsity": 0.5
+  },
+  "22": {
+   "wanda_sparsity": 0.5
+  },
+  "23": {
+   "wanda_sparsity": 0.5
+  },
+  "24": {
+   "wanda_sparsity": 0.5
+  },
+  "25": {
+   "wanda_sparsity": 0.5
+  },
+  "26": {
+   "wanda_sparsity": 0.5
+  },
+  "27": {
+   "wanda_sparsity": 0.5
+  }
+ }
+}

@@ -66,3 +66,46 @@ def test_non_finite_loss_raises():
 
     with pytest.raises(FloatingPointError):
         ev.perplexity(NanModel(5), torch.zeros(1, 10, dtype=torch.long), seqlen=5, device="cpu")
+
+
+class WindowBiasModel(torch.nn.Module):
+    """Logits that depend on the window's first token, so each window has a different loss."""
+
+    def __init__(self, vocab: int):
+        super().__init__()
+        self.vocab = vocab
+
+    def forward(self, input_ids):
+        x = input_ids[0]
+        logits = torch.zeros(1, len(x), self.vocab)
+        logits[0, :, int(x[0]) % self.vocab] = float(x[0]) / 3
+        return SimpleNamespace(logits=logits)
+
+
+def test_subset_indices_deterministic_even_and_nested():
+    a = ev.subset_indices(128, 32)
+    assert a == ev.subset_indices(128, 32) == list(range(0, 128, 4))
+    assert set(a) <= set(ev.subset_indices(128, 64))
+    assert ev.subset_indices(128, 128) == list(range(128))
+    with pytest.raises(ValueError):
+        ev.subset_indices(10, 11)
+
+
+def test_subset_of_all_windows_equals_full_perplexity():
+    ids = torch.randint(0, 40, (1, 16 * 8))
+    m = WindowBiasModel(40)
+    full = ev.perplexity(m, ids, seqlen=16, device="cpu")
+    sub = ev.subset_perplexity(m, ids, n_windows=8, seqlen=16, device="cpu")
+    assert sub.n_windows == 8 and sub.ppl == pytest.approx(full.ppl, rel=1e-6)
+
+
+def test_subset_perplexity_matches_selected_windows():
+    ids = torch.randint(0, 40, (1, 16 * 8 + 5))
+    m = WindowBiasModel(40)
+    full = ev.perplexity(m, ids, seqlen=16, device="cpu")
+    sub = ev.subset_perplexity(m, ids, n_windows=2, seqlen=16, device="cpu")
+    idx = ev.subset_indices(8, 2)
+    assert idx == [0, 4]
+    assert sub.window_losses == pytest.approx([full.window_losses[i] for i in idx])
+    assert sub.ppl == pytest.approx(ev.ppl_from_losses(full.window_losses, idx), rel=1e-6)
+    assert full.ppl == pytest.approx(ev.ppl_from_losses(full.window_losses), rel=1e-6)

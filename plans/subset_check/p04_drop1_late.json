@@ -1,0 +1,25 @@
+{
+ "description": "Gate-subset check (task 1.12): Drop layer 24; narrow_mlp x2 on 25-26.",
+ "steps": [
+  {
+   "layer": 24,
+   "strategy": "drop_layer"
+  },
+  {
+   "layer": 25,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 25,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 26,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 26,
+   "strategy": "narrow_mlp"
+  }
+ ]
+}

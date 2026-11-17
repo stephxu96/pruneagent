@@ -1,0 +1,149 @@
+{
+ "description": "Gate-subset check (task 1.12): Wanda 30% on middle layers 8-19.",
+ "steps": [
+  {
+   "layer": 8,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 8,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 8,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 9,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 9,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 9,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 10,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 10,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 10,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 11,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 11,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 11,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 12,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 12,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 12,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 13,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 13,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 13,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  }
+ ]
+}
