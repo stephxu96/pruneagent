@@ -148,7 +148,7 @@
       "done_when": "Numbers recorded",
       "gpu": "Mac + T4",
       "status": "doing",
-      "notes": "[2026-11-16] Mac half done (M4, fp16): val ppl 22.19, test 20.96; ~2.1 s per 2,048-token window (~4.5 min per split). T4 half waits on 0.2"
+      "notes": "Mac half done for Qwen3-0.6B-Base (M4, fp16): val ppl 13.27, test 12.66; ~2.2 s per 2,048-token window (~5 min per split). Chat model for reference: val 22.19, test 20.96. T4 half waits on 0.2."
     },
     {
       "id": "G0",
