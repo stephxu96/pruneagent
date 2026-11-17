@@ -1,0 +1,373 @@
+{
+ "description": "Gate-subset check (task 1.12): Wanda 70% on late layers 14-27; drop layer 20.",
+ "steps": [
+  {
+   "layer": 20,
+   "strategy": "drop_layer"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 14,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 15,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 16,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 17,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 18,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 19,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 21,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 21,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 21,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 21,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 21,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 21,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 21,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 22,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 22,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 22,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 22,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 22,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 22,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 22,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 23,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 23,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 23,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 23,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 23,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 23,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 23,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 24,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 24,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 24,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 24,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 24,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 24,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 24,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 25,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 25,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 25,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 25,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 25,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 25,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 25,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  }
+ ]
+}

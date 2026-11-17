@@ -1,0 +1,45 @@
+{
+ "description": "Gate-subset check (task 1.12): Drop layers 22 and 25; Wanda 40% on 26-27.",
+ "steps": [
+  {
+   "layer": 22,
+   "strategy": "drop_layer"
+  },
+  {
+   "layer": 25,
+   "strategy": "drop_layer"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 26,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  },
+  {
+   "layer": 27,
+   "strategy": "wanda_sparsity"
+  }
+ ]
+}

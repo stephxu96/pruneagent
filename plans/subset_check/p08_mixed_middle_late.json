@@ -1,0 +1,141 @@
+{
+ "description": "Gate-subset check (task 1.12): narrow_mlp x2 on 14-25; two key/value groups removed on 16-24 (even).",
+ "steps": [
+  {
+   "layer": 14,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 14,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 15,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 15,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 16,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 16,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 17,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 17,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 18,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 18,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 19,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 19,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 20,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 20,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 21,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 21,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 22,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 22,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 23,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 23,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 24,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 24,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 25,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 25,
+   "strategy": "narrow_mlp"
+  },
+  {
+   "layer": 16,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 16,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 18,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 18,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 20,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 20,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 22,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 22,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 24,
+   "strategy": "remove_attention_group"
+  },
+  {
+   "layer": 24,
+   "strategy": "remove_attention_group"
+  }
+ ]
+}
