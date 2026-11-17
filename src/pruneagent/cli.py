@@ -90,6 +90,63 @@ def ppl(
     typer.echo(f"Saved {out}")
 
 
+@app.command("wanda")
+def wanda_cmd(
+    model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",
+    sparsity: Annotated[float, typer.Option(help="Unstructured sparsity in every block's linear layers.")] = 0.5,
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
+    seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/wanda"),
+) -> None:
+    """Prune with Wanda (all block linear layers, C4 calibration, layer by layer) and report WikiText-2 perplexity."""
+    import json
+    import platform
+    import time
+    from datetime import UTC, datetime
+    from importlib.metadata import version as pkg_version
+
+    from pruneagent import data as d
+    from pruneagent import evaluate as ev
+    from pruneagent import wanda
+
+    device = device or ev.pick_device()
+    manifest = d.read_manifest(data_dir)
+    calib_entry = manifest["entries"][d.calib_name(model)]
+    revision = calib_entry["tokenizer"]["revision"]
+    typer.echo(f"{model}@{revision[:8]} on {device} in {dtype}: Wanda at {sparsity:.0%}")
+    net = ev.load_model(model, revision, dtype, device)
+    calib = d.load_tokens(d.calib_name(model), data_dir)
+
+    start = time.perf_counter()
+    wanda.prune_wanda(net, calib, sparsity, device)
+    ev.synchronize(device)
+    prune_seconds = time.perf_counter() - start
+    achieved = wanda.linear_sparsity(net)
+    typer.echo(f"  pruned in {prune_seconds:.0f} s; block linear sparsity {achieved:.4f}")
+
+    record = {
+        "method": "wanda", "target_sparsity": sparsity, "achieved_linear_sparsity": achieved,
+        "model": model, "revision": revision, "device": device, "dtype": dtype, "seqlen": seqlen,
+        "calibration": {"entry": d.calib_name(model), "sha256": calib_entry["sha256"], "shape": calib_entry["shape"]},
+        "prune_seconds": round(prune_seconds, 1), "machine": platform.platform(),
+        "torch": pkg_version("torch"), "transformers": pkg_version("transformers"),
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"), "splits": {},
+    }
+    for split in ("validation", "test"):
+        name = d.wikitext_name(split, model)
+        r = ev.perplexity(net, d.load_tokens(name, data_dir), seqlen, device)
+        record["splits"][split] = {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1),
+                                   "data_sha256": manifest["entries"][name]["sha256"]}
+        typer.echo(f"  {split:<10} ppl {r.ppl:.4f}  ({r.n_windows} windows, {r.seconds:.0f} s)")
+
+    results.mkdir(parents=True, exist_ok=True)
+    out = results / f"{d.slug(model)}__wanda{round(sparsity * 100)}__{device}__{dtype}.json"
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {out}")
+
+
 @app.callback()
 def main() -> None:
     """PruneAgent command line."""

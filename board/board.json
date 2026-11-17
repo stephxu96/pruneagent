@@ -184,8 +184,8 @@
       ],
       "done_when": "Bar recorded: validation and test perplexity, 7 zero-shot tasks",
       "gpu": "T4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-16] Our Wanda 50% (all 7 block linears, C4 128×2048, layer by layer), M4 fp16: sparsity 0.5000; val ppl 23.68, test 22.57 (dense 13.27 / 12.66). Bar: val ≤ 26.05, test ≤ 24.83. Cross-check vs llm-compressor 0.8.1 pending; zero-shot pending."
     },
     {
       "id": "1.2",

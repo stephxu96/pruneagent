@@ -1,0 +1,37 @@
+{
+  "method": "wanda",
+  "target_sparsity": 0.5,
+  "achieved_linear_sparsity": 0.5,
+  "model": "Qwen/Qwen3-0.6B-Base",
+  "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+  "device": "mps",
+  "dtype": "float16",
+  "seqlen": 2048,
+  "calibration": {
+    "entry": "c4_calib__qwen3-0.6b-base",
+    "sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d",
+    "shape": [
+      128,
+      2048
+    ]
+  },
+  "prune_seconds": 435.4,
+  "machine": "macOS-15.6.1-arm64-arm-64bit",
+  "torch": "2.15.0",
+  "transformers": "5.23.0",
+  "created_at": "2026-11-17T04:00:23+00:00",
+  "splits": {
+    "validation": {
+      "ppl": 23.682626724243164,
+      "n_windows": 128,
+      "seconds": 253.8,
+      "data_sha256": "d7b0ebfa3f442a76b2a3a006381e8b3555c764f438961558a339986f8a8ef0c6"
+    },
+    "test": {
+      "ppl": 22.56914710998535,
+      "n_windows": 146,
+      "seconds": 275.7,
+      "data_sha256": "0cc0fe0f7629af5389d77a3e48575f4eb3b1070f420b9fa659410c0af9105818"
+    }
+  }
+}
