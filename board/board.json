@@ -241,8 +241,8 @@
       ],
       "done_when": "Weight bytes match file size within 1%",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch"
     },
     {
       "id": "1.6",
@@ -255,8 +255,8 @@
       ],
       "done_when": "Repeat runs vary < 5% on each machine",
       "gpu": "M4 + T4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch"
     },
     {
       "id": "1.7",
@@ -284,8 +284,8 @@
       ],
       "done_when": "Rank correlation recorded",
       "gpu": "T4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch"
     },
     {
       "id": "1.9",
@@ -300,8 +300,8 @@
       ],
       "done_when": "Savings at the bar recorded",
       "gpu": "T4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch"
     },
     {
       "id": "1.10",
@@ -314,8 +314,8 @@
       ],
       "done_when": "Bar recorded for 1.7B",
       "gpu": "A100",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started 09:45 on its own branch; Colab A100"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started 09:45 on its own branch; Colab A100\n[2026-11-17] Merged. Ran on L4 (no A100 free), 28 min. 1.7B unpruned val ppl 9.87, mean acc 59.20%; Wanda-50% val 15.38, test 14.53, mean acc 49.18%. Bar: val ppl <= 16.92, mean acc >= 47.18%"
     },
     {
       "id": "1.11",
@@ -343,8 +343,8 @@
       ],
       "done_when": "Rank correlation recorded",
       "gpu": "M4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started 10:12 on its own branch"
     },
     {
       "id": "G1",
