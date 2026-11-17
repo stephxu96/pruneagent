@@ -468,6 +468,90 @@ def ppl_saved_cmd(
     typer.echo(f"Saved {out}")
 
 
+@app.command("speed")
+def speed_cmd(
+    path: Annotated[Path | None, typer.Option(help="Saved pruned model directory (model.safetensors + plan.json).")] = None,
+    model: Annotated[str, typer.Option(help="Hugging Face model id (used when --path is not given).")] = (
+        "Qwen/Qwen3-0.6B-Base"),
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32 (unpruned model only).")] = "float16",
+    prompt_len: Annotated[int, typer.Option(help="Prompt tokens (WikiText-2 validation).")] = 512,
+    gen: Annotated[int, typer.Option(help="New tokens generated, exactly (no early stop).")] = 128,
+    repeats: Annotated[int, typer.Option(help="Timed runs.")] = 5,
+    warmup: Annotated[int, typer.Option(help="Untimed runs first.")] = 3,
+    tag: Annotated[str | None, typer.Option(help="Suffix for the results file (e.g. to keep two invocations).")] = None,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/speed"),
+) -> None:
+    """Measured prefill and decode tokens/s and peak memory (batch 1, fixed prompt, greedy, fixed length)."""
+    import json
+
+    from pruneagent import data as d
+    from pruneagent import evaluate as ev
+    from pruneagent import loader, speed
+
+    device = device or ev.pick_device()
+    if path is not None:
+        net = loader.load(path, device=device)
+        model_id, revision, label = net.pruneagent["model_id"], net.pruneagent["revision"], path.name
+        dtype = str(next(net.parameters()).dtype).removeprefix("torch.")
+        file_bytes = (path / loader.WEIGHTS).stat().st_size
+    else:
+        manifest = d.read_manifest(data_dir)
+        model_id, label, file_bytes = model, "dense", None
+        revision = manifest["entries"][d.wikitext_name("validation", model)]["tokenizer"]["revision"]
+        net = ev.load_model(model, revision, dtype, device)
+    typer.echo(f"{label}: {model_id}@{(revision or '')[:8]} on {device} in {dtype}; "
+               f"prompt {prompt_len}, gen {gen}, warmup {warmup}, repeats {repeats}")
+    prompt = d.load_tokens(d.wikitext_name("validation", model_id), data_dir)
+    r = speed.measure(net, device, prompt, prompt_len=prompt_len, gen=gen, repeats=repeats, warmup=warmup)
+    record = {"label": label, **_run_record(model_id, revision, device, dtype, prompt_len),
+              "path": str(path) if path else None, "file_bytes": file_bytes,
+              "prompt": f"first {prompt_len} tokens of {d.wikitext_name('validation', model_id)}",
+              "device_name": speed.machine_info(device)["device_name"], **r}
+    record.pop("seqlen")
+    for key in ("prefill_tok_s", "decode_tok_s"):
+        s = r[key]
+        typer.echo(f"  {key:<14} median {s['median']:9.1f}  min {s['min']:9.1f}  max {s['max']:9.1f}  "
+                   f"spread {s['spread']:.2%}")
+    if r["peak_memory_bytes"] is not None:
+        typer.echo(f"  peak memory    {r['peak_memory_bytes'] / 1e9:.3f} GB  "
+                   f"(weights {r['weight_bytes'] / 1e9:.3f} GB)")
+    results.mkdir(parents=True, exist_ok=True)
+    suffix = f"__{tag}" if tag else ""
+    out = results / f"{d.slug(model_id)}__{label}__{device}__{dtype}{suffix}.json"
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    typer.echo(f"Saved {out}")
+
+
+@app.command("device-test")
+def device_test_cmd(
+    name: Annotated[str, typer.Option(help="Target name, e.g. m4 or t4 (also the file name).")],
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    copy_mb: Annotated[int, typer.Option(help="Size of the copied buffer in MiB.")] = 1024,
+    matmul_n: Annotated[int, typer.Option(help="Square fp16 matmul size.")] = 4096,
+    repeats: Annotated[int, typer.Option(help="Timed repeats of each test.")] = 5,
+    results: Annotated[Path, typer.Option(help="Directory for the device-target JSON.")] = Path(
+        "results/speed/devices"),
+) -> None:
+    """Measure the device's memory bandwidth (copy) and fp16 compute (matmul); save them as a device target."""
+    import json
+
+    from pruneagent import evaluate as ev
+    from pruneagent import speed
+
+    device = device or ev.pick_device()
+    test = speed.device_test(device, copy_mb=copy_mb, matmul_n=matmul_n, repeats=repeats)
+    target = speed.device_target(name, device, test)
+    typer.echo(f"{name} ({target['device_name']}, {device}): bandwidth {target['bandwidth_gbs']} GB/s "
+               f"(spread {test['bandwidth']['spread']:.2%}), compute {target['compute_tflops']} TFLOPs "
+               f"(spread {test['compute']['spread']:.2%})")
+    results.mkdir(parents=True, exist_ok=True)
+    out = results / f"{name}.json"
+    out.write_text(json.dumps(target, indent=2) + "\n")
+    typer.echo(f"Saved {out}")
+
+
 @app.callback()
 def main() -> None:
     """PruneAgent command line."""
