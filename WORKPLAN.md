@@ -14,7 +14,7 @@ Days are calendar days from the start of the build: D1 = Monday 16 November 2026
 
 | Phase | Days | Goal | Gate at the end |
 |---|---|---|---|
-| 0. Setup | D1 (morning) | Repo, data and dense reference numbers ready | G0: dense 0.6B perplexity reproduces |
+| 0. Setup | D1 (morning) | Repo, data and dense reference numbers ready | G0: dense 0.6B perplexity (how well the model predicts real text; lower is better) reproduces |
 | 1. Feasibility | D1–D2 | Every assumption the design rests on checked on 0.6B | G1: go / fallback per assumption |
 | 2. Agent graph | D3–D4 | End-to-end agent run on 0.6B | G2 (midpoint): one ACCEPT and one ROLLBACK in a real run |
 | 3. Tuning | D5–D6 | Agent instructions tuned on 0.6B and frozen | G3: instructions frozen at a tagged commit |

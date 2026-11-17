@@ -30,7 +30,7 @@ Qwen3 constraints: grouped-query attention, with 16 query heads sharing 8 key/va
 - **Neutral instructions:** each strategy is described by what it does to the weights, at the same level of detail, with the objective stated (stay within the quality bar while reducing measured memory and latency). No ranking or hints.
 - **Scoring:** FLAP's fluctuation metric and bias compensation for neurons and groups; Wanda's weight score for unstructured sparsity; ShortGPT's Block Influence for layers. All computed once on the dense model and cached (ADR-002).
 - **Prediction P1:** the agent will rarely choose Wanda, since it saves no memory. Measured by strategy counts in the log, not enforced.
-- **Quantization:** deferred. If added later, it is a one-time weight-only step (8-bit or 4-bit) after the search, followed by the same memory, speed and perplexity checks. Wanda is not quantized.
+- **Quantization:** deferred. If added later, it is a one-time weight-only step (8-bit or 4-bit) after the search, followed by the same memory, speed and perplexity (how well the model predicts real text; lower is better) checks. Wanda is not quantized.
 
 ## Consequences
 

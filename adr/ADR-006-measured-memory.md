@@ -28,7 +28,7 @@ Savings must be real: unstructured zeros stored densely save nothing. Every cand
 - **Estimated speed (search):** decode tokens/s ≈ memory bandwidth ÷ bytes of weights and key/value cache read per generated token at a 512-token context; prompt time ≈ prompt FLOPs ÷ compute. Computed from the plan, no hardware needed.
 - **Early warning (before the search):** the target memory is below the smallest model the structure rules allow (every layer at its minimum, 6 layers dropped, embeddings unchanged), or the unpruned model already meets the target.
 - **Final warning (end of search):** the quality bar ran out before the target was met; the report gives the closest plan and the gap (GB over the limit, tokens/s short).
-- **Equal quality for baselines:** each baseline (FLAP, uniform Wanda-sp, ShortGPT) is pruned to the largest ratio whose validation perplexity stays within the bar; methods are compared on savings.
+- **Equal quality for baselines:** each baseline (FLAP, uniform Wanda-sp, ShortGPT) is pruned to the largest ratio whose validation perplexity (how well the model predicts real text; lower is better) stays within the bar; methods are compared on savings.
 - **Weight memory:** bytes in dense fp16 storage, embeddings included, zeroed weights counted at full cost. Confirmed by file size at the end.
 - **Measured (final, every compared method):** parameter count, file size, peak memory, prefill and decode tokens/s, on the M4 laptop (PyTorch on the Mac GPU) and the Colab T4, at a fixed prompt length, batch size and generation length.
 - **Phase-1 check:** estimated vs. measured decode speed on ~10 plans, on both machines. Phone estimates are reported only if the estimate is within ~25% of measured speed on both.

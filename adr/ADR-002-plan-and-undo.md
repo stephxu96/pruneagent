@@ -19,7 +19,7 @@ Rollback must be exact and cheap, and the agent may roll back further than one s
 
 ## Decision
 
-**C.** Scores are computed once on the dense model and cached: FLAP fluctuation metric and bias compensation values for neurons and groups, Wanda weight scores for unstructured sparsity, Block Influence for layers. Given a plan, pruning keeps the top-scoring neurons and groups in each layer, adds FLAP's compensation bias, drops the planned layers, then zeroes the lowest-Wanda-score weights to the layer's sparsity. The plan is the only thing pruning depends on. State keeps the list of accepted plans, so `rollback` can return to any of them. Deterministic: the same plan always gives the same model and perplexity.
+**C.** Scores are computed once on the dense model and cached: FLAP fluctuation metric and bias compensation values for neurons and groups, Wanda weight scores for unstructured sparsity, Block Influence for layers. Given a plan, pruning keeps the top-scoring neurons and groups in each layer, adds FLAP's compensation bias, drops the planned layers, then zeroes the lowest-Wanda-score weights to the layer's sparsity. The plan is the only thing pruning depends on. State keeps the list of accepted plans, so `rollback` can return to any of them. Deterministic: the same plan always gives the same model and perplexity (how well the model predicts real text; lower is better).
 
 ## Consequences
 

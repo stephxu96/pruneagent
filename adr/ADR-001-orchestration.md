@@ -7,7 +7,7 @@
 
 ## Context
 
-PruneAgent searches for a per-layer pruning plan that stays within Wanda-50% quality while saving the most measured memory (ADR-004, ADR-006). The agent chooses the next experiment (probe, apply, start from FLAP, roll back, stop) and, per layer, which strategy to use (ADR-007). Two kinds of work are independent and can run in parallel: layer-local sensitivity probes, and the evaluation of several candidate plans in one round (memory, estimated speed on the target device and perplexity for each). Code must still enforce the quality bar and budget, and stop when the user's device target is met. A run lasts 20–40 rounds and must survive a Colab disconnect. Course guidance: name who chooses the next step; code enforces gates.
+PruneAgent searches for a per-layer pruning plan that stays within Wanda-50% quality while saving the most measured memory (ADR-004, ADR-006). The agent chooses the next experiment (probe, apply, start from FLAP, roll back, stop) and, per layer, which strategy to use (ADR-007). Two kinds of work are independent and can run in parallel: layer-local sensitivity probes, and the evaluation of several candidate plans in one round (memory, estimated speed on the target device and perplexity (how well the model predicts real text; lower is better) for each). Code must still enforce the quality bar and budget, and stop when the user's device target is met. A run lasts 20–40 rounds and must survive a Colab disconnect. Course guidance: name who chooses the next step; code enforces gates.
 
 ## Options
 
