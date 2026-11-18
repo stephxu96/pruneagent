@@ -274,11 +274,80 @@ def validate_candidates(cands: list[dict], config, base: P.Plan | None = None) -
 # ---------------------------------------------------------------------------------------------- summary
 
 
+def flap_weight_bytes(config, groups_kept: list[int], neurons_kept: list[int], dtype_bytes: int = 2) -> int:
+    """Weight bytes of a FLAP-pruned model (any MLP width, as FLAP allocates), counted as `estimate.weight_bytes`
+    counts them; `estimate.weight_bytes` itself needs a plan with widths in multiples of 64."""
+    d = E._dims(config)
+    values = sum(E._layer_counts(d, P.LayerPlan(mlp_keep=int(m), groups_keep=int(g), dropped=False,
+                                                wanda_sparsity=0.0))[0]
+                 for g, m in zip(groups_kept, neurons_kept, strict=True))
+    values += d.vocab * d.hidden + d.hidden
+    if not d.tied:
+        values += d.vocab * d.hidden
+    return values * dtype_bytes
+
+
+def flap_group_weight(config) -> float:
+    """`flap.group_weight` from the config alone."""
+    c = P._cfg(config)
+    head_dim = c.get("head_dim") or c["hidden_size"] // c["num_attention_heads"]
+    q_heads = c["num_attention_heads"] // c["num_key_value_heads"]
+    return (2 * q_heads + 2) * head_dim / 3
+
+
+def flap_ratio_for_limit(attn, mlp, config, limit_bytes: int, lo: float = 0.0, hi: float = 0.5,
+                         tol: float = 1e-4) -> tuple[float, int]:
+    """Smallest FLAP ratio (share of block weights removed) whose model fits within `limit_bytes`, by bisection on
+    the AL-AM allocation (no GPU). Returns (ratio, weight bytes)."""
+    from pruneagent import flap
+
+    def size(r: float) -> int:
+        a, m = flap.allocate(attn, mlp, r, flap_group_weight(config))
+        return flap_weight_bytes(config, a.sum(dim=1).tolist(), m.sum(dim=1).tolist())
+
+    if size(hi) > limit_bytes:
+        raise ValueError(f"FLAP at ratio {hi} does not fit within {limit_bytes} bytes")
+    while hi - lo > tol:
+        mid = (lo + hi) / 2
+        lo, hi = (lo, mid) if size(mid) <= limit_bytes else (mid, hi)
+    return round(hi, 6), size(hi)
+
+
+def measure_flap(net, scores, config, limit_bytes: int, ids, seqlen: int, device: str, n_windows: int) -> dict:
+    """Baseline: FLAP cut to the memory limit: the smallest ratio that fits (`flap_ratio_for_limit`), applied to a
+    copy of the unpruned `net` with the cached FLAP statistics, and its subset perplexity."""
+    import copy
+
+    from pruneagent import evaluate as ev
+    from pruneagent import flap
+
+    ratio, est = flap_ratio_for_limit(scores.attn, scores.mlp, config, limit_bytes)
+    start = time.perf_counter()
+    pruned = copy.deepcopy(net)
+    keep = flap.prune_flap_from_stats(pruned, scores.stats, ratio)
+    stored = sum(p.numel() for p in pruned.parameters()) * next(pruned.parameters()).element_size()
+    r = ev.subset_perplexity(pruned, ids, n_windows, seqlen, device)
+    out = {"method": "FLAP (WIFV, AL-AM, bias compensation) from cached statistics", "ratio": ratio,
+           "weight_bytes": est, "weight_bytes_stored": stored,
+           "weight_bytes_removed": E.weight_bytes(config, P.dense_plan(config)) - est,
+           "within_limit": est <= limit_bytes, "groups_kept": keep["attn_keep"].sum(dim=1).tolist(),
+           "neurons_kept": keep["mlp_keep"].sum(dim=1).tolist(), "ppl": r.ppl, "n_windows": r.n_windows,
+           "eval_seconds": round(r.seconds, 1), "total_seconds": round(time.perf_counter() - start, 1)}
+    del pruned
+    return out
+
+
+def _vs(ppl: float | None, ref: float | None) -> str:
+    return f"{ppl / ref - 1:+.0%}" if ppl and ref else "-"
+
+
 def summary_markdown(record: dict) -> str:
     m = record["memory"]
     ref = record.get("reference_ppl_32")
+    fl = record.get("baseline_flap") or {}
+    base = fl.get("ppl")
     lines = [
-        "# Agent round 1 (task 1.11)",
+        f"# {record.get('title', 'Agent round 1 (task 1.11)')}",
         "",
         f"Model {record['model']}; agent: Codex CLI ({record['codex'].get('model') or 'default model'}). "
         f"Prompt: {record['prompt_chars']:,} characters, {record['prompt_words']:,} words"
@@ -286,26 +355,37 @@ def summary_markdown(record: dict) -> str:
         + f". Codex reported {record['codex'].get('tokens_used') or 'unknown'} tokens in total for the call.",
         "",
         (f"Memory limit: {_mb(m['limit_bytes'])} of weights, {_mb(m['dense_bytes'] - m['limit_bytes'])} "
-        f"({m['cut']:.0%}) less than the unpruned {_mb(m['dense_bytes'])}."),
-        (f"Reference: unpruned model {record.get('dense_ppl_32', float('nan')):.2f}, Wanda-50% "
-        f"{ref:.2f} perplexity on the same 32 validation windows (lower is better)."),
+         f"({m['cut']:.0%}) less than the unpruned {_mb(m['dense_bytes'])}."),
         "",
-        "| # | Valid | Choices | Perplexity (32 windows) | vs Wanda-50% | Memory removed | Within limit |",
-        "|---|---|---|---|---|---|---|",
+        "Perplexity on the same 32 validation windows (lower is better):",
+        f"- unpruned model: {record.get('dense_ppl_32', float('nan')):.2f}",
+    ]
+    if base:
+        lines.append(f"- Baseline: FLAP cut to the same limit (ratio {fl['ratio']}, {_mb(fl['weight_bytes_removed'])} "
+                     f"removed): {base:.2f}")
+    if ref:
+        lines.append(f"- Wanda-50% (secondary reference; frees no memory): {ref:.2f}")
+    lines += [
+        "",
+        "| # | Valid | Choices | Perplexity | vs Baseline: FLAP | vs Wanda-50% | Memory removed | Within limit |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for c, v in zip(record["candidates"], record["validation"], strict=True):
-        meas = v.get("measured", {})
-        ppl = meas.get("ppl")
+        ppl = v.get("measured", {}).get("ppl")
         removed = m["dense_bytes"] - v["weight_bytes"] if v.get("weight_bytes") else None
         steps = ", ".join(f"{n} x {s}" for s, n in v.get("steps", {}).items()) or f"{len(c['choices'] or [])} choices"
         lines.append(
             f"| {v['index'] + 1} | {'yes' if v['valid'] else 'no: ' + '; '.join(v['reasons'])} | {steps} | "
-            f"{f'{ppl:.2f}' if ppl else '-'} | {f'{ppl / ref - 1:+.0%}' if ppl and ref else '-'} | "
+            f"{f'{ppl:.2f}' if ppl else '-'} | {_vs(ppl, base)} | {_vs(ppl, ref)} | "
             f"{_mb(removed) if removed is not None else '-'} | "
             f"{('yes' if v['weight_bytes'] <= m['limit_bytes'] else 'no') if removed is not None else '-'} |")
     lines.append("")
     for c, v in zip(record["candidates"], record["validation"], strict=True):
         lines += [f"**Candidate {v['index'] + 1}.** {c['rationale']}", ""]
-        lines += ["Choices: " + ", ".join(f"{ch.get('layer')}:{ch.get('strategy')}" for ch in (c["choices"] or [])
-                                          if isinstance(ch, dict)), ""]
+        by: dict[str, list] = {}
+        for ch in c["choices"] or []:
+            if isinstance(ch, dict):
+                by.setdefault(str(ch.get("strategy")), []).append(ch.get("layer"))
+        lines += ["Choices (layers; a layer listed twice takes two steps): " + "; ".join(
+            f"{s} on {sorted(ls, key=lambda x: (type(x).__name__, x if isinstance(x, int) else str(x)))}" for s, ls in by.items()), ""]
     return "\n".join(lines) + "\n"

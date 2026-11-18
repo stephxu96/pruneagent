@@ -113,3 +113,18 @@ def test_prompt_is_neutral_and_complete():
     assert "all layers unpruned" in prompt and "to remove: 119.210 MB" in prompt
     assert "0 | 0.100 | 1/2/3 | 1/2/3 | 1 | 1/2/3" in prompt
     assert '"candidates"' in prompt
+
+
+def test_flap_bytes_match_estimator_and_ratio_fits_limit():
+    import torch
+
+    n, width, groups = 28, 3072, 8
+    assert A.flap_weight_bytes(CFG, [groups] * n, [width] * n) == A.E.weight_bytes(CFG, P.dense_plan(CFG))
+    plan = P.normalize({3: {"mlp_keep": 2752, "groups_keep": 7}}, CFG)
+    assert A.flap_weight_bytes(CFG, [plan[i]["groups_keep"] for i in range(n)],
+                               [plan[i]["mlp_keep"] for i in range(n)]) == A.E.weight_bytes(CFG, plan)
+    torch.manual_seed(0)
+    attn, mlp = torch.randn(n, groups), torch.randn(n, width)
+    limit = A.memory_limit(CFG)
+    _, size = A.flap_ratio_for_limit(attn, mlp, CFG, limit)
+    assert limit - 2e6 < size <= limit  # fits, and not far below

@@ -971,6 +971,8 @@ def agent_round_cmd(
     memory_cut: Annotated[float, typer.Option(help="Memory limit: this share less weight memory than unpruned.")] = 0.10,
     reply: Annotated[Path | None, typer.Option(help="Reuse a saved Codex reply instead of calling Codex.")] = None,
     measure: Annotated[bool, typer.Option(help="Build each valid candidate and measure it on the GPU.")] = True,
+    baseline_only: Annotated[bool, typer.Option(
+        help="Only add Baseline: FLAP at the same memory limit to an existing output JSON.")] = False,
     scores_path: Annotated[Path | None, typer.Option("--scores", help="Cached scores (computed if missing).")] = None,
     reference: Annotated[Path, typer.Option(help="Subset results with Wanda-50% on the 32 windows.")] = Path(
         "results/subset/qwen3-0.6b-base__cuda__float16.json"),
@@ -1001,10 +1003,33 @@ def agent_round_cmd(
     table = json.loads(probes.read_text())["table"]
     dense_bytes = E.weight_bytes(config, P.dense_plan(config))
     limit = A.memory_limit(config, memory_cut)
+
+    if baseline_only:
+        from pruneagent import evaluate as ev
+
+        record = json.loads(out.read_text())
+        device = device or ev.pick_device()
+        net = ev.load_model(model, revision, dtype, device)
+        scores = _scores(net, model, revision, device, dtype, data_dir, scores_path)
+        ids = d.load_tokens(d.wikitext_name("validation", model), data_dir).reshape(-1)
+        limit = record["memory"]["limit_bytes"]
+        record["baseline_flap"] = A.measure_flap(net, scores, config, limit, ids, seqlen, device, ev.GATE_WINDOWS)
+        record["baseline_flap"] |= {"device": device, "dtype": dtype, "scores": scores.meta}
+        b = record["baseline_flap"]
+        typer.echo(f"  Baseline: FLAP ratio {b['ratio']}: ppl {b['ppl']:.4f}, removed "
+                   f"{b['weight_bytes_removed'] / 1e6:,.1f} MB, within limit {b['within_limit']}")
+        out.write_text(json.dumps(record, indent=2) + "\n")
+        out.with_suffix(".md").write_text(A.summary_markdown(record))
+        typer.echo(f"Saved {out}")
+        return
+
     prompt = A.build_prompt(config, table, limit)
     out.parent.mkdir(parents=True, exist_ok=True)
     side = {k: out.with_name(f"{out.stem}_{k}") for k in ("prompt.txt", "reply.txt", "codex.json", "codex_stderr.txt")}
-    side["prompt.txt"].write_text(prompt + "\n")
+    if reply is not None and side["prompt.txt"].exists():
+        prompt = side["prompt.txt"].read_text().removesuffix("\n")  # the prompt that produced the saved reply
+    else:
+        side["prompt.txt"].write_text(prompt + "\n")
     typer.echo(f"Prompt: {len(prompt):,} characters, {len(prompt.split()):,} words")
 
     if reply is None:
@@ -1059,6 +1084,8 @@ def agent_round_cmd(
         r = ev.subset_perplexity(net, ids, ev.GATE_WINDOWS, seqlen, device)
         record["dense_ppl_32"] = r.ppl
         typer.echo(f"  unpruned: ppl {r.ppl:.4f} on {r.n_windows} windows ({r.seconds:.0f} s)")
+        record["baseline_flap"] = A.measure_flap(net, scores, config, limit, ids, seqlen, device, ev.GATE_WINDOWS)
+        typer.echo(f"  Baseline: FLAP: ppl {record['baseline_flap']['ppl']:.4f}")
         for v in checks:
             if not v["valid"]:
                 continue
