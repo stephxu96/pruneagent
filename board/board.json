@@ -673,8 +673,8 @@
       ],
       "done_when": "Resumed run matches an uninterrupted run",
       "gpu": "T4",
-      "status": "todo",
-      "notes": ""
+      "status": "done",
+      "notes": "\n[2026-11-18 12:50] Done. tests/test_kill_resume.py (tiny model, CPU, deterministic fake agent): killed during an agent call, and killed while measuring candidates, both resume to exactly the same rounds, perplexities, memory and final plan as an uninterrupted run; the second makes no extra agent call. A guard test confirms the comparison tells different runs apart. Real-world case: the 30% run (20261118-1016) was paused at round 18 and resumed to finish. Also fixed two usage-limit tests that expired at 06:32 UTC today (clock now pinned). Full suite: 383 passed."
     },
     {
       "id": "3.5",
