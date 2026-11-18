@@ -47,3 +47,21 @@ reply.data  # the agent's JSON answer
 **Size of a call:** a one-word reply used 19,426 input tokens with Codex's normal setup (measured 2026-11-17) and 3,135 with this setup. Nearly all of those 3,135 tokens are Codex's own fixed part, which no supported setting we found removes; a real question adds its own length on top.
 
 **API backend:** `ApiBackend` reads `OPENAI_API_KEY` from the environment or from `.env`, which git ignores. Pass prices per million tokens to have the cost recorded and the $5 cap enforced.
+
+## Runs, checkpoints and resume
+
+Each run saves its progress in its own folder, `runs/<run-id>/`, named like `20261116-1432-qwen3-0.6b-codex`:
+
+- `run.sqlite`: the run's status, its progress at the end of every round, and the list of accepted plans.
+- `plans/accepted-000.json`, `accepted-001.json`, ...: each accepted plan (how much of each layer is kept). `000` is the unpruned model. No weights are stored: a plan rebuilds its model in seconds.
+- `decisions.jsonl`: the decision log, one line per round: what the agent chose and why, every candidate's perplexity, and whether it was accepted.
+
+When the agent rolls back to an earlier accepted plan, the plans accepted after it are deleted.
+
+```
+pruneagent runs              # every run: status, last round, accepted plans
+pruneagent resume            # continue the only paused run
+pruneagent resume <run-id>   # continue a given run
+```
+
+A run that stopped part-way (a usage limit, Ctrl-C, or a Colab runtime that disconnected) continues from the end of its last finished round. The unfinished round is repeated, but its agent answer comes from `runs/agent_cache/`, so no agent call is made twice. If several runs are paused, `pruneagent resume` without an id lists them and asks for one.

@@ -26,11 +26,15 @@ Memory is weight memory only (`estimate.weight_bytes`), the measure Baseline: FL
 
 Everything that needs the model or the GPU is injected (`Deps`), so the graph runs in tests with a fake agent
 backend and a fake evaluator. `flap_baseline` and `ppl_evaluator` wrap the real functions for a real run.
-Checkpoints and rollback storage (tasks 2.7, 2.8) are the in-memory `MemoryStore`: a placeholder to replace.
+Checkpoints, accepted plans (rollback targets) and the decision log go to `Deps.store`: `runstore.RunStore` on
+disk for a real run (tasks 2.7, 2.8), or `MemoryStore` in tests. The state is checkpointed at the end of every
+round; `resume` continues a run from its last checkpoint, replaying an unfinished round (its agent call comes
+from the agent cache).
 """
 
 from __future__ import annotations
 
+import importlib
 import math
 import time
 from collections import Counter
@@ -43,7 +47,7 @@ from langgraph.types import Send
 from pydantic import ValidationError
 
 from pruneagent import agent_client as AC
-from pruneagent import agent_round
+from pruneagent import agent_round, runstore
 from pruneagent import estimate as E
 from pruneagent import plan as P
 from pruneagent import validator as V
@@ -111,6 +115,7 @@ class GraphState(PruneState, total=False):
     job: dict  # one candidate to evaluate (the payload of a `Send`)
     stop_reason: str | None
     final: dict | None  # from `Deps.final_eval`
+    resume: bool  # set by `resume`: start at the next round instead of `load`
 
 
 # ------------------------------------------------------------------------------------------- injected parts
@@ -142,26 +147,51 @@ def placeholder_prompt(req: AgentRequest, feedback: str | None = None) -> str:
     return "\n".join(parts)
 
 
+class Store(Protocol):
+    """Where a run keeps its decision log, checkpoints and accepted plans: `MemoryStore` or `runstore.RunStore`."""
+
+    def append_log(self, record: StepRecord) -> None: ...
+    def checkpoint(self, state: dict) -> None: ...
+    def save_accepted(self, index: int, accepted: AcceptedPlan) -> None: ...
+    def restore(self, index: int) -> AcceptedPlan: ...  # also discards every later accepted plan
+    def load_checkpoint(self) -> dict | None: ...
+    def sync(self, state: dict) -> None: ...  # before resuming: drop what an unfinished round wrote
+    def set_status(self, status: str, reason: str | None = None) -> None: ...
+
+
 @dataclass
 class MemoryStore:
-    """PLACEHOLDER for tasks 2.7 (rollback storage) and 2.8 (checkpoints and decision log): keeps everything in
-    memory. A replacement needs the same four methods."""
+    """The store kept in memory, for tests and one-off runs; `runstore.RunStore` keeps the same on disk."""
 
     log: list[StepRecord] = field(default_factory=list)  # the decision log, one record per round
     checkpoints: list[dict] = field(default_factory=list)
     saved: dict[int, AcceptedPlan] = field(default_factory=dict)  # accepted plans by index
+    status: tuple[str, str | None] = ("new", None)
 
     def append_log(self, record: StepRecord) -> None:
         self.log.append(record)
 
     def checkpoint(self, state: dict) -> None:
-        self.checkpoints.append({k: state.get(k) for k in ("round", "plan", "accepted", "usage", "stop_reason")})
+        self.checkpoints.append({k: state[k] for k in runstore.Saved.__annotations__ if k in state})
 
     def save_accepted(self, index: int, accepted: AcceptedPlan) -> None:
+        self.saved = {i: a for i, a in self.saved.items() if i < index}
         self.saved[index] = accepted
 
     def restore(self, index: int) -> AcceptedPlan:
-        return self.saved[index]
+        restored = self.saved[index]
+        self.saved = {i: a for i, a in self.saved.items() if i <= index}
+        return restored
+
+    def load_checkpoint(self) -> dict | None:
+        return dict(self.checkpoints[-1]) if self.checkpoints else None
+
+    def sync(self, state: dict) -> None:
+        self.log = [r for r in self.log if r.round <= (state.get("round") or 0)]
+        self.saved = dict(enumerate(state.get("accepted") or []))
+
+    def set_status(self, status: str, reason: str | None = None) -> None:
+        self.status = (status, reason)
 
 
 @dataclass
@@ -177,7 +207,7 @@ class Deps:
     build_prompt: Callable[[AgentRequest, str | None], str] = placeholder_prompt
     probe: Callable[[Plan, list[Choice]], SensitivityTable] | None = None  # the agent's probe action
     final_eval: Callable[[dict], dict] | None = None  # test split, tasks, measured speed (phase 4)
-    store: MemoryStore = field(default_factory=MemoryStore)
+    store: Store = field(default_factory=MemoryStore)
 
 
 # ------------------------------------------------------------------------------------------- plan helpers
@@ -497,7 +527,8 @@ def build_graph(deps: Deps, checkpointer=None):
                      ("validate", validate), ("evaluate", evaluate), ("gate", gate), ("accept", accept),
                      ("rollback", rollback), ("probe", probe), ("stop_check", stop_check), ("final", final)]:
         g.add_node(name, fn)
-    g.add_edge(START, "load")
+    g.add_conditional_edges(START, lambda s: ("final" if s.get("stop_reason") else "plan") if s.get("resume")
+                            else "load", ["load", "plan", "final"])
     g.add_edge("load", "feasibility")
     g.add_conditional_edges("feasibility", lambda s: "final" if s.get("stop_reason") else "baseline",
                             ["baseline", "final"])
@@ -516,11 +547,63 @@ def build_graph(deps: Deps, checkpointer=None):
     return g.compile(checkpointer=checkpointer)
 
 
-def run(deps: Deps, run_cfg: RunConfig) -> dict:
-    """One run from start to final; returns the final state."""
+def _invoke(deps: Deps, start: dict, run_cfg: RunConfig) -> dict:
+    """Invoke the graph, keeping the store's status: running, then finished, or paused on any exception (an
+    interruption, a usage limit) before it propagates."""
     steps_per_round = 6  # plan, validate, evaluate, gate, accept/rollback, stop_check
     limit = steps_per_round * (run_cfg.rules.max_rounds + 2) + 20
-    return build_graph(deps).invoke({"run": run_cfg}, {"recursion_limit": limit})
+    deps.store.set_status("running")
+    try:
+        state = build_graph(deps).invoke(start, {"recursion_limit": limit})
+    except BaseException as e:
+        deps.store.set_status("paused", f"{type(e).__name__}: {e}" if str(e) else type(e).__name__)
+        raise
+    deps.store.set_status("finished", state.get("stop_reason"))
+    return state
+
+
+def run(deps: Deps, run_cfg: RunConfig) -> dict:
+    """One run from start to final; returns the final state."""
+    return _invoke(deps, {"run": run_cfg}, run_cfg)
+
+
+def resume(deps: Deps, run_cfg: RunConfig | None = None) -> dict:
+    """Continue a run from the store's last checkpoint (from the start if it never finished a round). Whatever an
+    unfinished round wrote is dropped first, and the round is replayed. `run_cfg` defaults to the store's."""
+    store = deps.store
+    state = store.load_checkpoint()
+    if state is None:
+        store.sync({"round": 0, "accepted": []})
+        return run(deps, run_cfg or store.run_config())
+    store.sync(state)
+    return _invoke(deps, {**state, "resume": True}, state["run"])
+
+
+def _factory(spec: str) -> Callable:
+    module, _, name = spec.partition(":")
+    return getattr(importlib.import_module(module), name)
+
+
+def start_run(run_cfg: RunConfig, deps_factory: str, root=None, run_id: str | None = None) -> dict:
+    """A run saved under `root/<run-id>/` (default `runs/`). `deps_factory` is "module:function", called as
+    fn(RunConfig, run_dir) -> Deps; it is recorded so that `pruneagent resume` can rebuild the same parts."""
+    store = runstore.RunStore.create(run_cfg, root or runstore.DEFAULT_ROOT, run_id, deps_factory)
+    deps = _factory(deps_factory)(run_cfg, store.dir)
+    deps.store = store
+    return run(deps, run_cfg)
+
+
+def resume_run(run_id: str | None = None, root=None) -> dict:
+    """`pruneagent resume`: the named run, or the only paused one (`runstore.ResumeError` otherwise)."""
+    store = runstore.pick_run(root or runstore.DEFAULT_ROOT, run_id)
+    factory = store.info().deps_factory
+    if not factory:
+        raise runstore.ResumeError(f"run {store.run_id} was started without a deps factory; resume it from Python "
+                                   "with graph.resume(deps)")
+    run_cfg = store.run_config()
+    deps = _factory(factory)(run_cfg, store.dir)
+    deps.store = store
+    return resume(deps, run_cfg)
 
 
 # --------------------------------------------------------------------------------------- real-run adapters
