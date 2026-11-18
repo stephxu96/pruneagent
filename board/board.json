@@ -583,7 +583,7 @@
       "done_when": "Unit tests with an impossible, an already-met and a reachable target",
       "gpu": "",
       "status": "todo",
-      "notes": ""
+      "notes": "[2026-11-17] Steph: memory limit applies to weights only (model file size); attention cache reported separately in the device report."
     },
     {
       "id": "2.12",
