@@ -189,8 +189,11 @@ def measured_lines(req: AgentRequest) -> list[str]:
     menu = list(P.AGENT_STRATEGIES)
     ref = table.dense_ppl
     where = f" on {table.measured_windows} windows" if table.measured_windows else ""
+    same = table.measured_windows == getattr(req, "gate_windows", 32)
+    note = ("the same text the rounds are scored on" if same
+            else "these windows differ from the rounds', so compare within this table")
     head = (f"Measured damage: perplexity after one step on each layer alone, measured on the unpruned model"
-            f"{where} (unpruned: {_ppl(ref)}; these windows differ from the rounds', so compare within this table).")
+            f"{where} (unpruned: {_ppl(ref)}; {note}).")
     lines = [head, "layer | " + " | ".join(menu)]
     for i, row in sorted(table.rows.items()):
         cells = []
