@@ -10,6 +10,8 @@
 
 **Agent backend (2026-11-16):** the agent's decisions come from a swappable backend, chosen per run: Codex CLI (`codex exec` on the ChatGPT plan, read-only, no tools; no per-call charge, bounded by the plan's usage limits) or an LLM API (per-token cost, $5 per run cap). Both use the same prompt, JSON schema, validator, cache and log, with the model pinned (ADR-005).
 
+**Calibration (2026-11-17):** every method learns which weights to remove from the same example text: 128 passages of 2,048 tokens from C4, a large collection of web pages (the set Wanda uses). This covers the agent's scores, Baseline: FLAP, and the backups (Wanda-50%, uniform Wanda-sp). Two reasons: every compared method sees the same data, and the example text comes from a different source than the WikiText-2 text used to measure quality, so no method is tuned on text like the test. FLAP's authors used WikiText-2 training text; that setting is kept only for the check of our FLAP code against theirs. FLAP numbers measured before 2026-11-17 (task 1.9's 15.2% of weight memory removed, and the 11.1% run with no allowance quoted in A7) used FLAP's own WikiText-2 calibration text, and are not directly comparable with later numbers; uniform Wanda-sp numbers from before that date used shorter C4 passages (128 tokens).
+
 **Changes from v0.7 (2026-11-17):** the primary baseline is now FLAP cut to the same memory limit (Baseline: FLAP), replacing Baseline: Wanda-50%. Wanda-50% and uniform Wanda-sp become optional backups, reported only if useful; ShortGPT is dropped as a compared method (still cited, and its Block Influence score is still used). No allowance or quality threshold: results are reported against Baseline: FLAP. Reason: FLAP actually shrinks the model and, at moderate cuts, matches Wanda-50% quality (Qwen3-0.6B with 11.1% of weight memory removed: perplexity 16.63 vs. Wanda-50%'s 23.68; mean accuracy 43.95% vs. 43.80%).
 
 **Changes from v0.6 (2026-11-17):** the problem is now: given a memory limit (required), keep the most quality. The no-target "save as much memory as the bar allows" mode is dropped; FLAP and uniform Wanda-sp are compared at the same memory limit on quality, not searched to the largest saving; Baseline: Wanda-50% is a reference with no allowance for now, and any allowance is decided after seeing results.
@@ -58,7 +60,7 @@
 | Name **who chooses the next step** | `ORCHESTRATION: hybrid.` The LLM agent chooses the next experiment and which strategy to apply to which layers; code owns step sizes, which weights are removed, pruning, validation, pruning, evaluation and accept / rollback. |
 | **Evidence gates** with explicit states | Every round ends ACCEPT, ROLLBACK or INVALID by a fixed rule. |
 | **Evidence must match the claim** | Quality from perplexity and multiple-choice accuracy (share of questions answered correctly); size from measured memory; speed estimated for the target device during search and measured in tokens per second on an M4 laptop and a T4 at the end. Never judged by an LLM. |
-| **Fair test**, criteria fixed in advance | Baseline: FLAP and the memory limit fixed before the production run; every method cut to the same memory limit, each method's published calibration data (example text run through the model to decide which weights are removed: WikiText-2 training text for FLAP, C4 for Wanda; always kept separate from the test text), same tests, same machines for speed. |
+| **Fair test**, criteria fixed in advance | Baseline: FLAP and the memory limit fixed before the production run; every method cut to the same memory limit, one calibration set for every method (example text run through the model to decide which weights are removed: 128 passages of 2,048 tokens from C4, a different source from the WikiText-2 test text), same tests, same machines for speed. |
 | **Validate before relying on it** | Phase 1 reproduces FLAP, Wanda and uniform Wanda-sp on Qwen3, checks layer-local probes against full evaluation, and checks the device speed estimate against measured speed on the M4 and T4. |
 | **Smallest system that meets the needs** | One model family; quantization deferred; LangGraph used for parallel probes, parallel candidate evaluation and the experiment-choice branches (ADR-001). |
 
@@ -154,7 +156,7 @@ No hand labelling and no hand-made data: all models and datasets are public.
 | A6 | Estimated decode speed (memory bandwidth ÷ bytes read per token) ranks plans like measured tokens per second on the M4 and the T4 | Measure tokens per second on the accepted plan every 5 rounds; report measured speed only |
 | A9 | A fixed 32-window subset of the validation split ranks candidate plans like the full 128 windows | Gate on 64 windows, or on the full split with candidates spread across Mac and Colab |
 | A8 | Estimates for a device that cannot be measured (a phone) are useful if the estimate is within ~25% of measured speed on both the M4 and the T4 | Report phone results as memory fit only, without a speed estimate |
-| A7 | FLAP is a strong enough comparison: at moderate cuts it keeps Wanda-50%'s quality while actually shrinking the model (checked on Qwen3-0.6B: 11.1% of weight memory removed, perplexity 16.63 vs. 23.68, mean accuracy 43.95% vs. 43.80%) | Report Wanda-50% alongside as a backup quality reference |
+| A7 | FLAP is a strong enough comparison: at moderate cuts it keeps Wanda-50%'s quality while actually shrinking the model (checked on Qwen3-0.6B: 11.1% of weight memory removed, perplexity 16.63 vs. 23.68, mean accuracy 43.95% vs. 43.80%; measured before 2026-11-17 with FLAP's WikiText-2 calibration, so not directly comparable with later numbers) | Report Wanda-50% alongside as a backup quality reference |
 
 ---
 
@@ -361,7 +363,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 | Component | Responsibility | Interface |
 |---|---|---|
 | Baseline | Cut FLAP to the memory limit (the smallest FLAP ratio whose weights fit); record its plan and validation perplexity before the search, test perplexity and multiple-choice accuracy at the end | `flap_at_memory_limit(model, stats, memory_limit) -> Baseline` |
-| Scorer | FLAP fluctuation scores per MLP neuron and attention group; bias compensation values; Wanda weight scores; Block Influence per layer; computed once on the dense model | `score(model, calib) -> Scores` |
+| Scorer | FLAP fluctuation scores per MLP neuron and attention group; bias compensation values; Wanda weight scores; Block Influence per layer; computed once on the dense model, all from the one calibration set (C4, 128 × 2,048 tokens) | `score(model, calib) -> Scores` |
 | Layer Probes | Layer-local output error for each chosen strategy at 1, 2 and 3 steps (settings set by code) | `probe(layer, strategies, cached_acts, scores) -> LayerProbe` |
 | Agent Client | Prompt, JSON schema, parse, cache, usage meter; calls one backend: `CodexBackend` (`codex exec`, read-only, ephemeral) or `ApiBackend` (provider SDK, structured output, cost meter) | `decide(state) -> AgentAction`; `Backend.complete(prompt, schema) -> (json, usage)` |
 | Validator | Fixed rules | `check(action, plan, run) -> CheckResult` |
@@ -380,7 +382,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 
 | Role | Dataset | Link |
 |---|---|---|
-| Calibration (scoring, probes, compared methods) | C4 `en`, 128 samples × 2,048 tokens | https://huggingface.co/datasets/allenai/c4 |
+| Calibration: the one set every method uses (the agent's scores and probes, Baseline: FLAP, Wanda-50%, uniform Wanda-sp); a different source from the evaluation text | C4 `en`, 128 samples × 2,048 tokens (FLAP's own WikiText-2 training set is kept only to check our FLAP code against the authors'; FLAP numbers measured before 2026-11-17 (task 1.9's 15.2% of weight memory removed, and the 11.1% run with no allowance quoted in A7) used FLAP's own WikiText-2 calibration text, and are not directly comparable with later numbers) | https://huggingface.co/datasets/allenai/c4 |
 | Gate (every candidate) | WikiText-2 validation split, a fixed subset of 32 of its 128 windows, every 4th window starting at the first; Baseline: FLAP's perplexity on these same 32 windows is shown to the agent. The full split is used for reported results | https://huggingface.co/datasets/Salesforce/wikitext (`wikitext-2-raw-v1`) |
 | Final perplexity | WikiText-2 test split | same |
 | Final multiple-choice accuracy (Wanda's 7 question sets; no practice examples given) | BoolQ, RTE, HellaSwag, WinoGrande, ARC-Easy, ARC-Challenge, OpenBookQA via lm-evaluation-harness | https://github.com/EleutherAI/lm-evaluation-harness |

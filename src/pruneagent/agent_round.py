@@ -353,6 +353,7 @@ def _previous_table(record: dict, prev: dict) -> list[str]:
         return f"{x:.2f}" if x else "-"
 
     now = record.get("calibration", {}).get("entry", "this run's calibration")
+    now = "C4, 128 x 2,048 tokens" if now.startswith("c4_calib__") else now
     rows = [("Baseline: FLAP", prev.get("flap_ppl"), (record.get("baseline_flap") or {}).get("ppl"))]
     rows += [(f"Candidate {v['index'] + 1}", old, v.get("measured", {}).get("ppl"))
              for v, old in zip(record["validation"], prev.get("candidate_ppl", []), strict=False)]
