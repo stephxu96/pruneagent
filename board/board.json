@@ -483,8 +483,8 @@
       ],
       "done_when": "Graph compiles; each edge tested with a fake LLM",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started (fakes only, no compute)"
     },
     {
       "id": "2.5",
@@ -553,8 +553,8 @@
       ],
       "done_when": "Reviewed against the ADR-007 neutrality rule",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Drafting with Steph"
     },
     {
       "id": "2.10",
