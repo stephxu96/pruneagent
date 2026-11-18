@@ -196,4 +196,4 @@ def test_a_missing_prompt_builder_falls_back_to_the_placeholder():
     notes = []
     assert RR.prompt_builder("pruneagent.nothing_here:build_prompt", notes.append) is None
     assert "placeholder" in notes[0]
-    assert RR.prompt_builder("pruneagent.graph:placeholder_prompt") is not None
+    assert RR.prompt_builder("pruneagent.instructions:build_prompt") is not None
