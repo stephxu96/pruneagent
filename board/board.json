@@ -630,7 +630,7 @@
           "go_if": "≥ 1 ACCEPT and ≥ 1 ROLLBACK, under 2 h and 60 agent calls",
           "fallback": "One candidate per round (descoping step 3); retry the next morning",
           "result": "pending",
-          "observed": "13 ACCEPT, 0 ROLLBACK; ~24 min Mac GPU, 13 agent calls. No candidate came near the 15% per-step limit (largest rise 7%), so the undo path never triggered; it is covered only by tests with a fake agent."
+          "observed": "13 ACCEPT, 0 ROLLBACK; ~24 min Mac GPU, 13 agent calls. No candidate came near the 15% per-step limit (largest single-step rise about 10%), so the undo path never triggered; it is covered only by tests with a fake agent."
         }
       ]
     },
