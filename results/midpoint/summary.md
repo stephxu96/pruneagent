@@ -2,7 +2,7 @@
 
 ## Headline
 
-On the small model (Qwen3-0.6B-Base), cut to 10% less weight memory, the agent's model scores **15.55 perplexity on held-out test text, against 17.90 for Baseline: FLAP**: 13% lower (better) at the same memory limit. It got there in 13 rounds, with every round's step kept. On seven multiple-choice question sets it also keeps more accuracy: **46.3% against 44.6%** for Baseline: FLAP, a smaller lead. This is one run on one model.
+On the small model (Qwen3-0.6B-Base), cut to 10% less weight memory, the agent's model scores **15.55 perplexity on held-out test text, against 17.90 for Baseline: FLAP**: 13% lower (better) at the same memory limit. It got there in 13 rounds, with every round's step kept. On seven multiple-choice question sets it is clearly more accurate on 2 (by 6.7 and 2.4 points), and FLAP is clearly ahead on none; the other 5 are too close to call. This is one run on one model.
 
 ## The question
 
@@ -30,20 +30,21 @@ The agent's lead holds on held-out text (11% on unseen validation, 13% on test),
 
 ## Accuracy on multiple-choice questions
 
-Perplexity measures how well a model predicts text; accuracy measures whether it picks the right answer to a question. We scored both pruned models on the seven question sets used in the Wanda paper (higher is better), on the Mac GPU.
+Perplexity measures how well a model predicts text; accuracy measures whether it picks the right answer to a question. We scored both pruned models on seven standard question sets used in earlier pruning research (percent correct, higher is better), on the Mac GPU.
 
-| Question set | Unpruned (Colab GPU) | **Agent** | Baseline: FLAP |
-|---|---|---|---|
-| boolq | 69.9 | **64.7** | 62.3 |
-| rte | 69.7 | **56.3** | 52.7 |
-| hellaswag | 41.0 | 36.5 | 36.3 |
-| winogrande | 58.5 | 56.0 | **57.1** |
-| arc_easy | 65.2 | **61.7** | 55.0 |
-| arc_challenge | 33.2 | **27.6** | 25.4 |
-| openbookqa | 24.6 | 21.2 | **23.4** |
-| **Mean** | 51.7 | **46.3** | 44.6 |
+The sets differ a lot in size, from 277 to 10,042 questions, so we compare them one at a time rather than averaging them. A gap counts as clear only when it is about twice the random variation expected for a set of that size.
 
-The agent is ahead by 1.7 points on average and on 4 of the 7 sets; FLAP is ahead on 2, and hellaswag is a tie. The lead is modest: the smaller sets (rte has 277 questions, openbookqa 500) move by 2–3 points between runs on their own, so most of the lead comes from arc_easy (6.7 points on 2,376 questions) and boolq. The unpruned score was measured earlier on a Colab GPU, so compare it loosely; the two pruned models were measured the same way on the same machine.
+| Question set | What it tests | Questions | Unpruned (Colab GPU) | **Agent** | Baseline: FLAP | Agent minus FLAP | Clear difference? |
+|---|---|---:|---:|---:|---:|---:|---|
+| arc_easy | school science questions, easier | 2,376 | 65.2 | **61.7** | 55.0 | +6.7 | **yes** |
+| boolq | yes/no questions about a passage | 3,270 | 69.9 | **64.7** | 62.3 | +2.4 | **yes** |
+| arc_challenge | school science questions, harder | 1,172 | 33.2 | 27.6 | 25.4 | +2.2 | no |
+| rte | does one sentence follow from another | 277 | 69.7 | 56.3 | 52.7 | +3.6 | no |
+| hellaswag | the most sensible ending for a sentence | 10,042 | 41.0 | 36.5 | 36.3 | +0.2 | no |
+| winogrande | who or what a pronoun refers to | 1,267 | 58.5 | 56.0 | 57.1 | −1.2 | no |
+| openbookqa | science questions needing a known fact | 500 | 24.6 | 21.2 | 23.4 | −2.2 | no |
+
+The agent is clearly ahead on 2 sets and FLAP is clearly ahead on none; the other 5 are too close to call. The unpruned scores were measured earlier on a Colab GPU, so compare them loosely; the two pruned models were measured the same way on the same machine.
 
 ## How the agent got there
 
@@ -65,7 +66,7 @@ It followed the measured damage table rather than the misleading quick tests: it
 ## Limits
 
 - One run, one model, one memory limit. Codex's answers vary from run to run; repeats come in tuning (3.1).
-- The accuracy lead (1.7 points) is smaller than the perplexity lead and rests mostly on two question sets.
+- The accuracy lead is smaller than the perplexity lead: clear on 2 of 7 question sets, too close to call on the rest.
 - The small model only; the production comparison on 1.7B is phase 4.
 
 Files: `decisions.jsonl` (every round, candidates and reasons), `plans/` (every kept plan), `heldout.json` (held-out numbers), `accuracy.json` (accuracy per question set). Reproduce with `scripts/heldout_check.py runs/<run-id>` and `scripts/accuracy_check.py runs/<run-id>`.
