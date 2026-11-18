@@ -525,8 +525,8 @@
       ],
       "done_when": "Restores exact earlier perplexity",
       "gpu": "T4",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started, no compute"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started, no compute\n[2026-11-17] Done: runstore.py; runs/<run-id>/ with SQLite checkpoints, plan JSON, decision log; rollback; runs/resume commands; kill-and-resume tests."
     },
     {
       "id": "2.8",
@@ -539,8 +539,8 @@
       ],
       "done_when": "Log schema test",
       "gpu": "",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started, no compute"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started, no compute\n[2026-11-17] Done: runstore.py; runs/<run-id>/ with SQLite checkpoints, plan JSON, decision log; rollback; runs/resume commands; kill-and-resume tests."
     },
     {
       "id": "2.9",
