@@ -163,7 +163,7 @@ def test_all_candidates_over_the_step_limit_roll_back(tmp_path):
 def test_agent_rollback_restores_an_earlier_accepted_plan(tmp_path):
     script = {1: reply([(0, "narrow_mlp")]), 2: reply([(1, "narrow_mlp")]),
               3: reply(action="rollback", rollback_to=0)}
-    deps, _ = setup(tmp_path, lambda n, p: script.get(n, reply([(n - 2, "wanda_sparsity")])))
+    deps, _ = setup(tmp_path, lambda n, p: script.get(n, reply([(n - 2, "narrow_mlp")])))
     state = G.run(deps, run_config(rules=Rules(max_rounds=4)))
     rb = state["history"][2]
     assert rb.action == "rollback" and rb.outcome is None
@@ -252,3 +252,85 @@ def test_agent_stop_ends_the_search_with_a_record(tmp_path):
     assert [r.action for r in state["history"]] == ["apply", "stop"]
     assert state["stop_reason"] == "the agent stopped"
     assert [w.kind for w in state["warnings"]] == ["out_of_reach"]
+
+
+# ---------------------------------------------------------------- the gate (task 2.6)
+
+
+def cand(i, ppl, freed_mb, speed=None, last=10.0):
+    plan = P.dense_plan(CFG)
+    est = E.estimate(CFG, plan, run_config().device)
+    rise = ppl / last - 1
+    freed = int(freed_mb * 1e6)
+    return G.CandidateResult(candidate_id=i, choices=[], plan=plan, estimate=est, rank_decode_tok_s=speed,
+                             val_ppl=ppl, step_rise=rise, freed_bytes=freed, rise_per_mb=G.rise_per_mb(rise, freed))
+
+
+def chosen(results, limit=0.15):
+    g = G.choose(results, limit)
+    return g.chosen_candidate if g.decision == "ACCEPT" else "ROLLBACK"
+
+
+def test_gate_smallest_rise_per_mb_wins_not_lowest_perplexity():
+    # +2% for 1 MB (2%/MB) loses to +10% for 10 MB (1%/MB): the cheaper-per-MB, larger cut wins
+    assert chosen([cand(0, 10.2, 1), cand(1, 11.0, 10)]) == 1
+
+
+def test_gate_per_step_limit_is_inclusive_and_absolute():
+    assert chosen([cand(0, 11.5, 1)]) == 0  # exactly +15% passes
+    assert chosen([cand(0, 11.5001, 100)]) == "ROLLBACK"  # just over, however much it frees
+    assert chosen([cand(0, 11.6, 100), cand(1, 11.4, 1)]) == 1  # only candidates within the limit compete
+    assert chosen([cand(0, 10.5, 1)], limit=0.04) == "ROLLBACK"  # the limit comes from the rules
+
+
+def test_gate_candidate_that_frees_nothing_cannot_win():
+    assert G.rise_per_mb(0.01, 0) is None and G.rise_per_mb(0.01, -5) is None
+    assert chosen([cand(0, 10.0, 0)]) == "ROLLBACK"  # no rise, but nothing freed (e.g. Wanda sparsity only)
+    assert chosen([cand(0, 10.0, 0), cand(1, 11.4, 1)]) == 1
+
+
+def test_gate_perplexity_drop_wins_over_any_rise():
+    assert chosen([cand(0, 9.9, 1), cand(1, 10.01, 100)]) == 0  # negative rise per MB beats a tiny positive one
+
+
+def test_gate_ties_go_to_the_faster_plan_then_the_earlier_candidate():
+    # last accepted perplexity 8: +12.5% for 2 MB and +6.25% for 1 MB are both exactly 6.25% per MB
+    assert chosen([cand(0, 9.0, 2, speed=50, last=8), cand(1, 8.5, 1, speed=60, last=8)]) == 1  # faster wins
+    assert chosen([cand(0, 9.0, 2, speed=None, last=8), cand(1, 8.5, 1, speed=10, last=8)]) == 1  # none: slowest
+    assert chosen([cand(0, 9.0, 2, last=8), cand(1, 8.5, 1, last=8)]) == 0  # full tie: the earlier candidate
+    assert chosen([]) == "ROLLBACK"
+
+
+def test_round_with_only_memory_neutral_candidates_rolls_back(tmp_path):
+    # Wanda sparsity zeroes weights but frees no weight memory, so it cannot win the gate
+    def policy(n, prompt):
+        return reply([(0, "wanda_sparsity")]) if n == 1 else reply([(n - 2, "narrow_mlp")])
+
+    deps, backend = setup(tmp_path, policy)
+    state = G.run(deps, run_config())
+    first = state["history"][0]
+    assert first.outcome == "ROLLBACK" and first.candidates[0].freed_bytes == 0
+    assert first.candidates[0].rise_per_mb is None
+    assert "no candidate within 15% frees memory" in backend.prompts[1]
+    assert outcomes(state)[1:] == ["ACCEPT"] * 3
+
+
+def test_evaluator_that_takes_the_accepted_plan_gets_it(tmp_path):
+    from pruneagent.candidate_eval import Evaluation
+
+    calls = []
+
+    class Recording:
+        takes_accepted = True
+
+        def __call__(self, plan, accepted):
+            calls.append((plan, accepted))
+            return Evaluation(ppl=fake_ppl(plan), gpu_seconds=7.0, start_layer=None)
+
+    deps, _ = setup(tmp_path, lambda n, p: reply([(n - 1, "narrow_mlp")], [(n - 1, "remove_attention_group")]),
+                    evaluate=Recording())
+    state = G.run(deps, run_config())
+    assert calls[0] == (P.dense_plan(CFG), P.dense_plan(CFG))  # the unpruned model, as its own reference
+    assert all(acc == P.dense_plan(CFG) for _, acc in calls[1:3])  # round 1: against the unpruned plan
+    assert calls[3][1] == state["accepted"][1].plan  # round 2: against round 1's accepted plan
+    assert [r.gpu_seconds for r in state["history"]] == [14.0] * 3  # the evaluator's own seconds, summed
