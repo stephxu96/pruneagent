@@ -1,4 +1,4 @@
-"""Command-line entry point. Further subcommands (run, resume, report) arrive in later tasks."""
+"""Command-line entry point. Further subcommands (run, report) arrive in later tasks."""
 
 from pathlib import Path
 from typing import Annotated
@@ -1137,3 +1137,38 @@ def agent_round_cmd(
     if "reference_ppl_32" in record:
         out.with_suffix(".md").write_text(A.summary_markdown(record))
     typer.echo(f"Saved {out}")
+
+
+@app.command("runs")
+def runs_cmd(
+    root: Annotated[Path, typer.Option(help="Directory holding the runs.")] = Path("runs"),
+) -> None:
+    """List runs with their status (running, interrupted, paused and why, finished), last round and accepted
+    plans."""
+    from pruneagent import runstore
+
+    found = runstore.list_runs(root)
+    if not found:
+        typer.echo(f"No runs under {root}.")
+        return
+    width = max(len(r.run_id) for r in found)
+    typer.echo(f"{'run':<{width}}  {'round':>5}  {'accepted':>8}  {'updated (UTC)':<19}  status")
+    for r in found:
+        typer.echo(f"{r.run_id:<{width}}  {r.round:>5}  {r.n_accepted:>8}  {r.updated[:19]:<19}  {r.describe()}")
+
+
+@app.command("resume")
+def resume_cmd(
+    run_id: Annotated[str | None, typer.Argument(help="Run to resume; optional when exactly one run is paused.")]
+    = None,
+    root: Annotated[Path, typer.Option(help="Directory holding the runs.")] = Path("runs"),
+) -> None:
+    """Continue a paused or interrupted run from its last checkpoint, without repeating an agent call."""
+    from pruneagent import graph, runstore
+
+    try:
+        state = graph.resume_run(run_id, root)
+    except runstore.ResumeError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(1) from None
+    typer.echo(f"Finished after round {state.get('round', 0)}: {state.get('stop_reason')}")
