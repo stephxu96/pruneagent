@@ -341,6 +341,28 @@ def _vs(ppl: float | None, ref: float | None) -> str:
     return f"{ppl / ref - 1:+.0%}" if ppl and ref else "-"
 
 
+def previous_numbers(record: dict, source: str, calibration: str) -> dict:
+    """The perplexities of an earlier run of the same round, to show next to a re-measurement."""
+    return {"source": source, "calibration": calibration,
+            "flap_ppl": (record.get("baseline_flap") or {}).get("ppl"),
+            "candidate_ppl": [v.get("measured", {}).get("ppl") for v in record.get("validation", [])]}
+
+
+def _previous_table(record: dict, prev: dict) -> list[str]:
+    def f(x):
+        return f"{x:.2f}" if x else "-"
+
+    now = record.get("calibration", {}).get("entry", "this run's calibration")
+    rows = [("Baseline: FLAP", prev.get("flap_ppl"), (record.get("baseline_flap") or {}).get("ppl"))]
+    rows += [(f"Candidate {v['index'] + 1}", old, v.get("measured", {}).get("ppl"))
+             for v, old in zip(record["validation"], prev.get("candidate_ppl", []), strict=False)]
+    out = [(f"Compared with the earlier run ({prev['source']}; FLAP scores from {prev['calibration']}), "
+            f"perplexity on the same 32 windows:"), "",
+           f"| Model | Before ({prev['calibration']}) | Now ({now}) | Change |", "|---|---|---|---|"]
+    out += [f"| {name} | {f(old)} | {f(new)} | {_vs(new, old)} |" for name, old, new in rows]
+    return out + [""]
+
+
 def summary_markdown(record: dict) -> str:
     m = record["memory"]
     ref = record.get("reference_ppl_32")
@@ -380,6 +402,8 @@ def summary_markdown(record: dict) -> str:
             f"{_mb(removed) if removed is not None else '-'} | "
             f"{('yes' if v['weight_bytes'] <= m['limit_bytes'] else 'no') if removed is not None else '-'} |")
     lines.append("")
+    if prev := record.get("previous"):
+        lines += _previous_table(record, prev)
     for c, v in zip(record["candidates"], record["validation"], strict=True):
         lines += [f"**Candidate {v['index'] + 1}.** {c['rationale']}", ""]
         by: dict[str, list] = {}

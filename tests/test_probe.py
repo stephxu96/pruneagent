@@ -18,7 +18,7 @@ def setup():
                       num_attention_heads=8, num_key_value_heads=4, head_dim=16, max_position_embeddings=128)
     model = Qwen3ForCausalLM(cfg).eval()
     torch.manual_seed(1)
-    scores = pruner.compute_scores(model, torch.randint(0, 97, (8, 16)), torch.randint(0, 97, (4, 32)), "cpu")
+    scores = pruner.compute_scores(model, torch.randint(0, 97, (8, 16)), "cpu")
     acts = pr.capture(model, torch.randint(0, 97, (3, 24)), "cpu")
     return model, scores, acts
 

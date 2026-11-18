@@ -137,3 +137,24 @@ def test_prune_flap_end_to_end():
     assert 0.15 < 1 - after / before < 0.45
     assert out["attn_keep"].shape == (3, 2) and out["mlp_keep"].shape == (3, 128)
     assert torch.isfinite(logits(model, torch.randint(0, 97, (1, 10)))).all()
+
+
+def test_fluctuation_matches_reference_on_long_samples():
+    """FLAP statistics on 2,048-token samples (the shared C4 set) agree with the reference update, which was
+    published with 128-token samples; nothing in the update depends on the sample length."""
+    torch.manual_seed(2)
+    ref, ours = RefBiasGPT(16), flap._Fluct(16, "cpu")
+    for _ in range(4):
+        x = torch.randn(1, 2048, 16) * 3 + 1
+        ref.add_batch(x)
+        ours.add(x)
+    assert torch.allclose(ours.mean, ref.baseline_inp, atol=1e-5)
+    assert torch.allclose(ours.fluct, ref.fluc_inp, rtol=1e-4)
+
+
+def test_collect_on_few_long_samples():
+    model = tiny()
+    stats = flap.collect(model, torch.randint(0, 97, (2, 128)), "cpu")
+    for t in (stats.attn_fluct, stats.attn_mean, stats.mlp_fluct, stats.mlp_mean):
+        assert t.shape[0] == 3 and torch.isfinite(t).all()
+    assert (stats.mlp_fluct > 0).all()

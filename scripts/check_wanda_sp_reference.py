@@ -8,6 +8,9 @@ adapted to Qwen3: 128 channels per head -> 256 per key/value group, and num_head
 reference's `compress` is replaced by our removal functions (no bias, as the reference calls it). The reference
 loop runs on one copy of the model, ours on another; the script reports how many groups and neurons the two keep
 differently, block by block, and writes a JSON to results/wanda_sp/.
+
+Calibration: Wanda-sp's published setting (128 x 128 tokens of C4, `d.wanda_sp_reference_calib_name`). Compared
+or benchmarked Wanda-sp results use the shared C4 set (128 x 2,048, `d.wanda_sp_calib_name`).
 """
 
 import argparse
@@ -106,8 +109,8 @@ def main() -> None:
     args = ap.parse_args()
     device = args.device or ev.pick_device()
     manifest = d.read_manifest()
-    entry = manifest["entries"][d.wanda_sp_calib_name(args.model)]
-    calib = d.load_tokens(d.wanda_sp_calib_name(args.model))
+    entry = manifest["entries"][d.wanda_sp_reference_calib_name(args.model)]
+    calib = d.load_tokens(d.wanda_sp_reference_calib_name(args.model))
 
     model = ev.load_model(args.model, entry["tokenizer"]["revision"], "float16", device)
     ref_attn, ref_mlp = reference(model, calib, args.ratio, device)
@@ -118,7 +121,7 @@ def main() -> None:
 
     result = {
         "model": args.model, "ratio": args.ratio, "device": device, "dtype": "float16",
-        "calibration": {"entry": d.wanda_sp_calib_name(args.model), "sha256": entry["sha256"],
+        "calibration": {"entry": d.wanda_sp_reference_calib_name(args.model), "sha256": entry["sha256"],
                         "shape": entry["shape"]},
         "groups_total": ref_attn.numel(),
         "groups_kept_ref": int(ref_attn.sum()),

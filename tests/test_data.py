@@ -130,3 +130,21 @@ def test_stream_sampling_matches_flap_reference():
         i = random.randint(0, ids.shape[1] - 16 - 1)
         ref.append(ids[:, i : i + 16])
     assert torch.equal(d.sample_stream(ids, 5, 16, 0), torch.cat(ref))
+
+
+def test_every_method_calibrates_on_the_shared_c4_set():
+    """One calibration set for every compared method (2026-11-17); the published sets are reference-only."""
+    for m in (d.DEFAULT_MODEL, "Qwen/Qwen3-1.7B-Base"):
+        assert d.flap_calib_name(m) == d.wanda_sp_calib_name(m) == d.calib_name(m)
+        assert d.calib_name(m).startswith("c4_calib__")
+        assert d.flap_reference_calib_name(m).startswith("wikitext2_train_flap_calib__")
+        assert d.wanda_sp_reference_calib_name(m).startswith("c4_wanda_sp_calib__")
+
+
+def test_only_the_reference_check_uses_flap_wikitext2_calibration():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    users = sorted(p.relative_to(root).as_posix() for p in [*root.glob("src/**/*.py"), *root.glob("scripts/*.py")]
+                   if "flap_reference_calib_name(" in p.read_text() and p.name != "data.py")
+    assert users == ["scripts/check_flap_reference.py"]

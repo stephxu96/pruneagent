@@ -128,3 +128,19 @@ def test_flap_bytes_match_estimator_and_ratio_fits_limit():
     limit = A.memory_limit(CFG)
     _, size = A.flap_ratio_for_limit(attn, mlp, CFG, limit)
     assert limit - 2e6 < size <= limit  # fits, and not far below
+
+
+def test_summary_shows_previous_numbers_side_by_side():
+    old = {"baseline_flap": {"ppl": 15.4}, "validation": [{"measured": {"ppl": 18.61}}, {"measured": {"ppl": 15.72}}]}
+    record = {"model": "m", "codex": {}, "prompt_chars": 1, "prompt_words": 1, "dense_ppl_32": 13.15,
+              "memory": {"limit_bytes": 1072.9e6, "dense_bytes": 1192.1e6, "cut": 0.1},
+              "calibration": {"entry": "c4_calib__m"},
+              "baseline_flap": {"ppl": 16.0, "ratio": 0.1, "weight_bytes_removed": 119.2e6},
+              "candidates": [{"choices": [], "rationale": "a"}, {"choices": [], "rationale": "b"}],
+              "validation": [{"index": 0, "valid": True, "measured": {"ppl": 17.0}, "weight_bytes": 1072e6},
+                             {"index": 1, "valid": True, "measured": {"ppl": 15.72}, "weight_bytes": 1072e6}]}
+    record["previous"] = A.previous_numbers(old, "round1.json", "WikiText-2 train")
+    md = A.summary_markdown(record)
+    assert "| Baseline: FLAP | 15.40 | 16.00 | +4% |" in md
+    assert "| Candidate 1 | 18.61 | 17.00 | -9% |" in md
+    assert "| Candidate 2 | 15.72 | 15.72 | +0% |" in md

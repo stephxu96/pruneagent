@@ -363,18 +363,19 @@ def _scores(net, model: str, revision: str, device: str, dtype: str, data_dir: P
     from pruneagent import pruner
 
     scores_path = scores_path or Path("checkpoints/scores") / f"{d.slug(model)}__{device}__{dtype}.safetensors"
-    if scores_path.exists():
-        typer.echo(f"  scores from {scores_path}")
-        return pruner.load_scores(scores_path)
-    start = time.perf_counter()
     manifest = d.read_manifest(data_dir)
-    meta = {"model": model, "revision": revision, "device": device, "dtype": dtype,
-            "flap_calib": d.flap_calib_name(model),
-            "flap_calib_sha256": manifest["entries"][d.flap_calib_name(model)]["sha256"],
-            "wanda_calib": d.calib_name(model),
-            "wanda_calib_sha256": manifest["entries"][d.calib_name(model)]["sha256"]}
-    scores = pruner.compute_scores(net, d.load_tokens(d.flap_calib_name(model), data_dir),
-                                   d.load_tokens(d.calib_name(model), data_dir), device, meta=meta)
+    calib = d.calib_name(model)
+    want = {"calib": calib, "calib_sha256": manifest["entries"][calib]["sha256"]}
+    if scores_path.exists():
+        cached = pruner.load_scores(scores_path)
+        if all(cached.meta.get(k) == v for k, v in want.items()):
+            typer.echo(f"  scores from {scores_path}")
+            return cached
+        typer.echo(f"  {scores_path} was computed on other calibration data "
+                   f"({cached.meta.get('flap_calib') or cached.meta.get('calib')}); recomputing on {calib}")
+    start = time.perf_counter()
+    meta = {"model": model, "revision": revision, "device": device, "dtype": dtype, **want}
+    scores = pruner.compute_scores(net, d.load_tokens(calib, data_dir), device, meta=meta)
     scores_path.parent.mkdir(parents=True, exist_ok=True)
     pruner.save_scores(scores, scores_path)
     typer.echo(f"  scores computed in {time.perf_counter() - start:.0f} s -> {scores_path}")
@@ -994,6 +995,11 @@ def agent_round_cmd(
     data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
     out: Annotated[Path, typer.Option(help="Output JSON (a .md summary is written next to it).")] = Path(
         "results/agent_round/round1.json"),
+    previous: Annotated[Path | None, typer.Option(
+        help="Earlier output JSON of the same round; its perplexities are shown next to the new ones.")] = None,
+    previous_calibration: Annotated[str, typer.Option(
+        help="How the earlier run's FLAP scores were calibrated (label for --previous).")] = "WikiText-2 train",
+    title: Annotated[str | None, typer.Option(help="Heading of the .md summary.")] = None,
 ) -> None:
     """One agent round by hand: prompt, one Codex call, parse, validate, apply one step per choice, measure.
     Call Codex once with --no-measure, then measure from the saved reply under the GPU lock:
@@ -1037,7 +1043,11 @@ def agent_round_cmd(
 
     prompt = A.build_prompt(config, table, limit)
     out.parent.mkdir(parents=True, exist_ok=True)
-    side = {k: out.with_name(f"{out.stem}_{k}") for k in ("prompt.txt", "reply.txt", "codex.json", "codex_stderr.txt")}
+    names = ("prompt.txt", "reply.txt", "codex.json", "codex_stderr.txt")
+    side = {k: out.with_name(f"{out.stem}_{k}") for k in names}
+    if reply is not None:  # read the saved call's files next to the reply (round1_reply.txt -> round1_prompt.txt)
+        stem = reply.name.removesuffix("reply.txt")
+        side = {k: reply.with_name(stem + k) for k in names} if stem != reply.name else side
     if reply is not None and side["prompt.txt"].exists():
         prompt = side["prompt.txt"].read_text().removesuffix("\n")  # the prompt that produced the saved reply
     else:
@@ -1064,7 +1074,18 @@ def agent_round_cmd(
     record = {"task": "1.11", "model": model, "revision": revision, "probes": str(probes), "prompt": prompt,
               "prompt_chars": len(prompt), "prompt_words": len(prompt.split()), "codex": codex, "raw_reply": raw,
               "memory": {"dense_bytes": dense_bytes, "limit_bytes": limit, "cut": memory_cut,
-                         "step_savings_bytes": A.step_savings(config)}}
+                         "step_savings_bytes": A.step_savings(config)},
+              "calibration": {"entry": d.calib_name(model), "sha256": manifest["entries"][d.calib_name(model)]["sha256"],
+                              "used_by": "FLAP scores (Baseline: FLAP, narrow_mlp, remove_attention_group) and Wanda"}}
+    if reply is not None:
+        record["reply_source"] = str(reply)
+    if title:
+        record["title"] = title
+    if previous is not None:
+        old = json.loads(previous.read_text())
+        record["previous"] = A.previous_numbers(old, str(previous), previous_calibration)
+        if old.get("prompt") == prompt and old.get("prompt_tokens_est"):
+            record |= {k: old[k] for k in ("prompt_tokens_est", "prompt_tokens_note") if k in old}
     try:
         cands = A.parse_reply(raw)
     except (ValueError, TypeError) as e:

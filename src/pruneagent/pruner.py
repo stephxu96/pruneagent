@@ -70,13 +70,12 @@ def collect_wanda_norms(model, calib: torch.Tensor, device: str, log=None) -> di
     return {n: torch.stack(v) for n, v in out.items()}
 
 
-def compute_scores(model, flap_calib: torch.Tensor, wanda_calib: torch.Tensor, device: str,
-                   meta: dict[str, str] | None = None, log=None) -> Scores:
-    """FLAP statistics and scores (FLAP's WikiText-2 calibration) and Wanda input norms (C4 calibration),
-    all on the unpruned model. The model is not changed."""
-    stats = flap.collect(model, flap_calib, device, log=log)
+def compute_scores(model, calib: torch.Tensor, device: str, meta: dict[str, str] | None = None, log=None) -> Scores:
+    """FLAP statistics and scores and Wanda input norms, all on the unpruned model and from the same calibration
+    set (the shared C4 set, `data.calib_name`, in every real run). The model is not changed."""
+    stats = flap.collect(model, calib, device, log=log)
     attn, mlp = flap.scores(model, stats)
-    wanda_sq = collect_wanda_norms(model, wanda_calib, device, log=log)
+    wanda_sq = collect_wanda_norms(model, calib, device, log=log)
     return Scores(stats=stats, attn=attn, mlp=mlp, wanda_sq=wanda_sq, meta=dict(meta or {}))
 
 

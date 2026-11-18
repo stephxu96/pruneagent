@@ -30,7 +30,7 @@ def models():
     for tied in (False, True):
         m = tiny(tied)
         torch.manual_seed(1)
-        out[tied] = m, pruner.compute_scores(m, torch.randint(0, 512, (4, 16)), torch.randint(0, 512, (2, 32)), "cpu")
+        out[tied] = m, pruner.compute_scores(m, torch.randint(0, 512, (4, 16)), "cpu")
     return out
 
 
