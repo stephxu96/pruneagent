@@ -973,3 +973,146 @@ def speed_check_cmd(
     out = results / f"{machine}.json"
     out.write_text(json.dumps(record, indent=2) + "\n")
     typer.echo(f"Saved {out}")
+
+
+@app.command("agent-round")
+def agent_round_cmd(
+    model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",
+    probes: Annotated[Path, typer.Option(help="Quick-test (probe) table JSON from `pruneagent probe`.")] = Path(
+        "results/probes/qwen3-0.6b-base__cuda__float16.json"),
+    memory_cut: Annotated[float, typer.Option(help="Memory limit: this share less weight memory than unpruned.")] = 0.10,
+    reply: Annotated[Path | None, typer.Option(help="Reuse a saved Codex reply instead of calling Codex.")] = None,
+    measure: Annotated[bool, typer.Option(help="Build each valid candidate and measure it on the GPU.")] = True,
+    baseline_only: Annotated[bool, typer.Option(
+        help="Only add Baseline: FLAP at the same memory limit to an existing output JSON.")] = False,
+    scores_path: Annotated[Path | None, typer.Option("--scores", help="Cached scores (computed if missing).")] = None,
+    reference: Annotated[Path, typer.Option(help="Subset results with Wanda-50% on the 32 windows.")] = Path(
+        "results/subset/qwen3-0.6b-base__cuda__float16.json"),
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
+    seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
+    device: Annotated[str | None, typer.Option(help="cuda, mps or cpu (default: best available).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
+    out: Annotated[Path, typer.Option(help="Output JSON (a .md summary is written next to it).")] = Path(
+        "results/agent_round/round1.json"),
+) -> None:
+    """One agent round by hand: prompt, one Codex call, parse, validate, apply one step per choice, measure.
+    Call Codex once with --no-measure, then measure from the saved reply under the GPU lock:
+    scripts/mac_gpu.sh uv run pruneagent agent-round --reply results/agent_round/round1_reply.txt"""
+    import gc
+    import json
+    import time
+
+    from transformers import AutoConfig
+
+    from pruneagent import agent_round as A
+    from pruneagent import data as d
+    from pruneagent import estimate as E
+    from pruneagent import plan as P
+
+    manifest = d.read_manifest(data_dir)
+    revision = manifest["entries"][d.calib_name(model)]["tokenizer"]["revision"]
+    config = AutoConfig.from_pretrained(model, revision=revision)
+    table = json.loads(probes.read_text())["table"]
+    dense_bytes = E.weight_bytes(config, P.dense_plan(config))
+    limit = A.memory_limit(config, memory_cut)
+
+    if baseline_only:
+        from pruneagent import evaluate as ev
+
+        record = json.loads(out.read_text())
+        device = device or ev.pick_device()
+        net = ev.load_model(model, revision, dtype, device)
+        scores = _scores(net, model, revision, device, dtype, data_dir, scores_path)
+        ids = d.load_tokens(d.wikitext_name("validation", model), data_dir).reshape(-1)
+        limit = record["memory"]["limit_bytes"]
+        record["baseline_flap"] = A.measure_flap(net, scores, config, limit, ids, seqlen, device, ev.GATE_WINDOWS)
+        record["baseline_flap"] |= {"device": device, "dtype": dtype, "scores": scores.meta}
+        b = record["baseline_flap"]
+        typer.echo(f"  Baseline: FLAP ratio {b['ratio']}: ppl {b['ppl']:.4f}, removed "
+                   f"{b['weight_bytes_removed'] / 1e6:,.1f} MB, within limit {b['within_limit']}")
+        out.write_text(json.dumps(record, indent=2) + "\n")
+        out.with_suffix(".md").write_text(A.summary_markdown(record))
+        typer.echo(f"Saved {out}")
+        return
+
+    prompt = A.build_prompt(config, table, limit)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    side = {k: out.with_name(f"{out.stem}_{k}") for k in ("prompt.txt", "reply.txt", "codex.json", "codex_stderr.txt")}
+    if reply is not None and side["prompt.txt"].exists():
+        prompt = side["prompt.txt"].read_text().removesuffix("\n")  # the prompt that produced the saved reply
+    else:
+        side["prompt.txt"].write_text(prompt + "\n")
+    typer.echo(f"Prompt: {len(prompt):,} characters, {len(prompt.split()):,} words")
+
+    if reply is None:
+        typer.echo("Calling Codex (one call; usually under a minute)...")
+        codex = A.call_codex(prompt)
+        side["reply.txt"].write_text(codex["stdout"])
+        side["codex_stderr.txt"].write_text(codex["stderr"])
+        side["codex.json"].write_text(
+            json.dumps({k: v for k, v in codex.items() if k not in ("stdout", "stderr")}, indent=2) + "\n")
+        typer.echo(f"  exit {codex['returncode']} in {codex['seconds']} s; tokens used {codex['tokens_used']}; "
+                   f"reply saved to {side['reply.txt']}")
+        if codex["returncode"] != 0:
+            raise typer.Exit(1)
+    else:
+        codex = json.loads(side["codex.json"].read_text()) if side["codex.json"].exists() else {}
+        codex["stderr"] = side["codex_stderr.txt"].read_text() if side["codex_stderr.txt"].exists() else None
+        codex["stdout"] = reply.read_text()
+    raw = codex["stdout"]
+
+    record = {"task": "1.11", "model": model, "revision": revision, "probes": str(probes), "prompt": prompt,
+              "prompt_chars": len(prompt), "prompt_words": len(prompt.split()), "codex": codex, "raw_reply": raw,
+              "memory": {"dense_bytes": dense_bytes, "limit_bytes": limit, "cut": memory_cut,
+                         "step_savings_bytes": A.step_savings(config)}}
+    try:
+        cands = A.parse_reply(raw)
+    except (ValueError, TypeError) as e:
+        record |= {"parse_error": str(e), "candidates": [], "validation": []}
+        out.write_text(json.dumps(record, indent=2) + "\n")
+        typer.echo(f"Could not parse the reply: {e}. Saved {out}")
+        raise typer.Exit(1) from e
+    checks = A.validate_candidates(cands, config)
+    record |= {"candidates": cands, "validation": checks}
+    for c, v in zip(cands, checks, strict=True):
+        typer.echo(f"  candidate {v['index'] + 1}: {len(c['choices'] or [])} choices, "
+                   + (f"valid, weights {v['weight_bytes'] / 1e6:,.1f} MB (limit {limit / 1e6:,.1f})" if v["valid"]
+                      else "INVALID: " + "; ".join(v["reasons"])))
+
+    if reference.exists():
+        record["reference_ppl_32"] = json.loads(reference.read_text())["plans"]["p00_wanda50_all"]["ppl"]["32"]
+        record["reference_source"] = f"{reference} (Wanda-50% on every layer, 32-window subset)"
+
+    if measure and any(v["valid"] for v in checks):
+        from pruneagent import evaluate as ev
+        from pruneagent import pruner
+
+        device = device or ev.pick_device()
+        record |= _run_record(model, revision, device, dtype, seqlen)
+        net = ev.load_model(model, revision, dtype, device)
+        scores = _scores(net, model, revision, device, dtype, data_dir, scores_path)
+        record["scores"] = scores.meta
+        ids = d.load_tokens(d.wikitext_name("validation", model), data_dir).reshape(-1)
+        r = ev.subset_perplexity(net, ids, ev.GATE_WINDOWS, seqlen, device)
+        record["dense_ppl_32"] = r.ppl
+        typer.echo(f"  unpruned: ppl {r.ppl:.4f} on {r.n_windows} windows ({r.seconds:.0f} s)")
+        record["baseline_flap"] = A.measure_flap(net, scores, config, limit, ids, seqlen, device, ev.GATE_WINDOWS)
+        typer.echo(f"  Baseline: FLAP: ppl {record['baseline_flap']['ppl']:.4f}")
+        for v in checks:
+            if not v["valid"]:
+                continue
+            start = time.perf_counter()
+            pruned = pruner.prune(net, v["plan"], scores)
+            r = ev.subset_perplexity(pruned, ids, ev.GATE_WINDOWS, seqlen, device)
+            v["measured"] = {"ppl": r.ppl, "n_windows": r.n_windows, "eval_seconds": round(r.seconds, 1),
+                             "total_seconds": round(time.perf_counter() - start, 1),
+                             "parameters": pruner.weight_counts(pruned)["parameters"],
+                             "weight_bytes_removed": dense_bytes - v["weight_bytes"],
+                             "within_limit": v["weight_bytes"] <= limit}
+            typer.echo(f"  candidate {v['index'] + 1}: ppl {r.ppl:.4f} ({r.seconds:.0f} s)")
+            del pruned
+            gc.collect()
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    if "reference_ppl_32" in record:
+        out.with_suffix(".md").write_text(A.summary_markdown(record))
+    typer.echo(f"Saved {out}")
