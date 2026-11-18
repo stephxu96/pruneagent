@@ -329,8 +329,8 @@
       ],
       "done_when": "Valid JSON; candidates evaluate",
       "gpu": "T4",
-      "status": "doing",
-      "notes": "[2026-11-17] Backend: Codex CLI (ChatGPT login), checked working"
+      "status": "done",
+      "notes": "[2026-11-17] Backend: Codex CLI (ChatGPT login), checked working\n[2026-11-17] Done. Codex proposed 3 plans at a 10% memory limit; all valid and within ~1 MB of the limit. Best: 15.72 perplexity (32 windows) vs Baseline: FLAP 15.40 (+2%); others 18.61 and 19.22. Codex follows the quick-test table too literally for dropping layers and ignores it for narrowing layer 1. ~42.5k tokens for 2 calls."
     },
     {
       "id": "1.12",
@@ -368,8 +368,8 @@
       ],
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
-      "status": "todo",
-      "notes": "[2026-11-17] Steph decided the checks (see results). Codex CLI chosen for task 1.11; test call works (~19.5k tokens per call, mostly Codex's own context).\n[2026-11-17] Architecture v0.7: memory limit required; Baseline: Wanda-50% with no allowance for now; FLAP and Wanda-sp compared at the same memory limit\n[2026-11-17] Architecture v0.8: Baseline: FLAP (FLAP cut to the same memory limit) is the primary comparison; Wanda-50% and uniform Wanda-sp are optional backups; ShortGPT comparison dropped",
+      "status": "done",
+      "notes": "[2026-11-17] Steph decided the checks (see results). Codex CLI chosen for task 1.11; test call works (~19.5k tokens per call, mostly Codex's own context).\n[2026-11-17] Architecture v0.7: memory limit required; Baseline: Wanda-50% with no allowance for now; FLAP and Wanda-sp compared at the same memory limit\n[2026-11-17] Architecture v0.8: Baseline: FLAP (FLAP cut to the same memory limit) is the primary comparison; Wanda-50% and uniform Wanda-sp are optional backups; ShortGPT comparison dropped\n[2026-11-17] Gate closed: all checks decided; 1.11 done.",
       "checks": [
         {
           "label": "References reproduce (1.1–1.3)",
