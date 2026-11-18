@@ -1,4 +1,4 @@
-"""Command-line entry point. Further subcommands (run, report) arrive in later tasks."""
+"""Command-line entry point. A report subcommand arrives in a later task."""
 
 from pathlib import Path
 from typing import Annotated
@@ -355,8 +355,9 @@ def _val_ppl(net, model: str, seqlen: int, windows: int | None, device: str, dat
 
 
 def _scores(net, model: str, revision: str, device: str, dtype: str, data_dir: Path | None,
-            scores_path: Path | None):
-    """Cached pruning scores for the unpruned `net`, computed and saved if missing."""
+            scores_path: Path | None, compute: bool = True):
+    """Cached pruning scores for the unpruned `net`, computed and saved if missing (None if missing and not
+    `compute`)."""
     import time
 
     from pruneagent import data as d
@@ -373,6 +374,8 @@ def _scores(net, model: str, revision: str, device: str, dtype: str, data_dir: P
             return cached
         typer.echo(f"  {scores_path} was computed on other calibration data "
                    f"({cached.meta.get('flap_calib') or cached.meta.get('calib')}); recomputing on {calib}")
+    if not compute:
+        return None
     start = time.perf_counter()
     meta = {"model": model, "revision": revision, "device": device, "dtype": dtype, **want}
     scores = pruner.compute_scores(net, d.load_tokens(calib, data_dir), device, meta=meta)
@@ -1137,6 +1140,79 @@ def agent_round_cmd(
     if "reference_ppl_32" in record:
         out.with_suffix(".md").write_text(A.summary_markdown(record))
     typer.echo(f"Saved {out}")
+
+
+@app.command("run")
+def run_cmd(
+    model: Annotated[str, typer.Option(help="Hugging Face model id (or a local model directory).")] = (
+        "Qwen/Qwen3-0.6B-Base"),
+    memory_limit_mb: Annotated[float | None, typer.Option(
+        help="Memory limit: weight memory in MB (1 MB = 1,000,000 bytes).")] = None,
+    memory_cut: Annotated[float | None, typer.Option(
+        help="Memory limit as a fraction less weight memory than the unpruned model, e.g. 0.10.")] = None,
+    device: Annotated[str, typer.Option(help="mps, cuda or cpu.")] = "mps",
+    backend: Annotated[str, typer.Option(help="Agent backend: codex or api.")] = "codex",
+    max_rounds: Annotated[int | None, typer.Option(help="Stop after this many rounds (default: the rules', 40).")]
+    = None,
+    dry_run: Annotated[bool, typer.Option(
+        "--dry-run", help="Build everything and print round 1's prompt; no agent call, no GPU, nothing saved.")]
+    = False,
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
+    target: Annotated[str | None, typer.Option(
+        help="Device target for the speed estimate: preset (m4, t4) or JSON file (default: from --device).")] = None,
+    scores: Annotated[Path | None, typer.Option(
+        help="Cached scores (default: checkpoints/scores/<model>__<device>__<dtype>.safetensors).")] = None,
+    probes: Annotated[Path | None, typer.Option(help="Quick-test file (default: from results/probes/).")] = None,
+    damage: Annotated[Path | None, typer.Option(
+        help="Measured per-layer damage (default: from results/damage_table/; used if it exists).")] = None,
+    data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")]
+    = None,
+    root: Annotated[Path, typer.Option(help="Directory holding the runs.")] = Path("runs"),
+    run_id: Annotated[str | None, typer.Option(help="Run id (default: <date>-<time>-<model>-<backend>).")] = None,
+) -> None:
+    """Start an agent run: prune MODEL to the memory limit, comparing with Baseline: FLAP at the same limit.
+    On the Mac, run it through the GPU lock:
+    scripts/mac_gpu.sh caffeinate -i uv run pruneagent run --memory-cut 0.10 --device mps --backend codex"""
+    from transformers import AutoConfig
+
+    from pruneagent import realrun as RR
+
+    if backend not in ("codex", "api"):
+        typer.echo("--backend must be codex or api", err=True)
+        raise typer.Exit(1)
+    try:
+        setup = RR.make_setup(model, device, dtype, data_dir, scores, probes, damage)
+        config = AutoConfig.from_pretrained(model, revision=setup.revision)
+        run_cfg = RR.make_run_config(model, config, device, memory_limit_mb=memory_limit_mb, memory_cut=memory_cut,
+                                     backend=backend, max_rounds=max_rounds, dtype=dtype, target=target)
+        typer.echo(f"{model} on {device}: memory limit {run_cfg.limit_bytes / 1e6:,.1f} MB of weights; "
+                   f"agent {backend}; up to {run_cfg.rules.max_rounds} rounds, {run_cfg.max_agent_calls} calls")
+        if dry_run:
+            out = RR.dry_run(run_cfg, setup, notify=lambda m: typer.echo(m, err=True))
+            for note in out["notes"]:
+                typer.echo(f"  {note}")
+            if out["estimate"]:
+                typer.echo(f"  usage limits: {out['estimate']}")
+            if out["prompt"] is None:
+                typer.echo(f"No agent call would be made: {out['stop_reason']}")
+                for w in out["warnings"]:
+                    typer.echo(f"  {w}")
+                return
+            typer.echo(f"Round 1 prompt ({len(out['prompt']):,} characters; the perplexities of the unpruned model "
+                       f"({RR.DRY_DENSE_PPL}) and Baseline: FLAP ({RR.DRY_FLAP_PPL}) are stand-ins):")
+            typer.echo("-" * 78)
+            typer.echo(out["prompt"])
+            typer.echo("-" * 78)
+            return
+        rid, state = RR.start(run_cfg, setup, root, run_id, notify=lambda m: typer.echo(m, err=True))
+    except RR.SetupError as e:
+        typer.echo(f"Cannot start the run: {e}", err=True)
+        raise typer.Exit(1) from None
+    if state.get("paused"):
+        typer.echo(f"Run {rid} paused after round {state.get('round', 0)}: {state['paused']}. "
+                   "Continue with `pruneagent resume` after the reset.")
+        return
+    typer.echo(f"Run {rid} finished after round {state.get('round', 0)}: {state.get('stop_reason')}")
 
 
 @app.command("runs")

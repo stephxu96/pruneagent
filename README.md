@@ -49,6 +49,27 @@ reply.data  # the agent's JSON answer
 
 **API backend:** `ApiBackend` reads `OPENAI_API_KEY` from the environment or from `.env`, which git ignores. Pass prices per million tokens to have the cost recorded and the $5 cap enforced.
 
+## Starting a run
+
+A run on the Mac must hold the shared GPU lock (`scripts/mac_gpu.sh`) and keep the Mac awake (`caffeinate -i`). For a memory limit 10% below the unpruned Qwen3-0.6B-Base, with Codex as the agent:
+
+```bash
+scripts/mac_gpu.sh caffeinate -i uv run pruneagent run --model Qwen/Qwen3-0.6B-Base --memory-cut 0.10 --device mps --backend codex
+```
+
+- `--memory-cut 0.10` sets the limit to 10% less weight memory than the unpruned model; `--memory-limit-mb 1000` sets it in MB instead. Give one of the two.
+- `--max-rounds N` stops after N agent replies (default 40).
+- `--dry-run` loads everything and prints the agent's first prompt, then stops. It calls no agent, uses no GPU and saves nothing, so it needs no GPU lock: `uv run pruneagent run --memory-cut 0.10 --device mps --dry-run`. The two perplexities in that prompt are placeholders, because nothing is measured.
+
+What the run loads:
+
+- the model in 16-bit on the GPU;
+- its pruning scores from `checkpoints/scores/`, computed from the C4 calibration text and saved there first if they are missing;
+- the quick tests from `results/probes/`, and the measured per-layer damage from `results/damage_table/` if that file exists (without it the run starts anyway and says so);
+- Baseline: FLAP cut to the same memory limit, measured on the same validation text as every candidate.
+
+The run is saved under `runs/<run-id>/` together with the files it was built from (`setup.json`), so `pruneagent resume` rebuilds it as it was. On the Mac, resume through the lock too: `scripts/mac_gpu.sh caffeinate -i uv run pruneagent resume`.
+
 ## Runs, checkpoints and resume
 
 Each run saves its progress in its own folder, `runs/<run-id>/`, named like `20261116-1432-qwen3-0.6b-codex`:
