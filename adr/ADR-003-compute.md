@@ -1,6 +1,8 @@
 # ADR-003: Compute — M4 Mac and Colab Pro T4 for Development and Speed Measurement; A100 for the Production Run
 
-- **Status:** Proposed (v0.6; M4 Mac becomes a speed-measurement machine alongside the T4)
+> **Revised 2026-11-17 (v0.7):** the Wanda-50% "quality bar" is now Baseline: Wanda-50%, the quality reference with no allowance for now. The compute plan is unchanged.
+
+- **Status:** Proposed (v0.7; wording only: Baseline: Wanda-50%)
 - **Date:** 2026-11-16
 - **Deciders:** Steph Xu
 - **Related:** ADR-002, ADR-006, ADR-007; ARCHITECTURE.md §1.6, §10
@@ -23,7 +25,7 @@ Available hardware: an M4 Mac, and Colab Pro with 270.34 compute units (units ex
 
 - Development on the M4 (Qwen3-0.6B, PyTorch fp16 on the Mac GPU) and Colab T4; fp16 with fp32 fallback on T4.
 - Production run (Qwen3-1.7B) on A100 in bf16.
-- The Wanda-50% quality bar is computed once per model: 0.6B on T4, 1.7B on A100.
+- Baseline: Wanda-50% (the quality reference) is computed once per model: 0.6B on T4, 1.7B on A100.
 - Memory and tokens per second for every compared method measured on the M4 and the T4 with a fixed prompt length, batch size and generation length (ADR-006). M4 measurements cost no compute units.
 - Hard cap of 200 compute units; 70 in reserve.
 - Checkpoint every step to Google Drive or local drive; `resume` restarts from the last checkpoint.

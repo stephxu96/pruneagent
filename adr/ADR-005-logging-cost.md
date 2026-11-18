@@ -1,6 +1,8 @@
 # ADR-005: Logging and Agent Calls — Decision Log with Rationale and Strategy Choices; Swappable Agent Backend (Codex CLI or LLM API); Cache, Usage Ledger, Pinned Versions
 
-- **Status:** Proposed (v0.6; agent calls through a swappable backend: Codex CLI on the ChatGPT plan, or an LLM API)
+> **Revised 2026-11-17 (v0.7):** the manifest records Baseline: Wanda-50% values (formerly "quality-bar values") and the memory limit, now required. Nothing else changes.
+
+- **Status:** Proposed (v0.7; manifest wording: Baseline: Wanda-50%, memory limit)
 - **Date:** 2026-11-16
 - **Deciders:** Steph Xu
 - **Related:** ADR-001, ADR-003, ADR-004, ADR-007; ARCHITECTURE.md §10
@@ -23,7 +25,7 @@ Neither is clearly better for every run: Codex costs nothing for tuning; an API 
 - **`ApiBackend`:** the provider's SDK with its structured-output mode bound to the same schema; provider and model set in the run config; key from `.env` (ignored by git) or Colab Secrets.
 - **Same contract tests for both:** a fake backend and both real backends must return schema-valid actions for the same fixed prompts; a malformed answer is rejected the same way.
 - **Decision log:** one JSONL file per run: every agent action with its rationale, probe results, validation result, every candidate with its memory, estimated speed and perplexity (how well the model predicts real text; lower is better), the gate decision, device-target warnings, strategies proposed and accepted, backend, tokens, seconds, cost (API), GPU time and evaluation count. This log is the audit trail and the source of the search measures and strategy counts (ADR-004).
-- **Manifest:** model id and revision, agent backend, provider or Codex CLI version, agent model and reasoning effort, instruction version, seed, dtype, quality-bar values, device target, git commit, lock-file hash, GPU type.
+- **Manifest:** model id and revision, agent backend, provider or Codex CLI version, agent model and reasoning effort, instruction version, seed, dtype, Baseline: Wanda-50% values, device target (memory limit required), git commit, lock-file hash, GPU type.
 - **LLM cache:** keyed by prompt, schema, backend and model; a rerun makes no calls and gives the same decisions.
 - **Usage ledger:** stops agent calls at 60 per run on both backends; on the API backend also at $5 per run and $100 total. Records calls, tokens, seconds and cost. Tracks compute units against the 200-unit cap.
 - **Usage limits (Codex) and caps (API): tell, pause, resume.**

@@ -1,5 +1,5 @@
 {
- "description": "Gate-subset check (task 1.12): Wanda 50% on every layer and layer 24 dropped (just over the bar).",
+ "description": "Gate-subset check (task 1.12): Wanda 50% on every layer and layer 24 dropped (just over the task-1.12 threshold, 1.10 x Wanda-50% perplexity).",
  "plan": {
   "0": {
    "wanda_sparsity": 0.5

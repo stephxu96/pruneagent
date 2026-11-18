@@ -1,6 +1,6 @@
-# PruneAgent v0.6: Phased Work Plan
+# PruneAgent v0.7: Phased Work Plan
 
-Companion to `ARCHITECTURE.md` (v0.6). Four build phases of 1–2 days each, one builder plus a coding agent. Every phase ends at a gate: a fixed check that decides whether to continue as planned or take the listed fallback.
+Companion to `ARCHITECTURE.md` (v0.7). Four build phases of 1–2 days each, one builder plus a coding agent. Every phase ends at a gate: a fixed check that decides whether to continue as planned or take the listed fallback.
 
 Days are calendar days from the start of the build: D1 = Monday 16 November 2026, D9 = Tuesday 24 November (buffer). The plan assumes 2 days per phase; a phase finished in 1 day pulls the rest forward.
 
@@ -44,7 +44,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 
 | # | Task | Owner | Depends on | Done when |
 |---|---|---|---|---|
-| 1.1 | Adapt Wanda to Qwen3 layer names; run Wanda at 50% on 0.6B: the quality bar | Coding agent | 0.3 | Bar recorded: validation and test perplexity, 7 multiple-choice question sets |
+| 1.1 | Adapt Wanda to Qwen3 layer names; run Wanda at 50% on 0.6B: Baseline: Wanda-50% | Coding agent | 0.3 | Baseline recorded: validation and test perplexity, 7 multiple-choice question sets |
 | 1.2 | Adapt FLAP scoring and bias compensation to grouped-query attention (prune key/value groups with their query heads) | Coding agent | 0.3 | FLAP at its own allocation matches the adapted reference |
 | 1.3 | Uniform Wanda-sp on Qwen3 | Coding agent | 1.2 | Matches its reference at a uniform cut |
 | 1.4 | Pruner from a per-layer plan (all four strategies) + loader (safetensors + plan JSON) | Coding agent | 1.1, 1.2 | Save-and-reload gives identical perplexity |
@@ -52,8 +52,8 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | 1.6 | Speed meter on the M4 (Mac GPU) and T4: peak memory, prefill and decode tokens/s; fix settings (prompt 512, batch 1, 128 generated); record each machine's bandwidth and compute as a device target | Coding agent; Steph fixes settings (Q3) | 1.4 | Repeat runs vary < 5% on each machine |
 | 1.7 | Estimate check: ~10 plans mixing all strategies; estimated vs. measured decode speed on M4 and T4 | Coding agent | 1.5, 1.6 | Rank correlation and % error recorded per machine (A6, A8) |
 | 1.8 | Layer-local probes for all four strategies; compare their layer ranking with full-model perplexity | Coding agent | 1.4 | Rank correlation recorded (A1) |
-| 1.9 | FLAP and uniform Wanda-sp pruned to the bar by bisection on validation perplexity | Coding agent | 1.1–1.3 | Savings at the bar recorded (A7) |
-| 1.10 | Wanda at 50% on Qwen3-1.7B (A100, one session): production bar | Coding agent | 1.1 | Bar recorded for 1.7B |
+| 1.9 | FLAP and uniform Wanda-sp pruned to the largest ratio near Baseline: Wanda-50%, by bisection on validation perplexity | Coding agent | 1.1–1.3 | Savings at that ratio recorded (A7) |
+| 1.10 | Wanda at 50% on Qwen3-1.7B (A100, one session): Baseline: Wanda-50% for the production run | Coding agent | 1.1 | Baseline recorded for 1.7B |
 | 1.12 | Gate subset: 32-window subset vs. full validation split on ~10 plans (A9) | Coding agent | 1.4 | Rank correlation recorded |
 | 1.11 | One agent round wired by hand (no graph): sensitivity table → LLM → JSON with 3 candidates → evaluate | Steph (prompt draft), coding agent | 1.5, 1.8 | Valid JSON; candidates evaluate |
 
@@ -66,9 +66,9 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | Probes rank like full evaluation (A1) | Rank correlation ≥ 0.7 | Probes stay as hints only; give the agent more full-model evaluations per round |
 | Speed estimate ranks like measured speed on M4 and T4 (A6) | Rank correlation ≥ 0.7 on both | Measure tokens/s on the accepted plan every 5 rounds and give the agent that instead |
 | Speed estimate close enough for phone estimates (A8) | Within ~25% of measured speed on both machines | Report phone targets as memory fit only |
-| Structured pruning reaches the bar with a real saving (A7) | FLAP at the bar saves ≥ 5% of weight memory | Continue; headline result becomes how the agent mixes strategies |
+| Structured pruning saves memory near Baseline: Wanda-50% quality (A7) | FLAP saves ≥ 5% of weight memory within 10% of Wanda-50% perplexity and 2 points of its accuracy (the v0.6 allowance this check was set with) | Continue; headline result becomes how the agent mixes strategies |
 | 32-window subset ranks like the full split (A9) | Rank correlation ≥ 0.9 | Gate on 64 windows |
-| Bar is not trivial | Wanda-50% validation perplexity > 1.3 × dense | Fall back to a weaker bar only if structured pruning reaches it at > 30% saving; fixed before phase 4 |
+| Baseline: Wanda-50% is not trivial | Wanda-50% validation perplexity > 1.3 × dense | Fall back to a weaker reference only if structured pruning matches it at > 30% saving; fixed before phase 4 |
 
 ---
 
@@ -78,12 +78,12 @@ Everything runs on Qwen3-0.6B except task 1.10.
 
 | # | Task | Owner | Done when |
 |---|---|---|---|
-| 2.1 | State types (`RunConfig`, `QualityBar`, `LayerPlan`, `PruneState`, …) per ARCHITECTURE.md §4.3 and §7 | Coding agent | Type-checked |
+| 2.1 | State types (`RunConfig`, `Baseline`, `LayerPlan`, `PruneState`, …) per ARCHITECTURE.md §4.3 and §7 | Coding agent | Type-checked |
 | 2.2 | Validator: structure, step-size and budget rules (§4.4) | Coding agent | Unit tests for every rule |
 | 2.3 | Agent client with two backends behind one interface: Codex CLI (`codex exec`, read-only, ephemeral, JSON schema, pinned model) and LLM API (structured output, cost cap); shared cache and usage ledger (60 calls per run; $5 per run on the API) | Coding agent | Same contract tests pass for a fake and both real backends; cached rerun makes no calls; malformed answers rejected |
-| 2.4 | Graph: bar → score → probe fan-out → reduce → plan → validate → candidate fan-out → gate → rollback / stop → final | Coding agent | Graph compiles; each edge tested with a fake LLM |
+| 2.4 | Graph: baseline → score → probe fan-out → reduce → plan → validate → candidate fan-out → gate → rollback / stop → final | Coding agent | Graph compiles; each edge tested with a fake LLM |
 | 2.5 | Candidate evaluation (≤ 3): memory and speed estimate from the plan; perplexity on the 32-window subset, skipping the unchanged layers before each candidate's first change (their output is saved once from the accepted model; every layer from the first change onward is recomputed); candidates spread across Mac and Colab | Coding agent | Skipping unchanged early layers gives the same perplexity as running every layer; same results in parallel and sequential mode |
-| 2.6 | Gate: quality bar, 15% per-step limit, pick largest memory saving | Coding agent | Gate unit tests |
+| 2.6 | Gate: 15% per-step limit, pick lowest perplexity; record each candidate against Baseline: Wanda-50% (no rejection on it for now) | Coding agent | Gate unit tests |
 | 2.7 | Rollback to any earlier accepted plan | Coding agent | Rollback restores exact earlier perplexity |
 | 2.8 | Checkpoints (SQLite + plan JSON on Drive) and decision log (JSONL) | Coding agent | Log schema test |
 | 2.9 | Agent instructions v1: neutral strategy descriptions, objective stated, no ranking | Steph | Reviewed against ADR-007 neutrality rule |
@@ -99,10 +99,10 @@ Everything runs on Qwen3-0.6B except task 1.10.
 
 | # | Task | Owner | Done when |
 |---|---|---|---|
-| 3.1 | Tuning runs on 0.6B (~8–10 runs, queued overnight; Mac and Colab in parallel): adjust instructions, compare savings at the bar against FLAP and uniform Wanda-sp | Steph | Each run logged with instruction version |
+| 3.1 | Tuning runs on 0.6B (~8–10 runs, queued overnight; Mac and Colab in parallel): adjust instructions, compare quality at the same memory limit against FLAP and uniform Wanda-sp cut to that limit | Steph | Each run logged with instruction version |
 | 3.2 | Neutrality check on every instruction change: no strategy ranked or discouraged | Steph | Diff reviewed |
 | 3.3 | Kill-and-resume test (stop the Colab runtime mid-run) | Coding agent | Resumed run matches an uninterrupted run |
-| 3.4 | ShortGPT pruned to the bar (reported alongside) | Coding agent | Savings recorded |
+| 3.4 | ShortGPT cut to the same memory limit (reported alongside) | Coding agent | Quality recorded |
 | 3.5 | Report writer: quality, memory, speed, strategy counts, rationale log, charts | Coding agent | Report builds from a tuning run |
 | 3.6 | Demo notebook on 0.6B (Q2) with a pre-run report as backup | Coding agent | Runs top to bottom on T4 |
 
@@ -114,9 +114,9 @@ Everything runs on Qwen3-0.6B except task 1.10.
 
 | # | Task | GPU | Done when |
 |---|---|---|---|
-| 4.1 | FLAP, uniform Wanda-sp and ShortGPT pruned to the 1.7B bar | A100 | Plans saved |
-| 4.2 | Production run on Qwen3-1.7B with frozen instructions and no device target | A100 | Run complete; log and plan saved |
-| 4.3 | Two device-target runs on Qwen3-1.7B: one target reachable within the bar, one not | A100 | Reachable run stops at the target; the other ends with a final warning and gap |
+| 4.1 | FLAP, uniform Wanda-sp and ShortGPT cut to the production run's memory limit on 1.7B | A100 | Plans saved |
+| 4.2 | Production run on Qwen3-1.7B with frozen instructions at a set memory limit | A100 | Run complete; stops at the limit; log and plan saved |
+| 4.3 | Device-target run on Qwen3-1.7B at a memory limit pruning cannot reach | A100 | Ends with a warning and the gap |
 | 4.4 | Final evaluation of every method: test perplexity, 7 multiple-choice question sets, MMLU | A100 | Scores recorded |
 | 4.5 | Memory and tokens/s for every method | M4 + T4 | Measurement per method per machine |
 | 4.6 | Score S1–S4 and prediction P1; device reports for 4.3 | — | Table in the report |
@@ -133,7 +133,7 @@ Only if the D9 buffer is unused. A one-time step after the search: quantize the 
 
 ## Later (bonus, not in this build)
 
-Sweep the tool across a range of device targets to map where pruning alone reaches the target within the bar and where it warns: a sensitivity analysis of the tool itself.
+Sweep the tool across a range of device targets to map how much quality pruning alone keeps at each target and where it warns: a sensitivity analysis of the tool itself.
 
 ---
 
@@ -142,10 +142,10 @@ Sweep the tool across a range of device targets to map where pruning alone reach
 | Phase | Machine time (rough) | Colab compute units | Agent calls (API backend: ~$1–5 per run) |
 |---|---|---|---|
 | 0 | < 1 h | ~2 | 0 |
-| 1 | ~4–6 h GPU (bars, baselines to the bar, probe and speed checks) | ~25 (incl. one A100 session for 1.10) | ~10 |
+| 1 | ~4–6 h GPU (Wanda-50% baselines, FLAP and Wanda-sp searches, probe and speed checks) | ~25 (incl. one A100 session for 1.10) | ~10 |
 | 2 | ~2–3 h GPU (test runs) | ~20 | ~200 |
 | 3 | ~8–10 h GPU (tuning runs) | ~45 | ~600 |
-| 4 | ~10–12 h GPU (production run, 2 device-target runs, baselines, final evaluation) | ~90 (A100 for 4.1–4.4) | ~150 |
+| 4 | ~10–12 h GPU (production run, 1 out-of-reach device-target run, compared methods, final evaluation) | ~90 (A100 for 4.1–4.4) | ~150 |
 | Reserve | | ~18 | |
 | **Cap** | | **200** | **60 per run** |
 

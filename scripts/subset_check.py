@@ -6,7 +6,9 @@ Prunes the unpruned model to every plan in plans/subset_check/, evaluates all 12
 and reads the 32- and 64-window perplexities off the same per-window losses (each window is scored
 independently, so this equals evaluating the subset alone; checked directly on the unpruned model and the
 first plan with `subset_perplexity`). Reports Spearman and Kendall rank correlation of subset vs. full, and
-how many accept/reject decisions at the quality bar would differ.
+how many accept/reject decisions at a perplexity threshold set from Baseline: Wanda-50% would differ.
+The threshold is `--ppl-margin` x Wanda-50%'s perplexity: 1.0 (no allowance) by default; the committed
+task-1.12 results used 1.10, which `--ppl-margin 1.10` reproduces.
 """
 
 from __future__ import annotations
@@ -25,8 +27,7 @@ from pruneagent import evaluate as ev
 from pruneagent import flap, pruner
 from pruneagent import plan as P
 
-FIXED_BAR = 26.05  # 1.10 x Wanda-50% validation perplexity (23.68, llm-compressor reference)
-BAR_FACTOR = 1.10
+WANDA50_VAL_PPL = 23.68  # Baseline: Wanda-50% validation perplexity (llm-compressor reference)
 REFERENCE = "p00_wanda50_all"
 
 
@@ -85,7 +86,10 @@ def main() -> None:
     ap.add_argument("--max-windows", type=int, default=None, help="Debug: evaluate only the first N windows.")
     ap.add_argument("--scores", type=Path, default=None, help="Cached scores (computed if missing).")
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--ppl-margin", type=float, default=1.0,
+                    help="Threshold = this x Wanda-50%% perplexity (default 1.0: no allowance; task 1.12 used 1.10).")
     args = ap.parse_args()
+    fixed_threshold = round(args.ppl_margin * WANDA50_VAL_PPL, 2)
 
     device = args.device or ev.pick_device()
     manifest = d.read_manifest()
@@ -150,19 +154,20 @@ def main() -> None:
     for n in sizes[:-1]:
         a = [rows[p]["ppl"][str(n)] for p in plans]
         b = [rows[p]["ppl"][full_key] for p in plans]
-        flips = [p for p, x, y in zip(plans, a, b, strict=True) if (x <= FIXED_BAR) != (y <= FIXED_BAR)]
+        flips = [p for p, x, y in zip(plans, a, b, strict=True) if (x <= fixed_threshold) != (y <= fixed_threshold)]
         entry = {"spearman": spearman(a, b), "kendall_tau_b": kendall_tau_b(a, b),
                  "discordant_pairs": discordant_pairs(plans, a, b),
-                 "fixed_bar": {"bar": FIXED_BAR, "flips": flips}}
+                 "fixed_threshold": {"threshold": fixed_threshold, "ppl_margin": args.ppl_margin, "flips": flips}}
         if REFERENCE in rows:
-            bar_sub = BAR_FACTOR * rows[REFERENCE]["ppl"][str(n)]
-            bar_full = BAR_FACTOR * rows[REFERENCE]["ppl"][full_key]
-            rule_flips = [p for p, x, y in zip(plans, a, b, strict=True) if (x <= bar_sub) != (y <= bar_full)]
-            entry["rule_bar"] = {"bar_subset": bar_sub, "bar_full": bar_full, "flips": rule_flips}
+            t_sub = args.ppl_margin * rows[REFERENCE]["ppl"][str(n)]
+            t_full = args.ppl_margin * rows[REFERENCE]["ppl"][full_key]
+            rule_flips = [p for p, x, y in zip(plans, a, b, strict=True) if (x <= t_sub) != (y <= t_full)]
+            entry["baseline_rule"] = {"threshold_subset": t_sub, "threshold_full": t_full, "flips": rule_flips}
         report[str(n)] = entry
         print(f"  {n:3d} vs {n_total}: Spearman {entry['spearman']:.4f}  Kendall {entry['kendall_tau_b']:.4f}  "
-              f"flips at {FIXED_BAR}: {flips}" + (f"  flips under the §4.4 rule: {entry['rule_bar']['flips']}"
-                                                  if "rule_bar" in entry else ""), flush=True)
+              f"flips at {fixed_threshold}: {flips}"
+              + (f"  flips against Wanda-50% on the same windows: {entry['baseline_rule']['flips']}"
+                 if "baseline_rule" in entry else ""), flush=True)
 
     from pruneagent.cli import _run_record
 

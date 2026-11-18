@@ -1,14 +1,17 @@
-"""Baselines at the quality bar (task 1.9): the largest pruning ratio a method can use and still meet the bar.
+"""FLAP and uniform Wanda-sp against Baseline: Wanda-50% (task 1.9): the largest pruning ratio a method can use
+and still match the baseline's quality.
 
-The bar (task 1.1) has two parts, both must hold:
-- WikiText-2 validation perplexity <= 1.10 x Wanda-50%'s,
-- mean multiple-choice accuracy over the seven question sets >= Wanda-50%'s mean - 2 points.
+Matching the baseline (task 1.1's Wanda-50% results) has two parts, both must hold:
+- WikiText-2 validation perplexity <= Wanda-50%'s (times `ppl_margin`, default 1.0: no allowance),
+- mean multiple-choice accuracy over the seven question sets >= Wanda-50%'s mean (minus `acc_margin`, default 0).
+Architecture v0.7 sets no allowance for now; the margins stay available as options. Task 1.9's committed results
+used the earlier allowance (1.10 x perplexity, 2 points of accuracy).
 
 Search: bisect the ratio on validation perplexity alone (cheap: ~30 s per evaluation on a T4), assuming
 perplexity rises with the ratio. The interval [lo, hi] always has lo passing (or untested at 0) and hi failing;
 it halves until it is narrower than `tol`, and lo is the answer. Accuracy (~12 min) is then checked only at that
-ratio; if it fails, a second bisection runs below that ratio on both parts of the bar together (perplexity first,
-accuracy only where perplexity passes), to within `acc_tol`.
+ratio; if it fails, a second bisection runs below that ratio on both parts together (perplexity first, accuracy
+only where perplexity passes), to within `acc_tol`.
 """
 
 from __future__ import annotations
@@ -27,11 +30,11 @@ class Trial:
 
 
 @dataclass
-class BarSearch:
-    ratio: float | None  # largest ratio found that meets the whole bar; None if none did
+class BaselineSearch:
+    ratio: float | None  # largest ratio found that meets both parts of the baseline; None if none did
     ppl_trials: list[Trial] = field(default_factory=list)
     acc_trials: list[Trial] = field(default_factory=list)
-    meets_bar: bool = False
+    meets_baseline: bool = False
     note: str = ""
 
     def to_json(self) -> dict:
@@ -66,22 +69,22 @@ def bisect_ratio(
     return lo, trials
 
 
-def search_bar(
+def search_baseline(
     ppl: Callable[[float], float], acc: Callable[[float], float], max_ppl: float, min_acc: float,
     lo: float = 0.0, hi: float = 0.5, tol: float = 0.005, acc_lo: float = 0.0, acc_tol: float = 0.01,
     acc_fails_at: float | None = None,
-) -> BarSearch:
-    """Bisect on perplexity, check accuracy at the ratio found; if it fails there, bisect on the whole bar over
+) -> BaselineSearch:
+    """Bisect on perplexity, check accuracy at the ratio found; if it fails there, bisect on both parts over
     [acc_lo, that ratio] (to within `acc_tol`; acc_lo is evaluated if the search ends on it).
     `acc_fails_at`: a ratio already known to fail accuracy, so ratios at or above it are not checked again."""
     ratio, ppl_trials = bisect_ratio(ppl, max_ppl, lo, hi, tol)
-    out = BarSearch(ratio=None, ppl_trials=ppl_trials)
+    out = BaselineSearch(ratio=None, ppl_trials=ppl_trials)
     if not any(t.passed for t in ppl_trials):
         if ratio > 0:  # the search ended on lo, which was assumed to pass: check it
             v = ppl(ratio)
             out.ppl_trials.append(Trial(ratio, v, v <= max_ppl))
         if not any(t.passed for t in out.ppl_trials):
-            out.note = f"no evaluated ratio meets the perplexity bar (bisection stopped at {ratio})"
+            out.note = f"no evaluated ratio meets the baseline perplexity (bisection stopped at {ratio})"
             return out
 
     def both(r: float) -> bool:
@@ -97,7 +100,7 @@ def search_bar(
         a = acc(ratio)
         out.acc_trials.append(Trial(ratio, a, a >= min_acc))
         if a >= min_acc:
-            out.ratio, out.meets_bar = ratio, True
+            out.ratio, out.meets_baseline = ratio, True
             return out
         acc_hi = ratio
     else:
@@ -110,23 +113,25 @@ def search_bar(
         else:
             acc_hi = mid
     if a_lo > 0 and not any(t.ratio == a_lo and t.passed for t in out.acc_trials) and not both(a_lo):
-        out.note = f"accuracy bar not met at any ratio tried down to {a_lo}"
+        out.note = f"baseline accuracy not met at any ratio tried down to {a_lo}"
         return out
     if a_lo == 0:
-        out.note = "accuracy bar not met at any positive ratio tried"
+        out.note = "baseline accuracy not met at any positive ratio tried"
         return out
-    out.ratio, out.meets_bar = a_lo, True
+    out.ratio, out.meets_baseline = a_lo, True
     return out
 
 
-def bar_from_results(wanda_ppl_json: Path, mc_json: Path, mc_run: str, ppl_margin: float = 1.10,
-                     acc_margin: float = 0.02) -> dict:
-    """The quality bar from task 1.1's recorded Wanda-50% results."""
+def baseline_from_results(wanda_ppl_json: Path, mc_json: Path, mc_run: str, ppl_margin: float = 1.0,
+                          acc_margin: float = 0.0) -> dict:
+    """Baseline: Wanda-50% from task 1.1's recorded results, and the limits a method must meet to match it.
+    `ppl_margin` multiplies the perplexity and `acc_margin` is subtracted from the accuracy; the defaults
+    (1.0 and 0.0) mean no allowance. Task 1.9 used 1.10 and 0.02."""
     w = json.loads(Path(wanda_ppl_json).read_text())
     m = json.loads(Path(mc_json).read_text())["runs"][mc_run]
     return {
         "wanda50_validation_ppl": w["splits"]["validation"]["ppl"], "wanda50_test_ppl": w["splits"]["test"]["ppl"],
-        "wanda50_mean_acc": m["mean_acc"],
+        "wanda50_mean_acc": m["mean_acc"], "ppl_margin": ppl_margin, "acc_margin": acc_margin,
         "max_validation_ppl": ppl_margin * w["splits"]["validation"]["ppl"],
         "min_mean_acc": m["mean_acc"] - acc_margin,
         "sources": {"ppl": str(wanda_ppl_json), "mc": f"{mc_json}#{mc_run}"},

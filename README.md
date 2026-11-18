@@ -1,6 +1,6 @@
 # PruneAgent
 
-An LLM agent that prunes Qwen3 to within a fixed margin of Wanda's quality while making the model actually smaller and faster, to a memory and speed target you set for your device. Design: [`ARCHITECTURE.md`](ARCHITECTURE.md); plan: [`WORKPLAN.md`](WORKPLAN.md); decisions: [`adr/`](adr/).
+An LLM agent that prunes Qwen3 to fit a memory limit you set for your device (and, optionally, a speed target) while keeping as much quality as possible, measured against Wanda at 50% sparsity; unlike Wanda, the result is actually smaller and faster. Design: [`ARCHITECTURE.md`](ARCHITECTURE.md); plan: [`WORKPLAN.md`](WORKPLAN.md); decisions: [`adr/`](adr/).
 
 ## Setup
 
