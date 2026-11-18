@@ -59,6 +59,22 @@ def ppl_from_losses(window_losses: list[float], idx: list[int] | None = None) ->
     return math.exp(sum(sel) / len(sel))
 
 
+def window_loss(logits: torch.Tensor, inp: torch.Tensor) -> float:
+    """Mean next-token loss of one window ([1, L, V] logits for [1, L] tokens), in fp32."""
+    loss = F.cross_entropy(logits[0, :-1, :].float(), inp[0, 1:])
+    if not torch.isfinite(loss):
+        raise FloatingPointError("Non-finite loss: the model overflowed in this dtype; try float32.")
+    return loss.item()
+
+
+def ppl_of(losses: list[float], seqlen: int) -> float:
+    """Perplexity from per-window losses, computed as the reference does (each loss times `seqlen`)."""
+    nll_sum = 0.0
+    for loss in losses:
+        nll_sum += loss * seqlen
+    return float(torch.exp(torch.tensor(nll_sum / (len(losses) * seqlen))))
+
+
 @dataclass
 class PplResult:
     ppl: float
@@ -77,22 +93,16 @@ def perplexity(model, ids: torch.Tensor, seqlen: int = 2048, device: str | None 
     wins = windows(ids, seqlen)
     if window_idx is not None:
         wins = wins[torch.as_tensor(window_idx, dtype=torch.long)]
-    nll_sum = 0.0
     losses = []
     synchronize(device)
     start = time.perf_counter()
     for w in wins:
         inp = w.unsqueeze(0).to(device)
-        logits = model(inp).logits
-        loss = F.cross_entropy(logits[0, :-1, :].float(), inp[0, 1:])
-        if not torch.isfinite(loss):
-            raise FloatingPointError("Non-finite loss: the model overflowed in this dtype; try float32.")
-        losses.append(loss.item())
-        nll_sum += losses[-1] * seqlen
+        losses.append(window_loss(model(inp).logits, inp))
     synchronize(device)
     seconds = time.perf_counter() - start
-    ppl = float(torch.exp(torch.tensor(nll_sum / (len(wins) * seqlen))))
-    return PplResult(ppl=ppl, n_windows=len(wins), seqlen=seqlen, seconds=seconds, window_losses=losses)
+    return PplResult(ppl=ppl_of(losses, seqlen), n_windows=len(wins), seqlen=seqlen, seconds=seconds,
+                     window_losses=losses)
 
 
 def subset_perplexity(model, ids: torch.Tensor, n_windows: int = GATE_WINDOWS, seqlen: int = 2048,

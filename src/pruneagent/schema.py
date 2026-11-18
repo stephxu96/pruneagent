@@ -314,6 +314,8 @@ class CandidateResult(_Model):
     rank_decode_tok_s: float | None = None  # estimate with the per-layer cost added: breaks perplexity ties
     val_ppl: float = Field(gt=0)
     step_rise: float  # val_ppl / last accepted val_ppl - 1
+    freed_bytes: int = 0  # weight memory freed against the last accepted plan (0 or less: none)
+    rise_per_mb: float | None = None  # step_rise per MB (1e6 bytes) freed; None when nothing is freed (can't win)
 
 
 class GateResult(_Model):

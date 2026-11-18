@@ -1,6 +1,6 @@
 """Agent graph (ARCHITECTURE.md §4.1, task 2.4): the LangGraph loop from scores to the final evaluation.
 
-    load -> feasibility -> baseline -> plan -> validate -> evaluate (<= 3, in parallel) -> gate
+    load -> feasibility -> baseline -> plan -> validate -> evaluate (<= 3) -> gate
          -> accept | rollback -> stop_check -> plan ... -> final
 
 - load: the sensitivity table (quick tests, plus the measured per-layer damage when it exists) and the dense plan.
@@ -12,9 +12,15 @@
 - plan: one agent call. The prompt comes from `Deps.build_prompt` (a placeholder until the instructions of task
   2.9); after an invalid reply, the validator's reasons go back to the agent in the next prompt.
 - validate: `validator.check_reply`; invalid replies count towards `Rules.max_invalid_in_row`.
-- evaluate: one parallel task (`Send`) per candidate; perplexity from the injected `Deps.evaluate`.
-- gate: among candidates within the per-step limit (`Rules.step_limit`), the lowest perplexity, ties broken by
-  estimated speed; none within the limit is a ROLLBACK: the plan stays the last accepted one.
+- evaluate: one task (`Send`) per candidate; perplexity from the injected `Deps.evaluate`. The real evaluator
+  (`candidate_eval.CandidateEvaluator`, task 2.5) also gets the last accepted plan, skips the layers before the
+  candidate's first change, queues the tasks so they run one after another on one GPU, and reports its own GPU
+  seconds; a plain function plan -> perplexity (the fakes in tests) is timed here instead.
+- gate (`choose`, task 2.6): the per-step limit is the only bar (`Rules.step_limit`, 15%: perplexity at most 15%
+  above the last accepted plan's; no allowance against Baseline: FLAP). Among candidates within it, the one with
+  the smallest perplexity rise per MB of weight memory freed wins (a candidate that frees nothing cannot win); an
+  exact tie goes to the faster plan by the speed estimate with the per-layer cost, then to the earlier candidate.
+  No winner is a ROLLBACK: the plan stays the last accepted one.
 - accept / rollback: adopt the chosen candidate, or keep (gate) or restore (agent's rollback action) an
   accepted plan.
 - stop_check: memory limit met; `max_invalid_in_row` invalid replies in a row; `max_rounds_without_accept`
@@ -26,7 +32,8 @@ A round is one agent reply, whatever its outcome; every round writes one `StepRe
 Memory is weight memory only (`estimate.weight_bytes`), the measure Baseline: FLAP is cut to.
 
 Everything that needs the model or the GPU is injected (`Deps`), so the graph runs in tests with a fake agent
-backend and a fake evaluator. `flap_baseline` and `ppl_evaluator` wrap the real functions for a real run.
+backend and a fake evaluator. `flap_baseline` and `ppl_evaluator` (the candidate evaluator of task 2.5) wrap the
+real functions for a real run.
 Checkpoints, accepted plans (rollback targets) and the decision log go to `Deps.store`: `runstore.RunStore` on
 disk for a real run (tasks 2.7, 2.8), or `MemoryStore` in tests. The state is checkpointed at the end of every
 round; `resume` continues a run from its last checkpoint, replaying an unfinished round (its agent call comes
@@ -40,7 +47,7 @@ import time
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Annotated, Protocol
+from typing import TYPE_CHECKING, Annotated, Protocol
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
@@ -69,6 +76,9 @@ from pruneagent.schema import (
     StepSummary,
     Usage,
 )
+
+if TYPE_CHECKING:  # the evaluator needs torch; the graph itself does not
+    from pruneagent.candidate_eval import Evaluation
 
 GB = 1e9
 RECENT_STEPS = 5  # earlier rounds shown to the agent
@@ -200,7 +210,9 @@ class Deps:
 
     config: dict  # the unpruned model's config (shape only)
     agent: Agent
-    evaluate: Callable[[Plan], float]  # perplexity of a plan on the gate's windows (task 2.5 replaces it)
+    # perplexity of a plan on the gate's windows: a function plan -> float (fakes), or an evaluator with
+    # `takes_accepted = True` called as (plan, last accepted plan) -> Evaluation (`ppl_evaluator`, task 2.5)
+    evaluate: Callable[..., float | Evaluation]
     baseline: Callable[[RunConfig], Baseline]  # Baseline: FLAP cut to the run's memory limit, with val_ppl_subset
     load_sensitivity: Callable[[], SensitivityTable]
     build_prompt: Callable[[AgentRequest, str | None], str] = placeholder_prompt
@@ -233,14 +245,46 @@ def _rank_speed(est: E.Estimate, plan: Plan, layer_cost_s: float) -> float | Non
     return E.with_layer_cost(est.est_decode_tok_s, sum(not p["dropped"] for p in plan.values()), layer_cost_s)
 
 
+def measure(evaluate: Callable, plan: Plan, accepted: Plan) -> tuple[float, float]:
+    """(perplexity, GPU seconds) of `plan` from `Deps.evaluate`; `accepted` goes to evaluators that take it."""
+    start = time.perf_counter()
+    out = evaluate(plan, accepted) if getattr(evaluate, "takes_accepted", False) else evaluate(plan)
+    if hasattr(out, "gpu_seconds"):  # a `candidate_eval.Evaluation`
+        return out.ppl, out.gpu_seconds
+    return float(out), time.perf_counter() - start
+
+
+MB = 1e6
+
+
+def rise_per_mb(step_rise: float, freed_bytes: int) -> float | None:
+    """Perplexity rise per MB of weight memory freed; None (infinite: cannot win) when nothing is freed."""
+    return step_rise / (freed_bytes / MB) if freed_bytes > 0 else None
+
+
+def choose(results: list[CandidateResult], step_limit: float) -> GateResult:
+    """The gate (§4.4, FR7). Candidates whose perplexity rises more than `step_limit` over the last accepted plan
+    are rejected, and so are candidates that free no weight memory. Among the rest, the smallest perplexity rise per
+    MB freed (`rise_per_mb`) wins; an exact tie goes to the higher speed estimate (`rank_decode_tok_s`; a missing
+    estimate counts as slowest), then to the lower candidate id. No winner (or nothing evaluated) is a ROLLBACK."""
+    passing = [c for c in results if c.step_rise <= step_limit + 1e-12 and c.rise_per_mb is not None]
+    if not passing:
+        return GateResult(decision="ROLLBACK")
+    best = min(passing, key=lambda c: (c.rise_per_mb, -(c.rank_decode_tok_s or 0.0), c.candidate_id))
+    return GateResult(decision="ACCEPT", chosen_candidate=best.candidate_id)
+
+
 def _outcome_text(rec: StepRecord, step_limit: float) -> str:
     if rec.outcome == "INVALID":
         return "INVALID: " + "; ".join(rec.check.reasons if rec.check else ["unreadable reply"])
     if rec.outcome == "ACCEPT":
         c = next(c for c in rec.candidates if c.candidate_id == rec.gate.chosen_candidate)
-        return f"ACCEPT candidate {c.candidate_id + 1}, perplexity {c.val_ppl:.2f} ({c.step_rise:+.1%})"
+        return (f"ACCEPT candidate {c.candidate_id + 1}, perplexity {c.val_ppl:.2f} ({c.step_rise:+.1%}), "
+                f"{c.freed_bytes / MB:.1f} MB freed")
     if rec.outcome == "ROLLBACK":
         best = min(c.step_rise for c in rec.candidates)
+        if best <= step_limit + 1e-12:
+            return f"ROLLBACK: no candidate within {step_limit:.0%} frees memory; plan unchanged"
         return f"ROLLBACK: no candidate within {step_limit:.0%} (best {best:+.1%}); plan unchanged"
     return {"probe": "probed", "rollback": "rolled back", "stop": "stopped"}.get(rec.action or "", "")
 
@@ -287,7 +331,7 @@ def build_graph(deps: Deps, checkpointer=None):
         if base.val_ppl_subset is None:
             raise ValueError("Baseline: FLAP needs its perplexity on the gate's windows (val_ppl_subset)")
         dense = P.dense_plan(cfg)
-        ppl = deps.evaluate(dense)
+        ppl, _ = measure(deps.evaluate, dense, dense)
         first = AcceptedPlan(round=0, plan=dense, val_ppl=ppl, weight_bytes=E.weight_bytes(cfg, dense))
         store.save_accepted(0, first)
         return {"baseline": base, "accepted": [first], "eval_seconds": []}
@@ -373,18 +417,21 @@ def build_graph(deps: Deps, checkpointer=None):
             jobs = [{"candidate_id": c.index, "choices": reply.candidates[c.index].choices,
                      "rationale": reply.candidates[c.index].rationale, "plan": c.plan}
                     for c in state["check"].candidates]
-        return [Send("evaluate", {"job": {**j, "last_ppl": last}, "run": state["run"]}) for j in jobs]
+        acc = state["accepted"][-1]
+        return [Send("evaluate", {"job": {**j, "last_ppl": last, "accepted_plan": acc.plan,
+                                          "accepted_bytes": acc.weight_bytes}, "run": state["run"]})
+                for j in jobs]
 
     def evaluate(state: GraphState) -> dict:
         job, run = state["job"], state["run"]
-        start = time.perf_counter()
-        ppl = deps.evaluate(job["plan"])
-        seconds = time.perf_counter() - start
+        ppl, seconds = measure(deps.evaluate, job["plan"], job["accepted_plan"])
+        rise = ppl / job["last_ppl"] - 1
         est = E.estimate(cfg, job["plan"], run.device)
+        freed = job["accepted_bytes"] - est.weight_bytes
         res = CandidateResult(candidate_id=job["candidate_id"], choices=job["choices"], rationale=job["rationale"],
                               plan=job["plan"], estimate=est,
                               rank_decode_tok_s=_rank_speed(est, job["plan"], run.layer_cost),
-                              val_ppl=ppl, step_rise=ppl / job["last_ppl"] - 1)
+                              val_ppl=ppl, step_rise=rise, freed_bytes=freed, rise_per_mb=rise_per_mb(rise, freed))
         return {"candidates": [res], "eval_seconds": [seconds]}
 
     def this_round(state: GraphState) -> tuple[list[CandidateResult], float]:
@@ -394,12 +441,7 @@ def build_graph(deps: Deps, checkpointer=None):
 
     def gate(state: GraphState) -> dict:
         results, _ = this_round(state)
-        limit = state["run"].rules.step_limit
-        passing = [c for c in results if c.step_rise <= limit + 1e-12]
-        if not passing:
-            return {"gate": GateResult(decision="ROLLBACK")}
-        best = min(passing, key=lambda c: (c.val_ppl, -(c.rank_decode_tok_s or 0.0)))
-        return {"gate": GateResult(decision="ACCEPT", chosen_candidate=best.candidate_id)}
+        return {"gate": choose(results, state["run"].rules.step_limit)}
 
     def accept(state: GraphState) -> dict:
         results, gpu = this_round(state)
@@ -595,19 +637,11 @@ def flap_baseline(dense, stats, ids, *, seqlen: int = 2048, device: str | None =
 
 
 def ppl_evaluator(dense, scores, ids, *, seqlen: int = 2048, device: str | None = None,
-                  n_windows: int = 32) -> Callable[[Plan], float]:
-    """`Deps.evaluate` for a real run: prune a copy of the dense model and measure the gate's perplexity. Task 2.5
-    replaces it with the version that reuses the unchanged early layers' output."""
+                  n_windows: int = 32, store_device: str = "cpu", skip: bool = True):
+    """`Deps.evaluate` for a real run: `candidate_eval.CandidateEvaluator`, which rebuilds each candidate from the
+    cached scores, measures the gate's perplexity reusing the unchanged early layers' saved output, and runs the
+    candidates one after another on one GPU. `skip=False` runs every layer (same numbers, slower)."""
+    from pruneagent.candidate_eval import CandidateEvaluator
 
-    def evaluate(plan: Plan) -> float:
-        from pruneagent import evaluate as ev
-        from pruneagent import pruner
-
-        model = pruner.prune(dense, plan, scores)
-        try:
-            return ev.subset_perplexity(model, ids, n_windows, seqlen, device).ppl
-        finally:
-            del model
-
-    return evaluate
-
+    return CandidateEvaluator(dense, scores, ids, seqlen=seqlen, device=device, n_windows=n_windows,
+                              store_device=store_device, skip=skip)

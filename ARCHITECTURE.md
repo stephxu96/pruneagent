@@ -101,7 +101,7 @@
 | FR4 | Validator enforces structure, step-size and budget rules | Validator unit tests |
 | FR5 | Prune to the plan: FLAP scoring and bias compensation for structured cuts (adapted to Qwen3 grouped-query attention), Wanda scoring for unstructured sparsity | Matches adapted FLAP and Wanda references |
 | FR6 | Evaluate each candidate in parallel: weight memory, estimated speed on the target device, validation perplexity on a fixed 32-window subset, skipping the unchanged layers before the candidate's first change (their saved output is reused; every later layer is recomputed) | Parallel-evaluation test; skipping unchanged early layers gives the same perplexity as running every layer |
-| FR7 | Gate: among candidates within the per-step quality limit, accept the one with the lowest perplexity; otherwise roll back | Rollback test |
+| FR7 | Gate: among candidates within the per-step quality limit, accept the one with the smallest perplexity rise per MB of memory freed; otherwise roll back | Rollback test |
 | FR8 | Stop when the memory limit is met, on a stop action, 5 rounds without an accepted step, 40 rounds or call cap | Graph tests |
 | FR9 | Log every decision with its rationale, strategies chosen, evaluation count and GPU time | Log schema test |
 | FR10 | Final evaluation of the agent, Baseline: FLAP cut to the same memory limit and the unpruned model (optionally Wanda-50% and uniform Wanda-sp), with measured memory and tokens per second on the M4 laptop and the T4 | End-to-end run |
@@ -265,7 +265,7 @@ flowchart TD
     VA -- "INVALID: reasons → agent" --> PL
     VA -- "ok" --> FC["fan_out candidates<br/><i>Send: one evaluation per candidate</i>"]
     FC --> E1["evaluate candidate 1<br/><i>memory · estimated speed · perplexity</i>"] & E2["evaluate candidate 2"] & E3["evaluate candidate 3"]
-    E1 & E2 & E3 --> GT{"gate<br/><i>within per-step limit?<br/>lowest perplexity</i>"}
+    E1 & E2 & E3 --> GT{"gate<br/><i>within per-step limit?<br/>smallest rise per MB freed</i>"}
     GT -- "ROLLBACK: none pass" --> PL
     GT -- "ACCEPT, target not met" --> PL
     GT -- "ACCEPT, device target met" --> FN
@@ -334,7 +334,7 @@ class PruneState(TypedDict, total=False):
 | Layers dropped per step / per run | ≤ 1 / ≤ 6 |
 | Minimum per remaining layer | ≥ 25% of MLP width; ≥ 1 key/value group; Wanda sparsity ≤ 70% |
 | Per-step limit | Reject a candidate if validation perplexity rises > 15% over the last accepted plan |
-| Accept | Among candidates that pass: the one with the lowest perplexity, ties broken by estimated speed |
+| Accept | Among candidates that pass: the one with the smallest perplexity rise per MB of weight memory freed (a candidate that frees no memory cannot win), ties broken by estimated speed |
 | Candidates per round | ≤ 3 |
 | Stop | Device target met; 5 rounds in a row without ACCEPT; 40 rounds; 60 agent calls; $5 with the API backend |
 | Early warning | Target memory below the smallest model the rules above allow (every layer at its minimum, 6 layers dropped, embeddings unchanged), or target already met by the unpruned model |
@@ -459,7 +459,7 @@ sequenceDiagram
     V-->>G: ok
     G->>C: Send: rebuild and evaluate candidates 1..3
     C-->>G: memory, estimated speed, validation perplexity each
-    G->>G: gate → ACCEPT candidate 2 (lowest perplexity)
+    G->>G: gate → ACCEPT candidate 2 (smallest rise per MB freed)
     G->>K: save plan, history, rationale
 ```
 
