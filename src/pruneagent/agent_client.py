@@ -39,7 +39,7 @@ from typing import Any, Protocol
 # ------------------------------------------------------------------------------------------- pinned settings
 
 CODEX_MODEL = "gpt-5.6-terra"
-CODEX_REASONING_EFFORT = "low"
+CODEX_REASONING_EFFORT = "high"
 INSTRUCTIONS_FILE = Path(__file__).with_name("codex_instructions.md")
 
 DEFAULT_CACHE_DIR = Path("runs/agent_cache")

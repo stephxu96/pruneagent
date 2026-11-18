@@ -37,7 +37,7 @@ reply.data  # the agent's JSON answer
 **What each call does:**
 
 - Runs Codex in a new, empty folder, read-only, with no tools, and saves no conversation history.
-- Uses the model `gpt-5.6-terra` at `low` reasoning effort, set in `agent_client.py` (`CODEX_MODEL`, `CODEX_REASONING_EFFORT`).
+- Uses the model `gpt-5.6-terra` at `high` reasoning effort (chosen 2026-11-17, see results/effort_check/summary.md), set in `agent_client.py` (`CODEX_MODEL`, `CODEX_REASONING_EFFORT`).
 - Skips Codex's built-in instructions, your personal Codex settings, plugins, skills and add-ons. It sends one line of instructions instead ([`codex_instructions.md`](src/pruneagent/codex_instructions.md)).
 - Saves every answer in `runs/agent_cache/`. Asking the identical question again returns the saved answer without a call.
 - Writes one line per call to `runs/agent_usage.jsonl`: time, run, backend, model, tokens, seconds and outcome.

@@ -568,7 +568,7 @@
       "done_when": "Pinned in config; tokens per call recorded",
       "gpu": "",
       "status": "done",
-      "notes": "[2026-11-17] Agent started, no compute\n[2026-11-17] Done: Codex pinned to gpt-5.6-terra, low effort; call overhead trimmed from 19.4k to 3.1k tokens. Sessions to be saved (not ephemeral) so 2.12 can read usage limits."
+      "notes": "[2026-11-17] Agent started, no compute\n[2026-11-17] Done: Codex pinned to gpt-5.6-terra, low effort; call overhead trimmed from 19.4k to 3.1k tokens. Sessions to be saved (not ephemeral) so 2.12 can read usage limits.\n[2026-11-17] Effort check (one answer per setting): high best (20.45 vs FLAP 18.84; low 21.95, medium 21.52). Steph chose high as default. Repeats and trimmed-vs-untrimmed to be settled in 3.1."
     },
     {
       "id": "2.11",
@@ -646,7 +646,7 @@
       "done_when": "Each run logged with instruction version",
       "gpu": "T4",
       "status": "todo",
-      "notes": ""
+      "notes": "[2026-11-17] Include repeats per setting: reasoning effort, and trimmed vs untrimmed Codex setup (old untrimmed low answer scored 19.69 vs trimmed high 20.45)."
     },
     {
       "id": "3.2",
