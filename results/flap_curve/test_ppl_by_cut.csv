@@ -1,0 +1,11 @@
+method,memory_cut_pct,test_ppl
+Unpruned,0,12.66
+Baseline: FLAP,10.0,17.9
+Baseline: FLAP,15.0,25.85
+Baseline: FLAP,20.0,165.19
+Baseline: FLAP,22.5,294.19
+Baseline: FLAP,25.0,240.57
+Baseline: FLAP,27.5,402.59
+Baseline: FLAP,30.0,427.32
+Agent,10.0,15.55
+Agent,30.0,41.78

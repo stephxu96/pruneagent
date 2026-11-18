@@ -1,0 +1,69 @@
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+[mac_gpu] waiting for Mac GPU (held by pid 80514: caffeinate -i -s uv run python scripts/accuracy_check.py runs/20261118-1016-qwen3-0.6b-codex)
+W1118 14:05:54.808000 87197 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [01:24<7:13:55, 84.26s/it]Loading weights: 100%|██████████| 310/310 [01:24<00:00,  3.68it/s]
+  scores from /Users/stephxu/Documents/1.125/projects/proposal-2-pruneagent/checkpoints/scores/qwen3-0.6b-base__mps__float16.safetensors
+cut 10%: 1,072.4 MB  unseen validation 18.46  test 17.90
+cut 15%: 1,012.5 MB  unseen validation 26.54  test 25.85
+cut 20%: 952.2 MB  unseen validation 175.07  test 165.19
+cut 22%: 923.8 MB  unseen validation 315.52  test 294.19
+cut 25%: 893.9 MB  unseen validation 258.31  test 240.57
+cut 28%: 863.7 MB  unseen validation 433.59  test 402.59
+cut 30%: 834.4 MB  unseen validation 457.30  test 427.32

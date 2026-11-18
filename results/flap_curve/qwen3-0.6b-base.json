@@ -1,0 +1,64 @@
+{
+  "model": "Qwen/Qwen3-0.6B-Base",
+  "dense_bytes": 1192099840,
+  "calibration": "C4 128 x 2048",
+  "unseen_val_windows": 96,
+  "results": {
+    "0.10": {
+      "memory_cut": 0.1,
+      "limit_bytes": 1072889856,
+      "weight_bytes": 1072418816,
+      "val_unseen_ppl": 18.455204010009766,
+      "test_ppl": 17.904895782470703,
+      "seconds": 397.6
+    },
+    "0.15": {
+      "memory_cut": 0.15,
+      "limit_bytes": 1013284864,
+      "weight_bytes": 1012453376,
+      "val_unseen_ppl": 26.537851333618164,
+      "test_ppl": 25.84617042541504,
+      "seconds": 382.8
+    },
+    "0.20": {
+      "memory_cut": 0.2,
+      "limit_bytes": 953679872,
+      "weight_bytes": 952162304,
+      "val_unseen_ppl": 175.07142639160156,
+      "test_ppl": 165.1884002685547,
+      "seconds": 352.4
+    },
+    "0.23": {
+      "memory_cut": 0.225,
+      "limit_bytes": 923877376,
+      "weight_bytes": 923826176,
+      "val_unseen_ppl": 315.5198059082031,
+      "test_ppl": 294.1925964355469,
+      "seconds": 340.5
+    },
+    "0.25": {
+      "memory_cut": 0.25,
+      "limit_bytes": 894074880,
+      "weight_bytes": 893880320,
+      "val_unseen_ppl": 258.31298828125,
+      "test_ppl": 240.56980895996094,
+      "seconds": 353.7
+    },
+    "0.28": {
+      "memory_cut": 0.275,
+      "limit_bytes": 864272384,
+      "weight_bytes": 863725568,
+      "val_unseen_ppl": 433.5932312011719,
+      "test_ppl": 402.59381103515625,
+      "seconds": 312.3
+    },
+    "0.30": {
+      "memory_cut": 0.3,
+      "limit_bytes": 834469888,
+      "weight_bytes": 834430976,
+      "val_unseen_ppl": 457.3049621582031,
+      "test_ppl": 427.3182067871094,
+      "seconds": 291.8
+    }
+  }
+}
