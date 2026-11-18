@@ -1,0 +1,137 @@
+Your job. You are pruning a language model so its weights fit within a memory
+limit of 1,072.9 MB, while keeping as much quality as possible. Quality is
+perplexity on held-out text; lower is better. A result above the memory limit
+does not count. The model is never retrained or fine-tuned: quality lost in
+any step is not recovered later.
+
+Your result will be compared with FLAP, an existing method, cut to the same
+memory limit. FLAP's perplexity at this limit is 18.84. The unpruned model's
+is 13.15. Compare yourself with FLAP only once you are at the limit; before
+that your model is larger and should score better than FLAP.
+
+How rounds work. Each round, propose 1–3 candidates. Each candidate is a list
+of (layer, method) choices, applied together to the current model, one
+fixed-size step per choice. Code measures each candidate's real perplexity. A
+candidate is rejected if its perplexity is more than 15% above the current
+model's (above 15.13 this round). Of the rest, code keeps the one with the
+smallest perplexity increase per MB freed; if two are exactly tied, the one
+estimated to run faster. If all are rejected, nothing changes and the round is
+used. You have 40 rounds left. The run ends as soon as a kept step brings the
+model within the memory limit. It also ends after 5 rounds in a row without a
+kept step (0 so far), after 40 rounds or 60 replies in all, or after 3
+unusable replies in a row.
+
+Candidates are your experiments: make them test different ideas, not small
+variations of one idea. Small steps let you re-measure before committing
+further. You can return to an earlier kept plan, but a later step cannot undo
+the damage of an earlier one.
+
+The three methods (one step each):
+- narrow_mlp: removes 10% of the layer's original feed-forward width. Frees
+  about 1.96 MB.
+- remove_attention_group: removes one of the layer's 8 attention groups. Frees
+  about 1.57 MB.
+- drop_layer: removes the whole layer. Frees about 31.5 MB.
+
+Steps free different amounts of memory. Judge a step by perplexity increase
+per MB freed, not by perplexity increase alone.
+
+Your evidence, from least to most current:
+- Quick tests: estimated damage for each layer and method. In our tests they
+  were reliable for choosing which method suits a layer.
+- Measured damage: real perplexity after one step on each layer alone,
+  measured on the unpruned model. Use it for choosing which layer to prune. It
+  ignores how layers interact, and it becomes less accurate as the model
+  changes.
+- Round results: real perplexity of every candidate so far, including rejected
+  ones, measured on the model as it was that round. When they disagree with
+  the evidence above, trust the round results.
+
+Where you are.
+- Memory now: 1,192.1 MB. Still to free: 119.2 MB.
+- Perplexity now: 13.15.
+- Previous rounds: none yet; this is round 1.
+
+Rules. Layers are numbered 0 to 27; write "layer 12". Give 1 to 3 candidates,
+each with at least one choice. In one candidate, the same method on the same
+layer at most twice. At most 1 drop_layer per candidate and 6 in the whole
+run; a dropped layer takes no other choice, now or later. Every remaining
+layer keeps at least 25% of its original feed-forward width (768 of 3,072
+neurons) and at least 1 of its 8 attention groups. A candidate may not go more
+than one step past the memory limit: if it fits, leaving out any one of its
+choices must leave it over the limit. No two candidates may give the same
+model, and none may repeat a model already measured. A candidate that breaks a
+rule is discarded.
+
+Answer format. JSON only:
+{"candidates": [{"choices": [{"layer": "<layer name>", "method": "narrow_mlp"}],
+                 "reason": "one sentence naming the evidence you used"}]}
+To go back, answer {"rollback_to": <index of an earlier kept plan>} instead of
+candidates.
+
+Data for round 1.
+
+The model now: unpruned (every layer at full size).
+
+Quick tests: estimated damage to the layer's output after 1/2/3 steps of each method alone (x1000; lower is less damage; - when the steps are not possible).
+layer | narrow_mlp | remove_attention_group | drop_layer
+layer 0 | 11/24.4/41 | 18.6/65.5/114 | 996
+layer 1 | 3.69/9.21/17.2 | 3.6/9.04/14.8 | 240
+layer 2 | 0.0541/0.121/0.2 | 0.136/0.193/0.179 | 994
+layer 3 | 0.0885/0.267/0.398 | 0.196/0.408/0.59 | 2.62
+layer 4 | 0.0826/0.203/0.348 | 0.0935/0.209/0.343 | 3.37
+layer 5 | 0.139/0.31/0.499 | 0.0132/0.204/0.457 | 3.53
+layer 6 | 0.149/0.352/0.591 | 0.0815/0.237/0.337 | 3.49
+layer 7 | 0.137/0.347/0.57 | 0.0794/0.316/0.587 | 3.68
+layer 8 | 0.152/0.35/0.584 | 0.101/0.229/0.55 | 3.88
+layer 9 | 0.147/0.365/0.589 | 0.148/0.345/0.575 | 5.29
+layer 10 | 0.15/0.374/0.641 | 0.325/0.947/1.29 | 7.65
+layer 11 | 0.205/0.473/0.761 | 0.275/0.79/0.955 | 9.34
+layer 12 | 0.199/0.449/0.743 | 0.376/0.69/1.24 | 5.34
+layer 13 | 0.218/0.496/0.789 | 0.28/0.573/1.04 | 6.2
+layer 14 | 0.234/0.511/0.803 | 0.231/0.479/0.869 | 7.58
+layer 15 | 0.261/0.614/1.06 | 0.622/0.966/1.23 | 11.8
+layer 16 | 0.309/0.875/1.64 | 0.516/0.871/1.8 | 29.3
+layer 17 | 0.363/1.08/2.19 | 0.816/2.59/5.5 | 44.3
+layer 18 | 0.54/1.53/3.58 | 0.799/1.97/3.13 | 54
+layer 19 | 0.545/1.99/4.55 | 1.37/2.74/4.93 | 77.4
+layer 20 | 0.476/1.85/4.57 | 0.659/1.92/3.67 | 91.1
+layer 21 | 0.306/1.49/3.72 | 2.23/4.26/5.56 | 98.7
+layer 22 | 0.274/1.22/2.8 | 0.461/1.05/3.05 | 89.8
+layer 23 | 0.385/1.08/2.41 | 0.865/1.27/2.48 | 73.4
+layer 24 | 0.837/1.67/2.82 | 0.809/1.86/2.79 | 78.1
+layer 25 | 0.481/1.46/2.77 | 1.19/2.33/3.36 | 61.4
+layer 26 | 0.644/1.42/2.9 | 1.08/2.11/2.75 | 75
+layer 27 | 0.285/0.759/1.43 | 0.536/1.77/2.47 | 454
+
+Measured damage: perplexity after one step on each layer alone, measured on the unpruned model on 128 windows (unpruned: 13.27; these windows differ from the rounds', so compare within this table).
+layer | narrow_mlp | remove_attention_group | drop_layer
+layer 0 | 13.32 (+0.4%) | 14.48 (+9.2%) | 17,458,894 (1,316,123x)
+layer 1 | 13.29 (+0.2%) | 13.24 (-0.2%) | 334,549 (25,220x)
+layer 2 | 13.34 (+0.5%) | 13.38 (+0.9%) | 134.21 (10x)
+layer 3 | 13.29 (+0.2%) | 13.27 (+0.1%) | 16.85 (+27.0%)
+layer 4 | 13.28 (+0.1%) | 13.32 (+0.4%) | 17.21 (+29.7%)
+layer 5 | 13.30 (+0.3%) | 13.24 (-0.2%) | 16.31 (+23.0%)
+layer 6 | 13.30 (+0.3%) | 13.31 (+0.4%) | 16.96 (+27.9%)
+layer 7 | 13.29 (+0.2%) | 13.28 (+0.1%) | 14.75 (+11.2%)
+layer 8 | 13.28 (+0.1%) | 13.27 (+0.1%) | 14.70 (+10.8%)
+layer 9 | 13.28 (+0.1%) | 13.27 (+0.0%) | 14.81 (+11.6%)
+layer 10 | 13.27 (+0.1%) | 13.27 (+0.0%) | 15.06 (+13.5%)
+layer 11 | 13.28 (+0.1%) | 13.32 (+0.4%) | 15.32 (+15.5%)
+layer 12 | 13.28 (+0.1%) | 13.35 (+0.6%) | 14.38 (+8.4%)
+layer 13 | 13.28 (+0.1%) | 13.33 (+0.5%) | 14.25 (+7.5%)
+layer 14 | 13.29 (+0.2%) | 13.31 (+0.3%) | 14.22 (+7.2%)
+layer 15 | 13.28 (+0.1%) | 13.36 (+0.7%) | 14.83 (+11.8%)
+layer 16 | 13.28 (+0.1%) | 13.33 (+0.5%) | 15.92 (+20.0%)
+layer 17 | 13.27 (+0.1%) | 13.32 (+0.4%) | 15.55 (+17.2%)
+layer 18 | 13.28 (+0.1%) | 13.27 (+0.1%) | 15.45 (+16.4%)
+layer 19 | 13.27 (-0.0%) | 13.29 (+0.2%) | 16.77 (+26.4%)
+layer 20 | 13.27 (+0.0%) | 13.29 (+0.2%) | 17.42 (+31.3%)
+layer 21 | 13.27 (+0.0%) | 13.33 (+0.5%) | 17.67 (+33.2%)
+layer 22 | 13.27 (+0.0%) | 13.29 (+0.2%) | 17.93 (+35.2%)
+layer 23 | 13.28 (+0.1%) | 13.29 (+0.2%) | 16.33 (+23.1%)
+layer 24 | 13.27 (+0.0%) | 13.31 (+0.3%) | 16.33 (+23.1%)
+layer 25 | 13.30 (+0.3%) | 13.31 (+0.4%) | 16.61 (+25.2%)
+layer 26 | 13.34 (+0.6%) | 13.34 (+0.6%) | 21.11 (+59.2%)
+layer 27 | 13.37 (+0.8%) | 13.27 (+0.1%) | 24.14 (+82.0%)
+

@@ -553,8 +553,8 @@
       ],
       "done_when": "Reviewed against the ADR-007 neutrality rule",
       "gpu": "",
-      "status": "doing",
-      "notes": "[2026-11-17] Drafting with Steph"
+      "status": "done",
+      "notes": "[2026-11-17] Drafting with Steph\n[2026-11-17] Done: instructions_v1.txt (Steph's template + 3 agreed edits), filled by code; preview in results/agent_round/v1_prompt_round1_preview.txt. Note: the measured-damage section currently comes from task 1.8's 128-window table; switch to the new C4 32-window damage table when it merges."
     },
     {
       "id": "2.10",
