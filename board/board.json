@@ -497,8 +497,8 @@
       ],
       "done_when": "Skipping unchanged early layers gives the same perplexity as running every layer; same results in parallel and sequential mode",
       "gpu": "M4 + T4",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started (2.12: up to 2 tiny Codex calls)"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started (2.12: up to 2 tiny Codex calls)\n[2026-11-17] Done: candidate_eval.py; reruns only from the first changed layer (matches full run within 1e-6); ~80% less time per round (estimated)."
     },
     {
       "id": "2.6",
@@ -511,8 +511,8 @@
       ],
       "done_when": "Gate unit tests",
       "gpu": "",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started (2.12: up to 2 tiny Codex calls)"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started (2.12: up to 2 tiny Codex calls)\n[2026-11-17] Done: gate keeps smallest perplexity rise per MB freed among candidates within 15%; zero-MB candidates can't win."
     },
     {
       "id": "2.7",
