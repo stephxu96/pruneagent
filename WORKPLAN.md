@@ -109,6 +109,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | 3.4 | ~~ShortGPT cut to the same memory limit~~ Dropped 2026-11-17 (v0.8): one primary baseline, FLAP | — | — |
 | 3.5 | Report writer: quality, memory, speed, strategy counts, rationale log, charts | Coding agent | Report builds from a tuning run |
 | 3.6 | Demo notebook on 0.6B (Q2) with a pre-run report as backup | Coding agent | Runs top to bottom on T4 |
+| 3.7 | 1.7B evidence: C4 scores, quick tests and the measured per-layer damage table for Qwen3-1.7B, then a round-1 dry run (no agent call) | Coding agent | Mac GPU, ~6 h; evidence saved; dry run renders round 1 |
 
 **G3:** instructions frozen at a tagged commit by end of D6, whatever the tuning results. No changes after this point. A tuning result below FLAP is reported, not chased (S4).
 
