@@ -234,3 +234,28 @@ def test_prune_state_builds_a_langgraph_graph():
 
     g = StateGraph(S.PruneState)
     assert {"plan", "candidates", "history", "usage", "sensitivity"} <= set(g.channels)
+
+
+def test_measured_damage_loads_into_the_table(tmp_path):
+    rows = {i: S.SensitivityRow(layer=i, block_influence=0.1 * (i + 1), measured_ppl={"drop_layer": 99.0})
+            for i in range(2)}
+    table = S.SensitivityTable(rows=rows)
+    fake = {"windows": 32, "dense": {"ppl": 13.0},
+            "entries": {"0/drop_layer": {"layer": 0, "strategy": "drop_layer", "ppl": 20.0, "increase": 7.0},
+                        "1/narrow_mlp": {"layer": 1, "strategy": "narrow_mlp", "ppl": 13.5, "increase": 0.5}}}
+    path = tmp_path / "damage.json"
+    path.write_text(json.dumps(fake))
+    out = table.with_measured_damage(json.loads(path.read_text()))
+    assert (out.dense_ppl, out.measured_windows) == (13.0, 32)
+    assert out.rows[0].measured_ppl == {"drop_layer": 20.0}  # replaced, not merged with the old value
+    assert out.rows[1].measured_ppl == {"narrow_mlp": 13.5}
+    assert out.rows[1].block_influence == table.rows[1].block_influence
+    assert S.SensitivityTable.model_validate_json(out.model_dump_json()) == out
+
+
+@pytest.mark.parametrize("entry", [{"layer": 5, "strategy": "drop_layer", "ppl": 20.0},
+                                   {"layer": 0, "strategy": "prune_everything", "ppl": 20.0}])
+def test_measured_damage_rejects_unknown_layers_and_strategies(entry):
+    table = S.SensitivityTable(rows={0: S.SensitivityRow(layer=0, block_influence=0.1)})
+    with pytest.raises((ValueError, ValidationError)):
+        table.with_measured_damage({"windows": 32, "dense": {"ppl": 13.0}, "entries": {"x": entry}})

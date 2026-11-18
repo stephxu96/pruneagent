@@ -204,6 +204,19 @@ class SensitivityTable(_Model):
         dense = truth.get("dense", {})
         return cls(dense_ppl=dense.get("ppl"), measured_windows=dense.get("n_windows"), rows=rows)
 
+    def with_measured_damage(self, damage: dict) -> SensitivityTable:
+        """This table with its measured damage replaced by a damage-table file (`scripts/damage_table.py`):
+        `dense` {"ppl"}, `windows`, and `entries` ("layer/strategy" -> {"layer", "strategy", "ppl", ...}).
+        Every measured layer must already have a row (the rows carry the quick tests and Block Influence)."""
+        measured: dict[int, dict[str, float]] = {i: {} for i in self.rows}
+        for key, e in damage["entries"].items():
+            if e["layer"] not in measured:
+                raise ValueError(f"damage entry {key}: layer {e['layer']} has no row in the table")
+            measured[e["layer"]][e["strategy"]] = e["ppl"]
+        rows = {i: SensitivityRow.model_validate({**r.model_dump(), "measured_ppl": measured[i]})
+                for i, r in self.rows.items()}
+        return SensitivityTable(dense_ppl=damage["dense"]["ppl"], measured_windows=damage["windows"], rows=rows)
+
 
 # -------------------------------------------------------------------------------------------- agent in and out
 #
