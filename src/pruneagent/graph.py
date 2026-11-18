@@ -5,7 +5,8 @@
 
 - load: the sensitivity table (quick tests, plus the measured per-layer damage when it exists) and the dense plan.
 - feasibility: early warning, before any agent call, when the memory limit is out of reach (below the smallest
-  model the rules allow) or already met by the unpruned model; either way the run goes straight to `final`.
+  model the rules allow) or already met by the unpruned model; either way the run goes straight to `final`
+  (`device.feasibility`, task 2.11).
 - baseline: once per run, Baseline: FLAP cut to the memory limit and its perplexity on the gate's windows (shown
   to the agent), and the unpruned model's perplexity on the same windows (the first accepted plan).
 - plan: one agent call. The prompt comes from `Deps.build_prompt` (a placeholder until the instructions of task
@@ -18,8 +19,8 @@
   accepted plan.
 - stop_check: memory limit met; `max_invalid_in_row` invalid replies in a row; `max_rounds_without_accept`
   rounds without an accepted step; `max_rounds` rounds; `RunConfig.max_agent_calls` calls.
-- final: final warnings (limit not met, or worse than Baseline: FLAP on the gate's windows) and the optional
-  final evaluation hook.
+- final: final warnings (limit not met, worse than Baseline: FLAP on the gate's windows, or short of a minimum
+  speed), the device report (`device.final_warnings`, `device.report`) and the optional final evaluation hook.
 
 A round is one agent reply, whatever its outcome; every round writes one `StepRecord` to the decision log.
 Memory is weight memory only (`estimate.weight_bytes`), the measure Baseline: FLAP is cut to.
@@ -31,7 +32,6 @@ Checkpoints and rollback storage (tasks 2.7, 2.8) are the in-memory `MemoryStore
 
 from __future__ import annotations
 
-import math
 import time
 from collections import Counter
 from collections.abc import Callable
@@ -44,6 +44,7 @@ from pydantic import ValidationError
 
 from pruneagent import agent_client as AC
 from pruneagent import agent_round
+from pruneagent import device as D
 from pruneagent import estimate as E
 from pruneagent import plan as P
 from pruneagent import validator as V
@@ -55,11 +56,9 @@ from pruneagent.schema import (
     CandidateResult,
     CheckResult,
     Choice,
-    DeviceWarning,
     GateResult,
     Plan,
     PruneState,
-    Rules,
     RunConfig,
     SensitivityTable,
     StepRecord,
@@ -183,25 +182,7 @@ class Deps:
 # ------------------------------------------------------------------------------------------- plan helpers
 
 
-def smallest_plan(config, rules: Rules) -> Plan:
-    """The smallest model the rules allow: every layer at its minimum MLP width and key/value groups, and
-    `max_drops_per_run` layers dropped (embeddings unchanged). Unstructured sparsity frees no memory."""
-    n_layers, width, _ = P.shape(config)
-    min_mlp = math.ceil(width * rules.min_mlp_fraction)
-    plan = P.dense_plan(config)
-    for i in range(n_layers):
-        while True:
-            try:
-                nxt = P.step(plan, i, "narrow_mlp", config)
-            except P.PlanError:
-                break
-            if nxt[i]["mlp_keep"] < min_mlp:
-                break
-            plan = nxt
-        plan[i]["groups_keep"] = min(rules.min_groups, plan[i]["groups_keep"])
-    for i in range(min(rules.max_drops_per_run, n_layers - 1)):
-        plan[i]["dropped"] = True
-    return plan
+smallest_plan = D.smallest_plan
 
 
 def flap_allocation(baseline: Baseline, config) -> Plan:
@@ -219,8 +200,7 @@ def _rank_speed(est: E.Estimate, plan: Plan, layer_cost_s: float) -> float | Non
     """Estimated decode speed with the per-layer cost added (G1): breaks perplexity ties."""
     if not est.est_decode_tok_s:
         return None
-    kept = sum(not p["dropped"] for p in plan.values())
-    return 1 / (1 / est.est_decode_tok_s + layer_cost_s * kept)
+    return E.with_layer_cost(est.est_decode_tok_s, sum(not p["dropped"] for p in plan.values()), layer_cost_s)
 
 
 def _outcome_text(rec: StepRecord, step_limit: float) -> str:
@@ -268,23 +248,8 @@ def build_graph(deps: Deps, checkpointer=None):
                 "warnings": [], "usage": Usage()}
 
     def feasibility(state: GraphState) -> dict:
-        run = state["run"]
-        limit = run.limit_bytes
-        dense = E.weight_bytes(cfg, P.dense_plan(cfg))
-        if dense <= limit:
-            w = DeviceWarning(kind="already_met", message=(
-                f"The unpruned model's weights ({dense / GB:.3f} GB) already fit the memory limit "
-                f"({run.device.memory_limit_gb} GB): no pruning is needed."))
-            return {"warnings": [w], "stop_reason": "memory limit already met by the unpruned model"}
-        small = smallest_plan(cfg, run.rules)
-        least = E.weight_bytes(cfg, small)
-        if least > limit:
-            gap = (least - limit) / GB
-            w = DeviceWarning(kind="out_of_reach", closest_plan=small, memory_gap_gb=gap, message=(
-                f"The memory limit ({run.device.memory_limit_gb} GB) is out of reach: the smallest model the "
-                f"pruning rules allow still has {least / GB:.3f} GB of weights, {gap:.3f} GB over the limit."))
-            return {"warnings": [w], "stop_reason": "memory limit out of reach"}
-        return {}
+        warnings, reason = D.feasibility(cfg, state["run"])
+        return {"warnings": warnings, **({"stop_reason": reason} if reason else {})}
 
     def baseline(state: GraphState) -> dict:
         run = state["run"]
@@ -388,7 +353,7 @@ def build_graph(deps: Deps, checkpointer=None):
         est = E.estimate(cfg, job["plan"], run.device)
         res = CandidateResult(candidate_id=job["candidate_id"], choices=job["choices"], rationale=job["rationale"],
                               plan=job["plan"], estimate=est,
-                              rank_decode_tok_s=_rank_speed(est, job["plan"], run.layer_cost_s),
+                              rank_decode_tok_s=_rank_speed(est, job["plan"], run.layer_cost),
                               val_ppl=ppl, step_rise=ppl / job["last_ppl"] - 1)
         return {"candidates": [res], "eval_seconds": [seconds]}
 
@@ -466,25 +431,16 @@ def build_graph(deps: Deps, checkpointer=None):
             out.update(record(state, None, check=state["check"], reply=reply))
             out["stop_reason"] = "the agent stopped"
         searched = "baseline" in state
-        warnings = []
+        plan = state["plan"]
         if searched:
-            plan, last = state["plan"], state["accepted"][-1]
-            size = E.weight_bytes(cfg, plan)
-            if size > run.limit_bytes:
-                gap = (size - run.limit_bytes) / GB
-                warnings.append(DeviceWarning(kind="out_of_reach", closest_plan=plan, memory_gap_gb=gap, message=(
-                    f"The search ended without reaching the memory limit: the closest plan has "
-                    f"{size / GB:.3f} GB of weights, {gap:.3f} GB over the limit.")))
-            elif last.val_ppl > state["baseline"].val_ppl_subset:
-                warnings.append(DeviceWarning(kind="below_flap", closest_plan=plan, message=(
-                    f"The result fits but keeps less quality than Baseline: FLAP on the gate's windows "
-                    f"(perplexity {last.val_ppl:.2f} against {state['baseline'].val_ppl_subset:.2f}).")))
-            if run.device.min_decode_tok_s is not None:
-                chk = E.check(run.device, cfg, plan)
-                for w in warnings:
-                    w.speed_gap_tok_s = chk.speed_gap_tok_s
-        if warnings:
-            out["warnings"] = warnings
+            warnings = D.final_warnings(cfg, run, plan, state["accepted"][-1].val_ppl,
+                                        state["baseline"].val_ppl_subset)
+            if warnings:
+                out["warnings"] = warnings
+        else:  # stopped early: report on the early warning's closest plan (the smallest model) if it has one
+            plan = next((w.closest_plan for w in state.get("warnings", []) if w.kind == "out_of_reach"
+                         and w.memory_gap_gb > 0), plan)
+        out["device_report"] = D.report(cfg, run, plan)
         if deps.final_eval is not None and searched:
             out["final"] = deps.final_eval({**state, **out})
         store.checkpoint({**state, **out})

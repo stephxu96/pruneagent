@@ -117,12 +117,12 @@ def test_check_reports_gaps():
                            min_decode_tok_s=1.0)
     c = E.check(roomy, cfg, {})
     assert c.meets_target and c.memory_gap_gb == 0 and c.speed_gap_tok_s == 0 and c.estimate.meets_target
-    tight = E.DeviceTarget("tight", memory_limit_gb=e.memory_bytes / 2 / E.GB, bandwidth_gb_s=1, compute_tflops=1,
+    tight = E.DeviceTarget("tight", memory_limit_gb=e.weight_bytes / 2 / E.GB, bandwidth_gb_s=1, compute_tflops=1,
                            backend="cpu", min_decode_tok_s=1e6)
     c = E.check(tight, cfg, {})
     assert not c.fits_memory and not c.meets_speed and not c.meets_target
-    assert c.memory_gap_gb == pytest.approx(e.memory_bytes / 2 / E.GB)
-    assert c.speed_gap_tok_s == pytest.approx(1e6 - c.estimate.est_decode_tok_s)
+    assert c.memory_gap_gb == pytest.approx(e.weight_bytes / 2 / E.GB)  # weights only
+    assert c.speed_gap_tok_s == pytest.approx(1e6 - c.estimate.est_decode_tok_s)  # no layer cost for "tight"
     no_speed = E.DeviceTarget("no speed", memory_limit_gb=1, bandwidth_gb_s=1, compute_tflops=1)
     assert E.check(no_speed, cfg, {}).meets_speed
     json.dumps(c.to_dict())
@@ -147,3 +147,35 @@ def test_targets(tmp_path):
         E.load_target("nope")
     with pytest.raises(ValueError):
         E.DeviceTarget("bad", memory_limit_gb=1, bandwidth_gb_s=1, compute_tflops=1, backend="npu")
+
+
+def test_memory_limit_counts_weights_only():
+    cfg = tiny().config
+    e = E.estimate(cfg, {}, E.PRESETS["t4"])
+    assert e.kv_cache_bytes > 0
+    between = E.DeviceTarget("between", memory_limit_gb=(e.weight_bytes + e.kv_cache_bytes / 2) / E.GB,
+                             bandwidth_gb_s=100, compute_tflops=10)
+    c = E.check(between, cfg, {})
+    assert c.fits_memory and c.memory_gap_gb == 0  # the cache does not count against the limit
+    assert E.estimate(cfg, {}, between).meets_target
+
+
+def test_speed_check_adds_the_per_layer_cost():
+    cfg = tiny().config
+    t4 = E.PRESETS["t4"]
+    c = E.check(t4, cfg, {})
+    assert c.layer_cost_s == E.LAYER_COST_S[t4.name] > 0
+    assert c.decode_tok_s == pytest.approx(1 / (1 / c.estimate.est_decode_tok_s + c.layer_cost_s * N_LAYERS))
+    slow = E.DeviceTarget(t4.name, memory_limit_gb=15, bandwidth_gb_s=320, compute_tflops=65,
+                          min_decode_tok_s=c.decode_tok_s + 1)
+    assert E.check(slow, cfg, {}).speed_gap_tok_s == pytest.approx(1)
+    assert E.check(slow, cfg, {}, layer_cost=0).meets_speed  # the roofline alone would pass it
+
+
+def test_speed_is_verified_only_for_the_m4_and_the_t4():
+    assert E.speed_machine(E.PRESETS["m4"]) == "m4" and E.speed_machine(E.PRESETS["t4"]) == "t4"
+    measured = E.DeviceTarget.from_dict({"name": "t4", "kind": "gpu", "bandwidth_gbs": 232.2, "compute_tflops": 22.6,
+                                         "memory_total_gb": 15.6})
+    assert E.speed_machine(measured) == "t4" and E.layer_cost_s(measured) == E.LAYER_COST_S["t4"]
+    phone = E.DeviceTarget("phone (example)", memory_limit_gb=2.5, bandwidth_gb_s=55, compute_tflops=2)
+    assert E.speed_machine(phone) is None and E.layer_cost_s(phone) == 0

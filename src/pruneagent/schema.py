@@ -27,7 +27,7 @@ from pydantic import (
     model_validator,
 )
 
-from pruneagent.estimate import DeviceTarget, Estimate
+from pruneagent.estimate import REPORT_CONTEXT, DeviceTarget, Estimate, layer_cost_s, speed_machine
 from pruneagent.plan import STRATEGIES, LayerPlan
 
 Strategy = Literal["narrow_mlp", "remove_attention_group", "drop_layer", "wanda_sparsity"]
@@ -78,7 +78,9 @@ class RunConfig(_Model):
     calibration: Calibration = Calibration()
     rules: Rules = Rules()
     gate_windows: PositiveInt = 32  # validation windows used by the gate
-    layer_cost_s: NonNegativeFloat = 0.0  # per kept layer, added to the per-token time when ranking plans (G1)
+    # per kept layer, added to each token's estimated time when ranking plans and checking a minimum speed (G1);
+    # None: the value fitted for the M4 or the T4 (`estimate.LAYER_COST_S`), 0 for other devices
+    layer_cost_s: NonNegativeFloat | None = None
     agent_backend: Literal["codex", "api"] = "codex"
     agent_provider: str | None = None
     agent_model: str | None = None
@@ -96,6 +98,18 @@ class RunConfig(_Model):
         if self.agent_backend == "codex" and self.max_cost_usd is not None:
             raise ValueError("max_cost_usd applies to the API backend only (Codex has no per-call charge)")
         return self
+
+    @model_validator(mode="after")
+    def _speed_where_checked(self) -> RunConfig:
+        if self.device.min_decode_tok_s is not None and speed_machine(self.device) is None:
+            raise ValueError(f"a minimum speed can be checked only on the M4 or the T4, where the speed estimate "
+                             f"was checked against measurements; {self.device.name!r} gets memory fit only")
+        return self
+
+    @property
+    def layer_cost(self) -> float:
+        """The per-layer cost in use: `layer_cost_s` if given, else the fitted value for the device."""
+        return layer_cost_s(self.device) if self.layer_cost_s is None else self.layer_cost_s
 
     @property
     def limit_bytes(self) -> int:
@@ -390,19 +404,27 @@ class MethodResult(_Model):
 
 
 class DeviceReport(_Model):
-    """Fits or not, and, for a device whose speed was checked against measurements (the M4 and the T4), the
-    estimated speed. For other devices (a phone) the report gives memory fit only (G1, A8), so the speed fields
-    must stay empty."""
+    """Fits or not (weights against the memory limit), the key/value cache beside it at a stated text length (not
+    part of the limit), the closest plan when the limit is not met, and, for a device whose speed was checked
+    against measurements (the M4 and the T4), the estimated speed with the per-layer cost. For other devices (a
+    phone) the report gives memory fit only (G1, A8), so the speed fields must stay empty."""
 
     target: DeviceTarget
     fits_memory: bool
-    memory_gap_gb: NonNegativeFloat = 0.0
+    memory_gap_gb: NonNegativeFloat = 0.0  # GB of weights over the limit
+    weight_bytes: PositiveInt | None = None
+    kv_cache_bytes: NonNegativeInt | None = None  # at kv_context tokens, batch 1; not part of the limit
+    kv_context: PositiveInt = REPORT_CONTEXT
+    closest_plan: Plan | None = None  # the plan reported when the limit is not met
     speed_reported: bool
     est_decode_tok_s: float | None = None
     speed_gap_tok_s: NonNegativeFloat | None = None
 
     @model_validator(mode="after")
     def _memory_fit_only(self) -> DeviceReport:
+        if self.speed_reported and speed_machine(self.target) is None:
+            raise ValueError(f"speed is reported only for the M4 and the T4, not {self.target.name!r}: give memory "
+                             "fit only")
         if not self.speed_reported and (self.est_decode_tok_s is not None or self.speed_gap_tok_s is not None):
             raise ValueError("speed is not reported for this device: give memory fit only")
         return self
@@ -456,4 +478,5 @@ class PruneState(TypedDict, total=False):
     gate: GateResult | None
     history: Annotated[list[StepRecord], operator.add]
     warnings: Annotated[list[DeviceWarning], operator.add]
+    device_report: DeviceReport | None
     usage: Annotated[Usage, add_usage]

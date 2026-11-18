@@ -100,3 +100,23 @@ def test_speed_check_command(tmp_path, monkeypatch):
     assert out["summary"]["m4"]["decode"]["spearman"] == pytest.approx(1)
     est = out["plans"][0]["estimated"]["m4"]["decode"]
     assert out["summary"]["m4"]["decode"]["error"][0] == pytest.approx((est - 10) / 10)
+
+
+def test_layer_cost_fit_recovers_a_known_cost():
+    est = [100.0, 150.0, 200.0]
+    kept = [28, 20, 14]
+    meas = [1 / (1 / e + 2e-4 * k) for e, k in zip(est, kept, strict=True)]
+    fit = S.fit_layer_cost(est, meas, kept)
+    assert fit["layer_cost_s"] == pytest.approx(2e-4) and fit["max_abs_error"] < 1e-9
+
+
+def test_fitted_layer_costs_match_the_saved_measurements():
+    """estimate.LAYER_COST_S is the fit on the task 1.7 results in the repository."""
+    root = ROOT / "results" / "speed_check"
+    fits = {}
+    for machine in ("m4", "t4"):
+        fits |= S.layer_costs(root / f"{machine}.json", root / "prune_log")
+    assert set(fits) == set(E.LAYER_COST_S)
+    for name, f in fits.items():
+        assert E.LAYER_COST_S[name] == pytest.approx(f["layer_cost_s"], rel=1e-3)
+        assert f["max_abs_error"] < 0.10 and f["spearman"] >= 0.9
