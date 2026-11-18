@@ -646,7 +646,7 @@
       "done_when": "Each run logged with instruction version",
       "gpu": "T4",
       "status": "todo",
-      "notes": "[2026-11-17] Include repeats per setting: reasoning effort, and trimmed vs untrimmed Codex setup (old untrimmed low answer scored 19.69 vs trimmed high 20.45)."
+      "notes": "[2026-11-17] Include repeats per setting: reasoning effort, and trimmed vs untrimmed Codex setup (old untrimmed low answer scored 19.69 vs trimmed high 20.45).\n[2026-11-17] Method agreed: prompt optimizer (docs/prompt_optimizer_plan.md) with 4 changes: current system, confirm edits on held-out windows, 2-3 repeats per version, Steph approves each edit. Build after G2."
     },
     {
       "id": "3.2",
@@ -660,7 +660,7 @@
       "done_when": "Diff reviewed",
       "gpu": "",
       "status": "todo",
-      "notes": ""
+      "notes": "[2026-11-17] Neutrality enforced by the optimizer's constraints plus Steph's approval of each edit."
     },
     {
       "id": "3.3",
