@@ -218,6 +218,11 @@ class RunStore:
         return RunInfo(run_id=run_id, status=status, reason=reason, round=rnd, created=created, updated=updated,
                        host=host, pid=pid, n_accepted=n, deps_factory=factory)
 
+    def set_config(self, run_cfg: RunConfig) -> None:
+        """Replace the run's config (resuming on the other agent backend)."""
+        with closing(self._db()) as con, con:
+            con.execute("UPDATE run SET config = ?, updated = ?", (run_cfg.model_dump_json(), _now()))
+
     def set_status(self, status: str, reason: str | None = None) -> None:
         """running (also records this process, so another machine can take a run over), paused or finished."""
         with closing(self._db()) as con, con:

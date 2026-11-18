@@ -172,8 +172,10 @@ def test_codex_command_is_trimmed_pinned_and_read_only(tmp_path):
     assert res.text == GOOD and res.usage.input_tokens == 3135 and res.usage.total_tokens == 3144
     cmd, kw = run.seen[0]
     assert cmd[:2] == ["codex", "exec"] and cmd[-1] == "-" and kw["input"] == "the prompt"
-    for flag in ["--sandbox", "read-only", "--ephemeral", "--ignore-user-config", "--json", "--skip-git-repo-check"]:
+    for flag in ["--sandbox", "read-only", "--ignore-user-config", "--json", "--skip-git-repo-check"]:
         assert flag in cmd
+    assert "--ephemeral" not in cmd  # sessions are saved: they hold the usage-limit readings (task 2.12)
+    assert kw["env"]["CODEX_HOME"] == str(C.CodexBackend().codex_home)  # in the agent's own Codex home
     assert cmd[cmd.index("--model") + 1] == C.CODEX_MODEL
     assert 'model_reasoning_effort="high"' in cmd and "skills.include_instructions=false" in cmd
     assert any(c.startswith("model_instructions_file=") for c in cmd)

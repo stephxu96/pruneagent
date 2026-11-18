@@ -5,8 +5,9 @@
     reply.data                                       # the parsed JSON answer
 
 - `CodexBackend` (default): `codex exec` on the ChatGPT plan, from an empty temporary directory, read-only,
-  no saved session, pinned model and reasoning effort, and a trimmed context (task 2.10; see
-  `CODEX_TRIM` and README "Agent backend").
+  pinned model and reasoning effort, and a trimmed context (task 2.10; see `CODEX_TRIM` and README "Agent
+  backend"). Sessions are saved, in a Codex home of their own (`DEFAULT_CODEX_HOME`), because only a saved
+  session holds the usage-limit readings (task 2.12, `limits`); the login is shared with ~/.codex.
 - `ApiBackend`: an LLM API with structured output (OpenAI Responses API format). The HTTP transport is
   injectable; tests use a fake one. The key comes from the environment or `.env` and is never logged.
 - Cache: one JSON file per request, keyed by a hash of the prompt, the schema and the backend settings, so
@@ -15,6 +16,10 @@
   seconds, cost (API), outcome.
 - One retry on a transient failure (timeout, dropped connection, server error); a usage limit, a login
   problem or a malformed answer is not retried.
+- Usage limits (task 2.12): the limit reading of every Codex call goes into the ledger. A reply whose reading is
+  at 90% of a limit carries `pause_reason` (the graph pauses after that round); a call is refused before it is
+  sent while the last reading says a limit is still at 90% or reached (`LimitPause`); `estimate_run` says
+  before a run whether its calls fit. The API backend's cost cap pauses a run too (`CostCapReached`).
 
 `AgentRequest` / `AgentReply` are deliberately minimal so they can be swapped for task 2.1's state types.
 """
@@ -25,6 +30,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import time
@@ -36,6 +42,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from pruneagent import limits as L
+
 # ------------------------------------------------------------------------------------------- pinned settings
 
 CODEX_MODEL = "gpt-5.6-terra"
@@ -44,6 +52,9 @@ INSTRUCTIONS_FILE = Path(__file__).with_name("codex_instructions.md")
 
 DEFAULT_CACHE_DIR = Path("runs/agent_cache")
 DEFAULT_LEDGER = Path("runs/agent_usage.jsonl")
+# Codex home for the agent's calls: its saved sessions stay out of Steph's own Codex history. Its auth.json is a
+# link to the login in ~/.codex (or $CODEX_HOME). Override with PRUNEAGENT_CODEX_HOME.
+DEFAULT_CODEX_HOME = Path.home() / ".codex-pruneagent"
 MAX_CALLS_PER_RUN = 60
 MAX_COST_PER_RUN_USD = 5.0  # API backend only
 
@@ -98,6 +109,7 @@ class BackendResult:
     text: str
     usage: Usage
     model: str
+    limits: L.LimitReading | None = None  # Codex only: the limit status after this call
 
 
 @dataclass
@@ -110,6 +122,8 @@ class AgentReply:
     seconds: float = 0.0
     cached: bool = False
     key: str = ""
+    limits: L.LimitReading | None = None
+    pause_reason: str | None = None  # set when this call's reading reached the pause point: pause after this round
 
 
 class AgentError(Exception):
@@ -121,7 +135,17 @@ class TransientError(AgentError):
 
 
 class UsageLimitReached(AgentError):
-    """Codex plan limit or API quota reached: not retried (the run pauses; task 2.12)."""
+    """Codex plan limit or API quota reached: not retried; the run pauses (task 2.12). `resets_at` when known."""
+
+    def __init__(self, message: str = "", resets_at: datetime | None = None,
+                 reading: L.LimitReading | None = None):
+        super().__init__(message)
+        self.resets_at = resets_at
+        self.reading = reading
+
+
+class LimitPause(UsageLimitReached):
+    """Not sent: the last reading says a limit is at the pause point (90%) or reached, and has not reset."""
 
 
 class MalformedReply(AgentError):
@@ -130,6 +154,10 @@ class MalformedReply(AgentError):
 
 class CapReached(AgentError):
     """The run's call cap or cost cap would be exceeded."""
+
+
+class CostCapReached(CapReached, UsageLimitReached):
+    """The API backend's cost cap: the run pauses (resume on the Codex backend or with a higher cap)."""
 
 
 class Backend(Protocol):
@@ -172,6 +200,18 @@ def extract_json(text: str, required: list[str] | tuple[str, ...] = ()) -> dict:
     raise MalformedReply(f"no JSON object{need} in the reply{found}: {text[:200]!r}")
 
 
+def thread_id(stdout: str) -> str | None:
+    """The session id `codex exec --json` prints first (`thread.started`)."""
+    for line in stdout.splitlines():
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(ev, dict) and ev.get("type") == "thread.started":
+            return ev.get("thread_id")
+    return None
+
+
 def tokens_used(text: str) -> int | None:
     """The "tokens used" figure Codex prints at the end of a plain (non --json) run."""
     m = re.search(r"tokens used\s*:?\s*\n?\s*([\d,]+)", text, flags=re.IGNORECASE)
@@ -204,21 +244,58 @@ def _toml(v: Any) -> str:
     return json.dumps(str(v))
 
 
+def _login_home() -> Path:
+    return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+
+
 class CodexBackend:
-    """`codex exec` with the trimmed, pinned setup. `run` is injectable (tests pass a fake)."""
+    """`codex exec` with the trimmed, pinned setup. `run` is injectable (tests pass a fake).
+
+    Sessions are saved (not `--ephemeral`) so each call's usage-limit reading can be read back, under
+    `codex_home` (default `DEFAULT_CODEX_HOME`, or PRUNEAGENT_CODEX_HOME), not in Steph's own Codex history.
+    Its `auth.json` is a link to the login in `login_home` (~/.codex); if Codex ever replaces the link with a
+    file (a refreshed login), the newer file is copied back there and the link restored, so both stay logged in.
+    `ephemeral=True` saves nothing and uses the normal Codex home (no limit readings)."""
 
     name = "codex"
 
     def __init__(self, model: str = CODEX_MODEL, reasoning_effort: str = CODEX_REASONING_EFFORT,
-                 instructions_file: Path = INSTRUCTIONS_FILE, trim: bool = True, ephemeral: bool = True,
+                 instructions_file: Path = INSTRUCTIONS_FILE, trim: bool = True, ephemeral: bool = False,
+                 codex_home: Path | str | None = None, login_home: Path | str | None = None,
                  executable: str = "codex", run: Runner = subprocess.run):
         self.model = model
         self.reasoning_effort = reasoning_effort
         self.instructions_file = Path(instructions_file).resolve()
         self.trim = trim
         self.ephemeral = ephemeral
+        self.codex_home = Path(codex_home or os.environ.get("PRUNEAGENT_CODEX_HOME") or DEFAULT_CODEX_HOME)
+        self.login_home = Path(login_home) if login_home else _login_home()
         self.executable = executable
         self._run = run
+
+    # ------------------------------------------------------------------------------- own Codex home
+
+    def prepare_home(self) -> None:
+        """Create `codex_home` with `auth.json` linked to the login in `login_home`; copy a refreshed login back."""
+        self.codex_home.mkdir(parents=True, exist_ok=True)
+        link, src = self.codex_home / "auth.json", self.login_home / "auth.json"
+        if link.is_symlink() or not src.is_file() or link.resolve() == src.resolve():
+            return
+        if link.exists():  # Codex replaced the link with a file when it refreshed the login
+            if link.stat().st_mtime > src.stat().st_mtime:
+                tmp = src.with_name(".auth.json.pruneagent-tmp")
+                shutil.copy2(link, tmp)
+                os.chmod(tmp, 0o600)
+                tmp.replace(src)
+            link.unlink()
+        link.symlink_to(src)
+
+    def limits_after(self, thread_id: str | None) -> L.LimitReading | None:
+        """The limit reading saved with one call's session, or None (no thread id, no session, no reading)."""
+        if self.ephemeral or not thread_id:
+            return None
+        path = L.find_session(self.codex_home, thread_id)
+        return L.read_session(path) if path else None
 
     def identity(self) -> dict:
         instr = self.instructions_file.read_text() if self.trim else ""
@@ -249,12 +326,32 @@ class CodexBackend:
             if schema is not None:
                 schema_path = Path(tmp) / "schema.json"
                 schema_path.write_text(json.dumps(schema))
+            env = None
+            if not self.ephemeral:
+                self.prepare_home()
+                env = {**os.environ, "CODEX_HOME": str(self.codex_home)}
             try:
                 proc = self._run(self.command(schema_path), cwd=work, input=prompt, capture_output=True, text=True,
-                                 timeout=timeout, check=False)
+                                 timeout=timeout, check=False, env=env)
             except subprocess.TimeoutExpired as e:
                 raise TransientError(f"codex exec timed out after {timeout:.0f} s") from e
-        return self.parse_output(proc.stdout or "", proc.stderr or "", proc.returncode)
+            finally:
+                if not self.ephemeral:
+                    self.prepare_home()
+        stdout = proc.stdout or ""
+        reading = self.limits_after(thread_id(stdout))
+        try:
+            res = self.parse_output(stdout, proc.stderr or "", proc.returncode)
+        except UsageLimitReached as e:
+            e.reading = reading
+            e.resets_at = reading.resets_at() if reading else None
+            raise
+        except AgentError as e:  # a limit Codex reports only in its session
+            if reading is not None and reading.reached:
+                raise UsageLimitReached(str(e), reading.resets_at(), reading) from e
+            raise
+        res.limits = reading
+        return res
 
     def parse_output(self, stdout: str, stderr: str, returncode: int) -> BackendResult:
         """Final message and token usage from `codex exec --json` events (falls back to "tokens used")."""
@@ -447,6 +544,21 @@ class Ledger:
                 "cost_usd": round(sum(e.get("cost_usd") or 0.0 for e in sent), 6),
                 "cache_hits": sum(1 for e in self.entries(run_id) if e.get("cached"))}
 
+    def last_limits(self) -> L.LimitReading | None:
+        """The newest usage-limit reading of any run (the limits belong to the account, not to a run)."""
+        found = [L.LimitReading.from_dict(e["limits"]) for e in self.entries() if e.get("limits")]
+        newest = max(range(len(found)), key=lambda i: (found[i].time, i), default=None)  # ties: the later line
+        return None if newest is None else found[newest]
+
+    def limit_history(self) -> list[tuple[int, L.LimitReading]]:
+        """(tokens of the call, reading after it) for every answered call with a reading, oldest first."""
+        return [(e.get("total_tokens") or 0, L.LimitReading.from_dict(e["limits"])) for e in self.entries()
+                if e.get("limits") and not e.get("cached") and e.get("ok")]
+
+    def recent_tokens(self, backend: str | None = None) -> list[int]:
+        return [e["total_tokens"] for e in self.entries() if not e.get("cached") and e.get("ok")
+                and e.get("total_tokens") and (backend is None or e.get("backend") == backend)]
+
 
 def cache_key(request: AgentRequest, backend: Backend) -> str:
     blob = json.dumps({"prompt": request.prompt, "schema": request.schema, "backend": backend.identity()},
@@ -463,7 +575,8 @@ class AgentClient:
     def __init__(self, backend: Backend | None = None, cache: Cache | None = None, ledger: Ledger | None = None,
                  run_id: str | None = None, max_calls: int = MAX_CALLS_PER_RUN,
                  max_cost_usd: float | None = MAX_COST_PER_RUN_USD, timeout: float = 180.0, retries: int = 1,
-                 retry_wait: float = 5.0, sleep: Callable[[float], None] = time.sleep):
+                 retry_wait: float = 5.0, sleep: Callable[[float], None] = time.sleep,
+                 pause_at: float = L.PAUSE_AT, now: Callable[[], datetime] = lambda: datetime.now(UTC)):
         self.backend = backend if backend is not None else CodexBackend()
         self.cache = cache if cache is not None else Cache()
         self.ledger = ledger if ledger is not None else Ledger()
@@ -472,6 +585,35 @@ class AgentClient:
         self.timeout, self.retries, self.retry_wait, self._sleep = timeout, retries, retry_wait, sleep
         prior = self.ledger.totals(run_id) if run_id else {"calls": 0, "cost_usd": 0.0}
         self.calls, self.cost_usd = prior["calls"], prior["cost_usd"]
+        self.pause_at, self._now = pause_at, now
+        self.limits = self.ledger.last_limits() if self.backend.name == "codex" else None
+
+    # ---------------------------------------------------------------------------------------- usage limits
+
+    def limit_reading(self) -> L.LimitReading | None:
+        """The last reading this client knows (from its calls or the ledger), else the newest saved session in
+        the backend's Codex home or the login's (the limits belong to the account, so any session will do)."""
+        if self.limits is not None or self.backend.name != "codex":
+            return self.limits
+        homes = [h for h in (getattr(self.backend, "codex_home", None), getattr(self.backend, "login_home", None))
+                 if h is not None]
+        return L.latest_session_reading(*homes) if homes else None
+
+    def estimate_run(self, calls: int) -> L.RunEstimate | None:
+        """Whether `calls` more calls fit the remaining Codex limits (None on a backend without plan limits)."""
+        if self.backend.name != "codex":
+            return None
+        return L.estimate_run(self.limit_reading(), calls, self.ledger.limit_history(),
+                              self.ledger.recent_tokens(self.backend.name), now=self._now(),
+                              pause_at=self.pause_at)
+
+    def _check_limits(self) -> None:
+        """Refuse to send while the last reading is at the pause point and its window has not reset."""
+        if self.limits is None:
+            return
+        reason = self.limits.pause_reason(self._now(), self.pause_at)
+        if reason:
+            raise LimitPause(reason, self.limits.resets_at(self._now(), self.pause_at), self.limits)
 
     def _log(self, request: AgentRequest, key: str, **fields) -> None:
         self.ledger.append({"time": datetime.now(UTC).isoformat(timespec="seconds"), "run_id": self.run_id,
@@ -481,7 +623,7 @@ class AgentClient:
         if self.calls >= self.max_calls:
             raise CapReached(f"call cap reached: {self.calls} of {self.max_calls} calls used")
         if self.backend.name == "api" and self.max_cost_usd is not None and self.cost_usd >= self.max_cost_usd:
-            raise CapReached(f"cost cap reached: ${self.cost_usd:.2f} of ${self.max_cost_usd:.2f}")
+            raise CostCapReached(f"API cost cap reached: ${self.cost_usd:.2f} of ${self.max_cost_usd:.2f}")
 
     def propose(self, request: AgentRequest) -> AgentReply:
         key = cache_key(request, self.backend)
@@ -493,6 +635,7 @@ class AgentClient:
         attempt = 0
         while True:
             self._check_caps()
+            self._check_limits()
             attempt += 1
             self.calls += 1
             start = time.perf_counter()
@@ -506,12 +649,19 @@ class AgentClient:
                     continue
                 raise
             except AgentError as e:
+                extra = {}
+                if isinstance(e, UsageLimitReached) and e.reading is not None:
+                    self.limits = e.reading
+                    extra["limits"] = e.reading.to_dict()
                 self._log(request, key, cached=False, ok=False, attempt=attempt, error=str(e)[:500],
-                          error_kind=type(e).__name__, seconds=round(time.perf_counter() - start, 2))
+                          error_kind=type(e).__name__, seconds=round(time.perf_counter() - start, 2), **extra)
                 raise
             seconds = round(time.perf_counter() - start, 2)
             self.cost_usd += res.usage.cost_usd or 0.0
             usage = {**asdict(res.usage), "total_tokens": res.usage.total_tokens}
+            if res.limits is not None:
+                self.limits = res.limits
+                usage["limits"] = res.limits.to_dict()
             try:
                 data = extract_json(res.text, required)
             except MalformedReply as e:
@@ -522,5 +672,6 @@ class AgentClient:
             self.cache.put(key, {"key": key, "data": data, "text": res.text, "backend": self.backend.name,
                                  "model": res.model, "usage": asdict(res.usage), "identity": self.backend.identity(),
                                  "created": datetime.now(UTC).isoformat(timespec="seconds")})
+            pause = res.limits.pause_reason(self._now(), self.pause_at) if res.limits else None
             return AgentReply(data=data, text=res.text, backend=self.backend.name, model=res.model, usage=res.usage,
-                              seconds=seconds, cached=False, key=key)
+                              seconds=seconds, cached=False, key=key, limits=res.limits, pause_reason=pause)

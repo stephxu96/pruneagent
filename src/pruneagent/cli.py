@@ -1162,13 +1162,37 @@ def resume_cmd(
     run_id: Annotated[str | None, typer.Argument(help="Run to resume; optional when exactly one run is paused.")]
     = None,
     root: Annotated[Path, typer.Option(help="Directory holding the runs.")] = Path("runs"),
+    backend: Annotated[str | None, typer.Option(
+        help="Continue on this agent backend (codex or api) instead of the run's own.")] = None,
 ) -> None:
-    """Continue a paused or interrupted run from its last checkpoint, without repeating an agent call."""
+    """Continue a paused or interrupted run from its last checkpoint, without repeating an agent call. A run
+    paused at a usage limit that has not reset yet pauses again at once, without a call."""
     from pruneagent import graph, runstore
 
+    if backend not in (None, "codex", "api"):
+        typer.echo("--backend must be codex or api", err=True)
+        raise typer.Exit(1)
     try:
-        state = graph.resume_run(run_id, root)
+        state = graph.resume_run(run_id, root, backend)
     except runstore.ResumeError as e:
         typer.echo(str(e), err=True)
         raise typer.Exit(1) from None
+    if state.get("paused"):
+        typer.echo(f"Paused after round {state.get('round', 0)}: {state['paused']}")
+        return
     typer.echo(f"Finished after round {state.get('round', 0)}: {state.get('stop_reason')}")
+
+
+@app.command("limits")
+def limits_cmd(
+    calls: Annotated[int, typer.Option(help="Agent calls the run would make.")] = 60,
+    ledger: Annotated[Path, typer.Option(help="The agent usage ledger.")] = Path("runs/agent_usage.jsonl"),
+) -> None:
+    """Show the latest Codex usage-limit reading and whether a run of CALLS agent calls fits (no call is made)."""
+    from pruneagent import agent_client as AC
+
+    client = AC.AgentClient(AC.CodexBackend(), ledger=AC.Ledger(ledger))
+    reading = client.limit_reading()
+    if reading is not None:
+        typer.echo(f"Latest reading ({reading.time.astimezone():%Y-%m-%d %H:%M}): {reading.summary()}")
+    typer.echo(client.estimate_run(calls).message())
