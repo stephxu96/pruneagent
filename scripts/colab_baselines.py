@@ -1,15 +1,16 @@
-"""FLAP and uniform Wanda-sp pruned to the largest ratio that matches Baseline: Wanda-50%, on a fresh Colab T4
-(task 1.9).
+"""FLAP and uniform Wanda-sp pruned to the largest ratio that keeps the quality of the Wanda-50% reference (a
+backup comparison since architecture v0.8), on a fresh Colab T4 (task 1.9).
 
     scripts/colab_job.sh pa-t4-baselines T4 scripts/colab_baselines.py results/baselines/qwen3-0.6b-base__colab.json
 
 Clones branch `task-1.9`, installs the locked project, rebuilds the data cache and checks it against the committed
-manifest, then runs `pruneagent baseline` for both methods. Everything goes into /content/result.json.
+manifest, then runs `pruneagent baseline` for both methods (the command's name on that branch; now `compare`, with
+`baseline` kept as a deprecated alias). Everything goes into /content/result.json.
 Task 1.9 ran with that branch's allowance (perplexity <= 1.10 x Wanda-50%, accuracy >= Wanda-50% - 2 points).
 Current code defaults to no allowance; on a newer branch add `--ppl-margin 1.10 --acc-margin 0.02` to reproduce.
 
 Run 1 (results/baselines/qwen3-0.6b-base__colab_run1.json, commit d5be693) measured Wanda-50% on the T4
-(validation 23.69, for reference; the baseline is task 1.1's numbers) and bisected both methods on perplexity over
+(validation 23.69, for reference; the Wanda-50% reference is task 1.1's numbers) and bisected both methods on perplexity over
 [0, 0.5]; it found FLAP failing accuracy at 0.2334 and lost the Wanda-sp record to a bookkeeping bug after its
 accuracy check. Run 2 (commit 3652d92) stopped at once on a search bug (an assumed-passing lower ratio was
 treated as failing). Run 3 follows run 2's plan: to fit one session, it starts each search from run 1's final

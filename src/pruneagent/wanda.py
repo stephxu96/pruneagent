@@ -2,7 +2,7 @@
 
 Scoring and per-row masking are adapted from Steph Xu's Lab 2 (`lab2_pruning_steph.ipynb`, `WandaPruner`),
 which already took a per-layer sparsity list. Three changes bring it in line with the reference code
-(github.com/locuslab/wanda) so Baseline: Wanda-50% matches published Wanda:
+(github.com/locuslab/wanda) so the Wanda-50% reference matches published Wanda:
 
 1. All seven linear layers in each block are pruned (attention q/k/v/o and MLP gate/up/down), not only the MLP.
 2. Calibration uses the cached C4 samples (128 x 2,048 tokens), not WikiText test tokens.

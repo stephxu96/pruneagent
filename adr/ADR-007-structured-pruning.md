@@ -1,15 +1,17 @@
 # ADR-007: Per-Layer Strategy Menu (MLP Neurons, Attention Groups, Whole Layers, Unstructured Wanda), Described Neutrally; Quantization Deferred
 
+> **Revised 2026-11-17 (v0.8):** the comparison is Baseline: FLAP at the same memory limit instead of Baseline: Wanda-50%; the reversal test is restated. The strategy menu is unchanged.
+
 > **Revised 2026-11-17 (v0.7):** the objective given to the agent is now to fit the memory limit while keeping the most quality, not to stay within a quality bar with a margin. The reversal test is restated at the same memory limit.
 
-- **Status:** Proposed (v0.7; objective restated: most quality within the memory limit)
+- **Status:** Proposed (v0.8; compared with Baseline: FLAP; menu unchanged)
 - **Date:** 2026-10-31
 - **Deciders:** Steph Xu
 - **Related:** ADR-001, ADR-002, ADR-004, ADR-006; ARCHITECTURE.md §1.4, §4
 
 ## Context
 
-The project promises a model at Wanda's quality that is actually smaller and faster on a single GPU. Unstructured pruning (Wanda) zeroes weights but keeps every matrix the same shape, so on a T4 or Mac the model uses the same memory and runs at the same speed. Structured pruning removes whole rows, columns and layers, so the matrices shrink, but it costs more quality per parameter removed, which makes per-layer choices matter.
+The project promises a model that keeps more quality than FLAP at the same memory limit and is actually smaller and faster on a single GPU. Unstructured pruning (Wanda) zeroes weights but keeps every matrix the same shape, so on a T4 or Mac the model uses the same memory and runs at the same speed. Structured pruning removes whole rows, columns and layers, so the matrices shrink, but it costs more quality per parameter removed, which makes per-layer choices matter.
 
 Which strategies to offer is itself a choice. Leaving out a strategy because it is expected to be useless decides the question for the agent and removes the chance to see whether the agent works it out.
 
@@ -20,7 +22,7 @@ Qwen3 constraints: grouped-query attention, with 16 query heads sharing 8 key/va
 | Option | Saves memory / time on T4 and Mac | Build cost | Problem |
 |---|---|---|---|
 | A. Structured strategies only | Yes | Moderate | Decides for the agent that unstructured sparsity is useless |
-| **B. Structured strategies plus unstructured Wanda per layer, described neutrally** | Structured: yes; Wanda: no, measured honestly | Moderate; Wanda already built for Baseline: Wanda-50% | The agent can waste rounds on Wanda; the log shows it |
+| **B. Structured strategies plus unstructured Wanda per layer, described neutrally** | Structured: yes; Wanda: no, measured honestly | Moderate; Wanda already built (task 1.1) | The agent can waste rounds on Wanda; the log shows it |
 | C. B plus hidden-dimension pruning across all layers (SliceGPT-style) | Yes | High: changes every layer and the embeddings | Exceeds four weeks for one builder |
 | D. B plus 2:4 sparsity | Only on A100 sparse kernels | Moderate | Speed is measured on the T4, which has no such kernels |
 
@@ -42,5 +44,5 @@ Qwen3 constraints: grouped-query attention, with 16 query heads sharing 8 key/va
 
 ## Evidence That Would Reverse This Decision
 
-- At the memory limits tested, FLAP falls well short of Baseline: Wanda-50% quality on Qwen3-0.6B → report the gap; the result then rests on how the agent mixes strategies.
+- At the memory limits tested, FLAP falls well short of Wanda-50% quality on Qwen3-0.6B → report Wanda-50% alongside as a backup quality reference; the result then rests on how the agent mixes strategies against Baseline: FLAP.
 - Non-uniform widths give no tokens-per-second gain over the dense model on the T4 → round widths to multiples of 128, or restrict to uniform widths within layer groups.

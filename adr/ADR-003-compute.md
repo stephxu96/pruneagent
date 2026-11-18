@@ -1,8 +1,10 @@
 # ADR-003: Compute — M4 Mac and Colab Pro T4 for Development and Speed Measurement; A100 for the Production Run
 
+> **Revised 2026-11-17 (v0.8):** Baseline: FLAP, cut to each memory limit used, replaces Baseline: Wanda-50% as the comparison; it runs on the same machines as the agent for the same model. The Wanda-50% numbers already recorded are kept as an optional backup. The compute plan is otherwise unchanged.
+
 > **Revised 2026-11-17 (v0.7):** the Wanda-50% "quality bar" is now Baseline: Wanda-50%, the quality reference with no allowance for now. The compute plan is unchanged.
 
-- **Status:** Proposed (v0.7; wording only: Baseline: Wanda-50%)
+- **Status:** Proposed (v0.8; Baseline: FLAP on the same machines as the agent)
 - **Date:** 2026-11-16
 - **Deciders:** Steph Xu
 - **Related:** ADR-002, ADR-006, ADR-007; ARCHITECTURE.md §1.6, §10
@@ -25,7 +27,7 @@ Available hardware: an M4 Mac, and Colab Pro with 270.34 compute units (units ex
 
 - Development on the M4 (Qwen3-0.6B, PyTorch fp16 on the Mac GPU) and Colab T4; fp16 with fp32 fallback on T4.
 - Production run (Qwen3-1.7B) on A100 in bf16.
-- Baseline: Wanda-50% (the quality reference) is computed once per model: 0.6B on T4, 1.7B on A100.
+- Baseline: FLAP is cut to each memory limit once per model, on the machine that runs the agent for that model (0.6B on M4 or T4, 1.7B on A100). The Wanda-50% reference (optional backup) is already recorded for both models (tasks 1.1 and 1.10).
 - Memory and tokens per second for every compared method measured on the M4 and the T4 with a fixed prompt length, batch size and generation length (ADR-006). M4 measurements cost no compute units.
 - Hard cap of 200 compute units; 70 in reserve.
 - Checkpoint every step to Google Drive or local drive; `resume` restarts from the last checkpoint.
