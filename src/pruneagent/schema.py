@@ -228,7 +228,7 @@ class StepSummary(_Model):
     """One earlier round as the agent sees it."""
 
     round: NonNegativeInt
-    action: Action
+    action: Action | None  # None when the reply could not be read
     rationale: str
     outcome: str  # e.g. "ACCEPT candidate 2, perplexity 15.10 (+3.2%)" or "INVALID: ..."
 
@@ -335,7 +335,7 @@ class StepRecord(_Model):
     """One line of the decision log (JSONL): what the agent chose and why, and what code made of it."""
 
     round: NonNegativeInt
-    action: Action
+    action: Action | None  # None when the reply could not be read (logged as INVALID)
     rationale: str
     reply: AgentReply | None = None
     check: CheckResult | None = None
