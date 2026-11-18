@@ -307,7 +307,7 @@
       "id": "1.10",
       "type": "task",
       "phase": 1,
-      "title": "Wanda at 50% on Qwen3-1.7B: Baseline: Wanda-50% for the production run",
+      "title": "Wanda at 50% on Qwen3-1.7B, recorded as Baseline: Wanda-50% for the production run",
       "owner": "Coding agent",
       "deps": [
         "1.1"

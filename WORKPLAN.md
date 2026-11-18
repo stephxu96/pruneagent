@@ -44,7 +44,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 
 | # | Task | Owner | Depends on | Done when |
 |---|---|---|---|---|
-| 1.1 | Adapt Wanda to Qwen3 layer names; run Wanda at 50% on 0.6B: Baseline: Wanda-50% | Coding agent | 0.3 | Baseline recorded: validation and test perplexity, 7 multiple-choice question sets |
+| 1.1 | Adapt Wanda to Qwen3 layer names; run Wanda at 50% on 0.6B, recorded as Baseline: Wanda-50% | Coding agent | 0.3 | Baseline recorded: validation and test perplexity, 7 multiple-choice question sets |
 | 1.2 | Adapt FLAP scoring and bias compensation to grouped-query attention (prune key/value groups with their query heads) | Coding agent | 0.3 | FLAP at its own allocation matches the adapted reference |
 | 1.3 | Uniform Wanda-sp on Qwen3 | Coding agent | 1.2 | Matches its reference at a uniform cut |
 | 1.4 | Pruner from a per-layer plan (all four strategies) + loader (safetensors + plan JSON) | Coding agent | 1.1, 1.2 | Save-and-reload gives identical perplexity |
@@ -53,7 +53,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | 1.7 | Estimate check: ~10 plans mixing all strategies; estimated vs. measured decode speed on M4 and T4 | Coding agent | 1.5, 1.6 | Rank correlation and % error recorded per machine (A6, A8) |
 | 1.8 | Layer-local probes for all four strategies; compare their layer ranking with full-model perplexity | Coding agent | 1.4 | Rank correlation recorded (A1) |
 | 1.9 | FLAP and uniform Wanda-sp pruned to the largest ratio near Baseline: Wanda-50%, by bisection on validation perplexity | Coding agent | 1.1–1.3 | Savings at that ratio recorded (A7) |
-| 1.10 | Wanda at 50% on Qwen3-1.7B (A100, one session): Baseline: Wanda-50% for the production run | Coding agent | 1.1 | Baseline recorded for 1.7B |
+| 1.10 | Wanda at 50% on Qwen3-1.7B (A100, one session), recorded as Baseline: Wanda-50% for the production run | Coding agent | 1.1 | Baseline recorded for 1.7B |
 | 1.12 | Gate subset: 32-window subset vs. full validation split on ~10 plans (A9) | Coding agent | 1.4 | Rank correlation recorded |
 | 1.11 | One agent round wired by hand (no graph): sensitivity table → LLM → JSON with 3 candidates → evaluate | Steph (prompt draft), coding agent | 1.5, 1.8 | Valid JSON; candidates evaluate |
 
