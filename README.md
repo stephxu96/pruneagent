@@ -36,7 +36,8 @@ reply.data  # the agent's JSON answer
 
 **What each call does:**
 
-- Runs Codex in a new, empty folder, read-only, with no tools, and saves no conversation history.
+- Runs Codex in a new, empty folder, read-only, with no tools.
+- Saves each call's Codex conversation in `~/.codex-pruneagent/`, not with your own Codex conversations, because only a saved conversation records how much of your plan's usage limits is left. That folder uses your normal Codex login (its `auth.json` is a link to the one in `~/.codex`). Set `PRUNEAGENT_CODEX_HOME` to use another folder.
 - Uses the model `gpt-5.6-terra` at `high` reasoning effort (chosen 2026-11-17, see results/effort_check/summary.md), set in `agent_client.py` (`CODEX_MODEL`, `CODEX_REASONING_EFFORT`).
 - Skips Codex's built-in instructions, your personal Codex settings, plugins, skills and add-ons. It sends one line of instructions instead ([`codex_instructions.md`](src/pruneagent/codex_instructions.md)).
 - Saves every answer in `runs/agent_cache/`. Asking the identical question again returns the saved answer without a call.
@@ -62,6 +63,22 @@ When the agent rolls back to an earlier accepted plan, the plans accepted after 
 pruneagent runs              # every run: status, last round, accepted plans
 pruneagent resume            # continue the only paused run
 pruneagent resume <run-id>   # continue a given run
+pruneagent resume --backend api   # continue on the API backend instead of Codex
 ```
 
 A run that stopped part-way (a usage limit, Ctrl-C, or a Colab runtime that disconnected) continues from the end of its last finished round. The unfinished round is repeated, but its agent answer comes from `runs/agent_cache/`, so no agent call is made twice. If several runs are paused, `pruneagent resume` without an id lists them and asks for one.
+
+## Usage limits
+
+Your ChatGPT plan allows a certain amount of Codex use every 5 hours and every week. A run makes up to 60 agent calls; at today's sizes that is roughly 15–30% of a 5-hour allowance.
+
+```
+pruneagent limits            # how much is used now, and whether a 60-call run fits (makes no call)
+```
+
+- **Before a run** (and before a resume), it says how many calls fit before either allowance reaches 90%, and warns if that is fewer than the run may need. A warning does not stop the run.
+- **After every call**, it records how much of each allowance is used in `runs/agent_usage.jsonl`.
+- **At 90% of either allowance**, the run finishes the round it is in, saves it and stops, with status `paused: ... resets at <time>` in `pruneagent runs`. If Codex refuses a call because the allowance is used up, the run stops the same way and redoes that round later. Stopping at 90% also keeps a run from drawing on paid credits.
+- **`pruneagent resume`** continues after the reset time. Run before it, it stops again straight away without making a call.
+
+Until enough calls have been recorded (about 20–30), the estimate assumes each call uses 0.4% of the 5-hour allowance and 0.2% of the weekly one (measured 2026-11-16); after that it uses what the recorded calls actually used.

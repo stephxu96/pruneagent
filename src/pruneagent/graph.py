@@ -38,11 +38,19 @@ Checkpoints, accepted plans (rollback targets) and the decision log go to `Deps.
 disk for a real run (tasks 2.7, 2.8), or `MemoryStore` in tests. The state is checkpointed at the end of every
 round; `resume` continues a run from its last checkpoint, replaying an unfinished round (its agent call comes
 from the agent cache).
+
+Usage limits (task 2.12, FR15): before a run (and a resume), `Deps.agent.estimate_run` says whether the calls
+left fit the remaining Codex limits, and `Deps.notify` shows it (a warning when they do not). A reply whose
+limit reading reached 90% finishes its round; the run then pauses right after that round's checkpoint. A call
+refused or failed on a limit (or the API cost cap) pauses the run at once; the unfinished round is replayed on
+resume. A paused run exits cleanly: `run` and `resume` return {"paused": reason, "resets_at": time, ...}, the
+store says `paused: <reason>; resets at <time>`, and `pruneagent resume` continues after the reset.
 """
 
 from __future__ import annotations
 
 import importlib
+import sys
 import time
 from collections import Counter
 from collections.abc import Callable
@@ -125,6 +133,15 @@ class GraphState(PruneState, total=False):
     stop_reason: str | None
     final: dict | None  # from `Deps.final_eval`
     resume: bool  # set by `resume`: start at the next round instead of `load`
+    pause: tuple | None  # (reason, reset time): this round's call reached the pause point; pause after the round
+
+
+class RunPaused(Exception):
+    """Raised inside the graph to stop a run at a usage limit; `run` and `resume` turn it into a clean return."""
+
+    def __init__(self, reason: str, resets_at=None):
+        super().__init__(reason)
+        self.reason, self.resets_at = reason, resets_at
 
 
 # ------------------------------------------------------------------------------------------- injected parts
@@ -219,6 +236,7 @@ class Deps:
     probe: Callable[[Plan, list[Choice]], SensitivityTable] | None = None  # the agent's probe action
     final_eval: Callable[[dict], dict] | None = None  # test split, tasks, measured speed (phase 4)
     store: Store = field(default_factory=MemoryStore)
+    notify: Callable[[str], None] = field(default=lambda msg: print(msg, file=sys.stderr))  # limit messages
 
 
 # ------------------------------------------------------------------------------------------- plan helpers
@@ -360,16 +378,23 @@ def build_graph(deps: Deps, checkpointer=None):
         start = time.perf_counter()
         try:
             reply = deps.agent.propose(AC.AgentRequest(prompt, REPLY_SCHEMA, tag=f"round {n}"))
+        except AC.UsageLimitReached as e:  # also the API cost cap: pause; this round is replayed on resume
+            raise RunPaused(str(e), e.resets_at) from e
         except AC.CapReached as e:
             return {"stop_reason": f"agent call cap reached ({e})"}
         except AC.MalformedReply as e:
             call = Usage(calls=1, seconds=round(time.perf_counter() - start, 2))
             return {"round": n, "raw_reply": None, "read_error": str(e), "call": call, "usage": call}
-        # UsageLimitReached and other agent errors propagate: pausing and resuming is task 2.12.
+        # other agent errors (login, a call failed twice) propagate and leave the run paused with the error
         u = reply.usage
         call = Usage(calls=0 if reply.cached else 1, tokens=u.total_tokens or 0, seconds=reply.seconds,
                      cost_usd=u.cost_usd or 0.0)
-        return {"round": n, "raw_reply": reply.data, "read_error": None, "call": call, "usage": call}
+        pause = None
+        if getattr(reply, "pause_reason", None):
+            limits = getattr(reply, "limits", None)
+            pause = (reply.pause_reason, limits.resets_at() if limits else None)
+        return {"round": n, "raw_reply": reply.data, "read_error": None, "call": call, "usage": call,
+                "pause": pause}
 
     def validate(state: GraphState) -> dict:
         run = state["run"]
@@ -493,6 +518,8 @@ def build_graph(deps: Deps, checkpointer=None):
         elif state["usage"].calls >= run.max_agent_calls:
             reason = f"agent call cap reached ({run.max_agent_calls} calls)"
         store.checkpoint({**state, "stop_reason": reason})
+        if state.get("pause") and not reason:  # the round is saved: stop here until the limit resets
+            raise RunPaused(*state["pause"])
         return {"stop_reason": reason}
 
     def final(state: GraphState) -> dict:
@@ -545,14 +572,30 @@ def build_graph(deps: Deps, checkpointer=None):
     return g.compile(checkpointer=checkpointer)
 
 
+def preflight(deps: Deps, calls: int):
+    """The pre-run usage-limit estimate for `calls` more agent calls, shown with `deps.notify`; None when the
+    agent has no plan limits (API backend, fakes)."""
+    estimate = getattr(deps.agent, "estimate_run", None)
+    est = estimate(calls) if estimate is not None and calls > 0 else None
+    if est is not None:
+        deps.notify(est.message())
+    return est
+
+
 def _invoke(deps: Deps, start: dict, run_cfg: RunConfig) -> dict:
-    """Invoke the graph, keeping the store's status: running, then finished, or paused on any exception (an
-    interruption, a usage limit) before it propagates."""
+    """Invoke the graph, keeping the store's status: running, then finished; paused at a usage limit (returns
+    the last checkpoint plus {"paused": reason, "resets_at": time}); or paused on any other exception (an
+    interruption, an agent error) before it propagates."""
     steps_per_round = 6  # plan, validate, evaluate, gate, accept/rollback, stop_check
     limit = steps_per_round * (run_cfg.rules.max_rounds + 2) + 20
     deps.store.set_status("running")
     try:
         state = build_graph(deps).invoke(start, {"recursion_limit": limit})
+    except RunPaused as e:
+        deps.store.set_status("paused", e.reason)
+        saved = deps.store.load_checkpoint() or {}
+        deps.notify(f"Paused: {e.reason}. Run `pruneagent resume` after the reset.")
+        return {**saved, "paused": e.reason, "resets_at": e.resets_at, "round": saved.get("round", 0)}
     except BaseException as e:
         deps.store.set_status("paused", f"{type(e).__name__}: {e}" if str(e) else type(e).__name__)
         raise
@@ -561,7 +604,8 @@ def _invoke(deps: Deps, start: dict, run_cfg: RunConfig) -> dict:
 
 
 def run(deps: Deps, run_cfg: RunConfig) -> dict:
-    """One run from start to final; returns the final state."""
+    """One run from start to final; returns the final state (or {"paused": ...} at a usage limit)."""
+    preflight(deps, run_cfg.max_agent_calls)
     return _invoke(deps, {"run": run_cfg}, run_cfg)
 
 
@@ -574,6 +618,9 @@ def resume(deps: Deps, run_cfg: RunConfig | None = None) -> dict:
         store.sync({"round": 0, "accepted": []})
         return run(deps, run_cfg or store.run_config())
     store.sync(state)
+    if run_cfg is not None and run_cfg.agent_backend != state["run"].agent_backend:
+        state["run"] = run_cfg  # resumed on the other backend
+    preflight(deps, state["run"].max_agent_calls - state["usage"].calls)
     return _invoke(deps, {**state, "resume": True}, state["run"])
 
 
@@ -591,14 +638,28 @@ def start_run(run_cfg: RunConfig, deps_factory: str, root=None, run_id: str | No
     return run(deps, run_cfg)
 
 
-def resume_run(run_id: str | None = None, root=None) -> dict:
-    """`pruneagent resume`: the named run, or the only paused one (`runstore.ResumeError` otherwise)."""
+def switch_backend(run_cfg: RunConfig, backend: str) -> RunConfig:
+    """The run config on the other agent backend: the API backend gets its default cost cap, Codex none."""
+    if backend == run_cfg.agent_backend:
+        return run_cfg
+    data = run_cfg.model_dump()
+    data.update(agent_backend=backend, max_cost_usd=None)
+    return RunConfig.model_validate(data)
+
+
+def resume_run(run_id: str | None = None, root=None, backend: str | None = None) -> dict:
+    """`pruneagent resume`: the named run, or the only paused one (`runstore.ResumeError` otherwise). `backend`
+    continues it on the other agent backend (recorded in the run's config; the ledger shows which backend made
+    each call)."""
     store = runstore.pick_run(root or runstore.DEFAULT_ROOT, run_id)
     factory = store.info().deps_factory
     if not factory:
         raise runstore.ResumeError(f"run {store.run_id} was started without a deps factory; resume it from Python "
                                    "with graph.resume(deps)")
     run_cfg = store.run_config()
+    if backend is not None and backend != run_cfg.agent_backend:
+        run_cfg = switch_backend(run_cfg, backend)
+        store.set_config(run_cfg)
     deps = _factory(factory)(run_cfg, store.dir)
     deps.store = store
     return resume(deps, run_cfg)
