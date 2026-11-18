@@ -1,4 +1,4 @@
-"""Command-line entry point. Further subcommands (bar, run, resume, report) arrive in later tasks."""
+"""Command-line entry point. Further subcommands (run, resume, report) arrive in later tasks."""
 
 from pathlib import Path
 from typing import Annotated
@@ -480,9 +480,9 @@ def ppl_saved_cmd(
     typer.echo(f"Saved {out}")
 
 
-BAR_WANDA_PPL = Path("results/wanda/qwen3-0.6b-base__wanda50__mps__float16.json")
-BAR_MC = Path("results/mc/qwen3-0.6b-base__colab.json")
-BAR_MC_RUN = "qwen3-0.6b-base__wanda50__cuda__float16.json"
+BASELINE_WANDA_PPL = Path("results/wanda/qwen3-0.6b-base__wanda50__mps__float16.json")
+BASELINE_MC = Path("results/mc/qwen3-0.6b-base__colab.json")
+BASELINE_MC_RUN = "qwen3-0.6b-base__wanda50__cuda__float16.json"
 
 
 @app.command("baseline")
@@ -490,14 +490,18 @@ def baseline_cmd(
     methods: Annotated[list[str] | None, typer.Option("--method", help="flap and/or wanda-sp (default: both).")] = None,
     model: Annotated[str, typer.Option(help="Hugging Face model id.")] = "Qwen/Qwen3-0.6B-Base",
     dtype: Annotated[str, typer.Option(help="float16, bfloat16 or float32.")] = "float16",
-    lo: Annotated[float, typer.Option(help="Ratio assumed to meet the bar (not evaluated).")] = 0.0,
-    hi: Annotated[float, typer.Option(help="Ratio expected to fail the bar (evaluated first).")] = 0.5,
+    lo: Annotated[float, typer.Option(help="Ratio assumed to match the baseline (not evaluated).")] = 0.0,
+    hi: Annotated[float, typer.Option(help="Ratio expected to fall short of the baseline (evaluated first).")] = 0.5,
     tol: Annotated[float, typer.Option(help="Stop bisecting when the ratio interval is this narrow.")] = 0.005,
     acc_lo: Annotated[float, typer.Option(help="Lowest ratio the accuracy bisection considers.")] = 0.0,
     acc_tol: Annotated[float, typer.Option(help="Accuracy bisection stops at this interval width.")] = 0.01,
     acc_fails_at: Annotated[float | None, typer.Option(help="Ratio already known to fail accuracy.")] = None,
-    max_ppl: Annotated[float | None, typer.Option(help="Validation perplexity bar (default: 1.10 x Wanda-50%).")] = None,
-    min_acc: Annotated[float | None, typer.Option(help="Mean accuracy bar (default: Wanda-50% - 0.02).")] = None,
+    ppl_margin: Annotated[float, typer.Option(help="Allowed factor over Wanda-50% validation perplexity "
+                                                   "(default 1.0: no allowance; task 1.9 used 1.10).")] = 1.0,
+    acc_margin: Annotated[float, typer.Option(help="Allowed drop below Wanda-50% mean accuracy "
+                                                   "(default 0: no allowance; task 1.9 used 0.02).")] = 0.0,
+    max_ppl: Annotated[float | None, typer.Option(help="Validation perplexity limit; overrides --ppl-margin.")] = None,
+    min_acc: Annotated[float | None, typer.Option(help="Mean accuracy floor; overrides --acc-margin.")] = None,
     seqlen: Annotated[int, typer.Option(help="Evaluation window length.")] = 2048,
     windows: Annotated[int | None, typer.Option(help="Validation windows (default: all; fewer for quick checks).")] = None,
     mc_limit: Annotated[int | None, typer.Option(help="Questions per task (quick checks only).")] = None,
@@ -505,8 +509,9 @@ def baseline_cmd(
     data_dir: Annotated[Path | None, typer.Option(help="Data cache (default: $PRUNEAGENT_CACHE or ./data_cache).")] = None,
     results: Annotated[Path, typer.Option(help="Directory for the results JSON.")] = Path("results/baselines"),
 ) -> None:
-    """FLAP and uniform Wanda-sp pruned to the quality bar: bisect the ratio on validation perplexity, then check
-    accuracy there and bisect lower on the whole bar if needed. Records the savings at the bar."""
+    """FLAP and uniform Wanda-sp pruned to the largest ratio that matches Baseline: Wanda-50% (no allowance by
+    default): bisect the ratio on validation perplexity, then check accuracy there and bisect lower on both if
+    needed. Records the savings at that ratio."""
     import copy
     import gc
     import json
@@ -526,11 +531,11 @@ def baseline_cmd(
     device = device or ev.pick_device()
     manifest = d.read_manifest(data_dir)
     revision = manifest["entries"][d.calib_name(model)]["tokenizer"]["revision"]
-    bar = B.bar_from_results(BAR_WANDA_PPL, BAR_MC, BAR_MC_RUN)
-    bar["max_validation_ppl"] = max_ppl if max_ppl is not None else bar["max_validation_ppl"]
-    bar["min_mean_acc"] = min_acc if min_acc is not None else bar["min_mean_acc"]
-    typer.echo(f"{model}@{revision[:8]} on {device} in {dtype}; bar: validation ppl <= "
-               f"{bar['max_validation_ppl']:.4f}, mean accuracy >= {bar['min_mean_acc']:.4f}")
+    base = B.baseline_from_results(BASELINE_WANDA_PPL, BASELINE_MC, BASELINE_MC_RUN, ppl_margin, acc_margin)
+    base["max_validation_ppl"] = max_ppl if max_ppl is not None else base["max_validation_ppl"]
+    base["min_mean_acc"] = min_acc if min_acc is not None else base["min_mean_acc"]
+    typer.echo(f"{model}@{revision[:8]} on {device} in {dtype}; baseline: validation ppl <= "
+               f"{base['max_validation_ppl']:.4f}, mean accuracy >= {base['min_mean_acc']:.4f}")
     dense = ev.load_model(model, revision, dtype, device)
     tok = AutoTokenizer.from_pretrained(model, revision=revision)
     before = {**B.memory(dense), "block_weights": flap.block_params(dense)}
@@ -556,7 +561,7 @@ def baseline_cmd(
                 return wanda_sp.prune_wanda_sp(net, calib, ratio, device)
         current: dict = {"ratio": None, "net": None}
         info: dict[float, dict] = {}
-        record = {"method": method, **_run_record(model, revision, device, dtype, seqlen), "bar": bar,
+        record = {"method": method, **_run_record(model, revision, device, dtype, seqlen), "baseline": base,
                   "calibration": {"entry": calib_name, "sha256": manifest["entries"][calib_name]["sha256"]},
                   "search": {"lo": lo, "hi": hi, "tol": tol, "acc_lo": acc_lo, "acc_tol": acc_tol,
                              "acc_fails_at": acc_fails_at, "windows": windows, "mc_limit": mc_limit,
@@ -564,7 +569,7 @@ def baseline_cmd(
                   "weights_before": before}
         suffix = f"__windows{windows}" if windows else ""
         suffix += f"__limit{mc_limit}" if mc_limit else ""
-        path = results / f"{d.slug(model)}__{method.replace('-', '')}-at-bar__{device}__{dtype}{suffix}.json"
+        path = results / f"{d.slug(model)}__{method.replace('-', '')}-at-baseline__{device}__{dtype}{suffix}.json"
 
         def save(record=record, info=info, path=path) -> None:
             """Write everything measured so far; called after every measurement so a crash loses nothing."""
@@ -616,8 +621,8 @@ def baseline_cmd(
             save()
             return info[ratio]["mc"]["mean_acc"]
 
-        search = B.search_bar(val_ppl, mean_acc, bar["max_validation_ppl"], bar["min_mean_acc"],
-                              lo=lo, hi=hi, tol=tol, acc_lo=acc_lo, acc_tol=acc_tol, acc_fails_at=acc_fails_at)
+        search = B.search_baseline(val_ppl, mean_acc, base["max_validation_ppl"], base["min_mean_acc"],
+                                   lo=lo, hi=hi, tol=tol, acc_lo=acc_lo, acc_tol=acc_tol, acc_fails_at=acc_fails_at)
         record["search"] |= {"status": "done", **search.to_json()}
         save()
         if search.ratio is not None:
@@ -631,13 +636,13 @@ def baseline_cmd(
                 at["test"] = {"ppl": r.ppl, "n_windows": r.n_windows, "seconds": round(r.seconds, 1)}
                 typer.echo(f"[{method}] ratio {search.ratio:.4f}: test ppl {r.ppl:.4f}")
                 save()
-            record["at_bar"] = {"ratio": search.ratio, **at}
-            typer.echo(f"[{method}] at the bar: ratio {search.ratio:.4f}, block weights removed "
+            record["at_baseline"] = {"ratio": search.ratio, **at}
+            typer.echo(f"[{method}] at the baseline: ratio {search.ratio:.4f}, block weights removed "
                        f"{at['block_weights_removed']:.4f}, weight bytes removed {at['weight_bytes_removed']:.4f}, "
                        f"validation {at.get('validation', {}).get('ppl', float('nan')):.4f}, test {at.get('test', {}).get('ppl', float('nan')):.4f}"
                        f", mean accuracy {at.get('mc', {}).get('mean_acc', float('nan')):.4f}")
         else:
-            typer.echo(f"[{method}] bar not met: {search.note}")
+            typer.echo(f"[{method}] baseline not met: {search.note}")
         current["net"] = None
         save()
         typer.echo(f"Saved {path}")

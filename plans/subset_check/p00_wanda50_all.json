@@ -1,5 +1,5 @@
 {
- "description": "Gate-subset check (task 1.12): Wanda 50% on every layer, the reference for the quality bar.",
+ "description": "Gate-subset check (task 1.12): Wanda 50% on every layer: Baseline: Wanda-50%, the quality reference.",
  "plan": {
   "0": {
    "wanda_sparsity": 0.5

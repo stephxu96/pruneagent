@@ -1,6 +1,8 @@
 # ADR-007: Per-Layer Strategy Menu (MLP Neurons, Attention Groups, Whole Layers, Unstructured Wanda), Described Neutrally; Quantization Deferred
 
-- **Status:** Proposed (v0.5; adds unstructured Wanda to the menu; quantization deferred)
+> **Revised 2026-11-17 (v0.7):** the objective given to the agent is now to fit the memory limit while keeping the most quality, not to stay within a quality bar with a margin. The reversal test is restated at the same memory limit.
+
+- **Status:** Proposed (v0.7; objective restated: most quality within the memory limit)
 - **Date:** 2026-10-31
 - **Deciders:** Steph Xu
 - **Related:** ADR-001, ADR-002, ADR-004, ADR-006; ARCHITECTURE.md §1.4, §4
@@ -18,7 +20,7 @@ Qwen3 constraints: grouped-query attention, with 16 query heads sharing 8 key/va
 | Option | Saves memory / time on T4 and Mac | Build cost | Problem |
 |---|---|---|---|
 | A. Structured strategies only | Yes | Moderate | Decides for the agent that unstructured sparsity is useless |
-| **B. Structured strategies plus unstructured Wanda per layer, described neutrally** | Structured: yes; Wanda: no, measured honestly | Moderate; Wanda already built for the bar | The agent can waste rounds on Wanda; the log shows it |
+| **B. Structured strategies plus unstructured Wanda per layer, described neutrally** | Structured: yes; Wanda: no, measured honestly | Moderate; Wanda already built for Baseline: Wanda-50% | The agent can waste rounds on Wanda; the log shows it |
 | C. B plus hidden-dimension pruning across all layers (SliceGPT-style) | Yes | High: changes every layer and the embeddings | Exceeds four weeks for one builder |
 | D. B plus 2:4 sparsity | Only on A100 sparse kernels | Moderate | Speed is measured on the T4, which has no such kernels |
 
@@ -27,7 +29,7 @@ Qwen3 constraints: grouped-query attention, with 16 query heads sharing 8 key/va
 **B.**
 
 - **Per layer, the agent chooses a strategy; code does the rest.** Strategies: narrow the MLP, remove an attention group (each takes 2 query heads with it), drop the layer, or add unstructured Wanda sparsity. Code applies one fixed step per choice (10% of the original MLP width rounded to 64 neurons; one group; the whole layer; +10 points of sparsity up to 70%), picks what is removed by score, and performs the pruning. The agent never sets a number.
-- **Neutral instructions:** each strategy is described by what it does to the weights, at the same level of detail, with the objective stated (stay within the quality bar while reducing measured memory and latency). No ranking or hints.
+- **Neutral instructions:** each strategy is described by what it does to the weights, at the same level of detail, with the objective stated (fit within the memory limit while keeping the most quality). No ranking or hints.
 - **Scoring:** FLAP's fluctuation metric and bias compensation for neurons and groups; Wanda's weight score for unstructured sparsity; ShortGPT's Block Influence for layers. All computed once on the dense model and cached (ADR-002).
 - **Prediction P1:** the agent will rarely choose Wanda, since it saves no memory. Measured by strategy counts in the log, not enforced.
 - **Quantization:** deferred. If added later, it is a one-time weight-only step (8-bit or 4-bit) after the search, followed by the same memory, speed and perplexity (how well the model predicts real text; lower is better) checks. Wanda is not quantized.
@@ -40,5 +42,5 @@ Qwen3 constraints: grouped-query attention, with 16 query heads sharing 8 key/va
 
 ## Evidence That Would Reverse This Decision
 
-- At the Wanda-50% bar, FLAP saves < 5% of weight memory on Qwen3-0.6B → report the limit; the result then rests on how the agent mixes strategies.
+- At the memory limits tested, FLAP falls well short of Baseline: Wanda-50% quality on Qwen3-0.6B → report the gap; the result then rests on how the agent mixes strategies.
 - Non-uniform widths give no tokens-per-second gain over the dense model on the T4 → round widths to multiples of 128, or restrict to uniform widths within layer groups.

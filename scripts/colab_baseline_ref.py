@@ -1,6 +1,8 @@
-"""Quality bar for one model on a fresh Colab GPU: unpruned and Wanda-50% perplexity and multiple-choice accuracy (task 1.10).
+"""Baseline: Wanda-50% for one model on a fresh Colab GPU: unpruned and Wanda-50% perplexity and multiple-choice accuracy (task 1.10).
 
-    scripts/colab_job.sh pa-a100 A100 scripts/colab_bar.py results/bar/qwen3-1.7b-base__colab.json
+    scripts/colab_job.sh pa-a100 A100 scripts/colab_baseline_ref.py results/bar/qwen3-1.7b-base__colab.json
+
+(The results/bar/ folder keeps its name: it holds the committed task-1.10 results.)
 
 Clones BRANCH, installs the locked project, rebuilds the data cache for MODEL and checks it against the committed
 manifest, then runs `pruneagent ppl`, `wanda --sparsity 0.5`, `mc --sparsity 0` and `mc --sparsity 0.5`, all on
