@@ -483,8 +483,8 @@
       ],
       "done_when": "Graph compiles; each edge tested with a fake LLM",
       "gpu": "",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started (fakes only, no compute)"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started (fakes only, no compute)\n[2026-11-17] Done: graph.py, 14 fake-only tests. Placeholder prompt (2.9), in-memory checkpoints (2.7/2.8). Invalid replies count as rounds."
     },
     {
       "id": "2.5",
