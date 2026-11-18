@@ -19,6 +19,14 @@ What is counted:
 - Speed is a roofline estimate: time = max(bytes / bandwidth, FLOPs / compute). Decode is bandwidth-bound and
   prefill compute-bound on both measured machines. These are ideal upper bounds; how well they rank plans against
   measured tokens/s is checked in task 1.7 (A6, A8).
+- The memory limit counts weights only (decided 2026-11-17): `check` compares `weight_bytes` with it. The key/value
+  cache is reported beside it, at a stated text length, and is not part of the limit.
+- Per-layer cost (G1, task 2.11): measured decode is far slower than the roofline estimate, and the extra time grows
+  with the number of kept layers (a fixed cost per layer per token, mostly kernel launches). Decode speed for
+  ranking plans and checking a minimum speed is 1 / (1 / estimated + layer_cost_s x kept layers), with
+  `LAYER_COST_S` fitted on the task 1.7 measurements (`speed_check.fit_layer_cost`). Speed is reported only for
+  the two machines where this was checked against measurements, the M4 and the T4 (`speed_machine`); other
+  devices, such as a phone, get memory fit only (A8).
 
 Units: GB = 1e9 bytes, GB/s = 1e9 bytes/s, TFLOPs = 1e12 FLOP/s (datasheet conventions).
 """
@@ -34,6 +42,7 @@ from pruneagent import plan as P
 GB = 1e9
 DEFAULT_CONTEXT = 512  # §6: decode speed at a 512-token context
 DEFAULT_PROMPT = 512  # §6: prompt time for a 512-token prompt
+REPORT_CONTEXT = 2048  # text length at which the device report states the key/value cache size
 
 
 @dataclass(frozen=True)
@@ -85,6 +94,41 @@ PRESETS: dict[str, DeviceTarget] = {
 }
 
 
+# Seconds per kept layer per generated token, fitted by least squares through the origin on measured minus
+# estimated seconds per token over the ten task 1.7 plans (results/speed_check/{m4,t4}.json; refit with
+# `python -m pruneagent.speed_check`, which writes results/speed_check/layer_cost.json). The estimate the cost is
+# added to depends on the bandwidth assumed, so there is one value per target as it was used in 1.7: the measured
+# device files (named "m4" and "t4", from `pruneagent device-test`) and the datasheet presets.
+LAYER_COST_S: dict[str, float] = {
+    "m4": 2.331e-4,  # Apple M4 GPU, measured 94.8 GB/s: decode within 2% of measured on every plan
+    "t4": 1.403e-3,  # Colab T4, measured 233.4 GB/s: within 10% (mean 4%)
+    PRESETS["m4"].name: 3.209e-4,  # M4 datasheet, 120 GB/s: within 5% (mean 2%)
+    PRESETS["t4"].name: 1.449e-3,  # T4 datasheet, 320 GB/s: within 10% (mean 5%)
+}
+SPEED_MACHINES = {"m4": "m4", "t4": "t4", PRESETS["m4"].name: "m4", PRESETS["t4"].name: "t4"}
+
+
+def speed_machine(target: DeviceTarget) -> str | None:
+    """"m4" or "t4" when speed estimates for `target` were checked against measured speed (task 1.7), else None:
+    such a device (a phone) gets memory fit only."""
+    return SPEED_MACHINES.get(target.name)
+
+
+def layer_cost_s(target: DeviceTarget) -> float:
+    """The fitted per-layer cost for `target`; 0 for a device without measurements (ranking then uses the roofline
+    estimate alone, and no speed is reported)."""
+    return LAYER_COST_S.get(target.name, 0.0)
+
+
+def with_layer_cost(est_decode_tok_s: float, kept_layers: int, cost_s: float) -> float:
+    """Decode tokens/s with `cost_s` seconds per kept layer added to each token's estimated time."""
+    return 1 / (1 / est_decode_tok_s + cost_s * kept_layers)
+
+
+def kept_layers(config, plan: dict) -> int:
+    return len(_kept(P.validate(plan, config)))
+
+
 def load_target(spec: str) -> DeviceTarget:
     """A preset name, a JSON file path, or an inline JSON object."""
     if spec in PRESETS:
@@ -102,7 +146,7 @@ class Estimate:
 
     weight_bytes: int  # model.safetensors tensor data
     kv_cache_bytes: int  # at `context` tokens, batch 1
-    memory_bytes: int  # weights + key/value cache: compared with the memory limit
+    memory_bytes: int  # weights + key/value cache at `context` (the limit counts weights only)
     decode_bytes_per_token: int
     decode_flops_per_token: int
     prefill_flops: int
@@ -123,10 +167,12 @@ class Check:
 
     target: DeviceTarget
     estimate: Estimate
-    fits_memory: bool
+    fits_memory: bool  # weights within the memory limit
     meets_speed: bool  # True when the target sets no minimum speed
-    memory_gap_gb: float  # GB over the memory limit (0 when it fits)
+    memory_gap_gb: float  # GB of weights over the memory limit (0 when it fits)
     speed_gap_tok_s: float  # tokens/s short of the minimum (0 when met or not set)
+    decode_tok_s: float = 0.0  # estimated decode speed with the per-layer cost: the speed checked
+    layer_cost_s: float = 0.0
 
     @property
     def meets_target(self) -> bool:
@@ -135,7 +181,8 @@ class Check:
     def to_dict(self) -> dict:
         return {"target": asdict(self.target), "estimate": self.estimate.to_dict(), "fits_memory": self.fits_memory,
                 "meets_speed": self.meets_speed, "meets_target": self.meets_target,
-                "memory_gap_gb": self.memory_gap_gb, "speed_gap_tok_s": self.speed_gap_tok_s}
+                "memory_gap_gb": self.memory_gap_gb, "speed_gap_tok_s": self.speed_gap_tok_s,
+                "decode_tok_s": self.decode_tok_s, "layer_cost_s": self.layer_cost_s}
 
 
 @dataclass(frozen=True)
@@ -241,17 +288,20 @@ def estimate(config, plan: dict, target: DeviceTarget | None = None, *, dtype_by
         prefill_s = max(pre_f / fl, (w + kv) / bw)
         speeds = {"est_decode_tok_s": 1 / decode_s, "est_prefill_s": prefill_s,
                   "est_prefill_tok_s": prompt / prefill_s}
-        speeds["meets_target"] = (w + kv <= target.memory_limit_gb * GB and (
+        speeds["meets_target"] = (w <= target.memory_limit_gb * GB and (
             target.min_decode_tok_s is None or speeds["est_decode_tok_s"] >= target.min_decode_tok_s))
     return Estimate(weight_bytes=w, kv_cache_bytes=kv, memory_bytes=w + kv, decode_bytes_per_token=dec_b,
                     decode_flops_per_token=dec_f, prefill_flops=pre_f, context=context, prompt=prompt, **speeds)
 
 
 def check(target: DeviceTarget, config, plan: dict, *, dtype_bytes: int = 2, context: int = DEFAULT_CONTEXT,
-          prompt: int = DEFAULT_PROMPT) -> Check:
-    """Does `plan` fit `target`'s memory and reach its minimum decode speed? With the gaps when it does not."""
+          prompt: int = DEFAULT_PROMPT, layer_cost: float | None = None) -> Check:
+    """Do `plan`'s weights fit `target`'s memory limit, and does it reach the minimum decode speed? With the gaps
+    when it does not. Speed includes the per-layer cost (`layer_cost`, default: the fitted one for the target)."""
     e = estimate(config, plan, target, dtype_bytes=dtype_bytes, context=context, prompt=prompt)
-    over = max(0.0, e.memory_bytes / GB - target.memory_limit_gb)
-    short = 0.0 if target.min_decode_tok_s is None else max(0.0, target.min_decode_tok_s - e.est_decode_tok_s)
+    cost = layer_cost_s(target) if layer_cost is None else layer_cost
+    speed = with_layer_cost(e.est_decode_tok_s, kept_layers(config, plan), cost)
+    over = max(0.0, e.weight_bytes / GB - target.memory_limit_gb)
+    short = 0.0 if target.min_decode_tok_s is None else max(0.0, target.min_decode_tok_s - speed)
     return Check(target=target, estimate=e, fits_memory=over == 0, meets_speed=short == 0,
-                 memory_gap_gb=over, speed_gap_tok_s=short)
+                 memory_gap_gb=over, speed_gap_tok_s=short, decode_tok_s=speed, layer_cost_s=cost)
