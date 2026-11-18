@@ -497,8 +497,8 @@
       ],
       "done_when": "Skipping unchanged early layers gives the same perplexity as running every layer; same results in parallel and sequential mode",
       "gpu": "M4 + T4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started (2.12: up to 2 tiny Codex calls)"
     },
     {
       "id": "2.6",
@@ -511,8 +511,8 @@
       ],
       "done_when": "Gate unit tests",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started (2.12: up to 2 tiny Codex calls)"
     },
     {
       "id": "2.7",
@@ -597,8 +597,8 @@
       ],
       "done_when": "Tests with recorded limit readings: fits, warns, pauses, resumes without repeating a call",
       "gpu": "",
-      "status": "todo",
-      "notes": "Measured 2026-11-16: 5 calls ≈ 2% of the 5-hour window, < 1% weekly (Plus plan)"
+      "status": "doing",
+      "notes": "Measured 2026-11-16: 5 calls ≈ 2% of the 5-hour window, < 1% weekly (Plus plan)\n[2026-11-17] Agent started (2.12: up to 2 tiny Codex calls)"
     },
     {
       "id": "G2",
