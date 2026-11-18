@@ -365,7 +365,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 | Baseline | Cut FLAP to the memory limit (the smallest FLAP ratio whose weights fit); record its plan and validation perplexity before the search, test perplexity and multiple-choice accuracy at the end | `flap_at_memory_limit(model, stats, memory_limit) -> Baseline` |
 | Scorer | FLAP fluctuation scores per MLP neuron and attention group; bias compensation values; Wanda weight scores; Block Influence per layer; computed once on the dense model, all from the one calibration set (C4, 128 × 2,048 tokens) | `score(model, calib) -> Scores` |
 | Layer Probes | Layer-local output error for each chosen strategy at 1, 2 and 3 steps (settings set by code) | `probe(layer, strategies, cached_acts, scores) -> LayerProbe` |
-| Agent Client | Prompt, JSON schema, parse, cache, usage meter; calls one backend: `CodexBackend` (`codex exec`, read-only, ephemeral) or `ApiBackend` (provider SDK, structured output, cost meter) | `decide(state) -> AgentAction`; `Backend.complete(prompt, schema) -> (json, usage)` |
+| Agent Client | Prompt, JSON schema, parse, cache, usage meter; calls one backend: `CodexBackend` (`codex exec`, read-only; sessions saved so usage-limit readings can be read, FR15) or `ApiBackend` (provider SDK, structured output, cost meter) | `decide(state) -> AgentAction`; `Backend.complete(prompt, schema) -> (json, usage)` |
 | Validator | Fixed rules | `check(action, plan, run) -> CheckResult` |
 | Pruner | Keep top-scoring neurons and groups, add compensation bias, drop layers, apply Wanda masks; from dense weights | `prune(dense_ref, plan, scores) -> Model` |
 | Loader | Save safetensors + plan JSON; rebuild Qwen3 with per-layer widths | `save(model, plan, path)`; `load(path) -> Model` |
@@ -479,7 +479,7 @@ sequenceDiagram
 
 | Item | Plan |
 |---|---|
-| Agent calls, Codex backend | No per-call charge. ~40–60 calls per run at ~11 s and ~20k input tokens each (measured), mostly Codex's own instructions. Measured on the Plus plan: 5 calls used ~2% of the 5-hour limit and < 1% of the weekly limit, so one run uses ~15–30% of a 5-hour window (3–6 runs per window); weekly use is learned from live readings (FR15) |
+| Agent calls, Codex backend | No per-call charge. ~40–60 calls per run at ~5 s and ~3.1k input tokens plus the prompt each after trimming (measured 2026-11-17; ~19.4k before). Measured on the Plus plan: 5 calls used ~2% of the 5-hour limit and < 1% of the weekly limit, so one run uses ~15–30% of a 5-hour window (3–6 runs per window); weekly use is learned from live readings (FR15) |
 | Agent calls, API backend | ~$1–5 per run depending on model; ~$50 for development, tuning and production; hard caps $5 per run and $100 total |
 | **Agent caps** | **60 calls per run** (both backends); **$5 per run, $100 total** (API backend); cached reruns make no calls |
 

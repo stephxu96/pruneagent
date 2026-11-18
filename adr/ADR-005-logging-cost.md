@@ -15,7 +15,7 @@ The agent needs one model call per round that returns a JSON action. Two ways to
 
 | Backend | Cost | Speed and size (measured 2026-11-16, codex-cli 0.155.1) | Catch |
 |---|---|---|---|
-| Codex CLI (`codex exec`, ChatGPT plan) | No per-call charge | ~11 s per call; ~20k input tokens, mostly Codex's own instructions | A coding agent with tools, so it must be locked down; plan usage limits; must be installed and logged in where the graph runs |
+| Codex CLI (`codex exec`, ChatGPT plan) | No per-call charge | ~5 s per call; ~3.1k input tokens plus the prompt after trimming (was ~19.4k before 2026-11-17) | A coding agent with tools, so it must be locked down; plan usage limits; must be installed and logged in where the graph runs |
 | LLM API (provider SDK) | Per token | Typically a few seconds; only the prompt's own tokens | Needs an API key and a spending cap |
 
 Neither is clearly better for every run: Codex costs nothing for tuning; an API is faster, has no plan limits, and is the usual choice in the literature.

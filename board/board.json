@@ -468,8 +468,8 @@
       ],
       "done_when": "Same contract tests pass for a fake and both real backends; cached rerun makes no calls",
       "gpu": "",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started, no compute"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started, no compute\n[2026-11-17] Done: one client, Codex default, API backup (fake-tested only), cache, usage log, 60-call cap."
     },
     {
       "id": "2.4",
@@ -567,8 +567,8 @@
       ],
       "done_when": "Pinned in config; tokens per call recorded",
       "gpu": "",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started, no compute"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started, no compute\n[2026-11-17] Done: Codex pinned to gpt-5.6-terra, low effort; call overhead trimmed from 19.4k to 3.1k tokens. Sessions to be saved (not ephemeral) so 2.12 can read usage limits."
     },
     {
       "id": "2.11",
