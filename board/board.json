@@ -623,7 +623,7 @@
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
       "status": "todo",
-      "notes": "",
+      "notes": "[2026-11-17 night] Handoff: pending merges: task-2.9 (instructions v1, agent a1d5f97528d997286) and damage-table (agent ad96b203585bf61af, Mac GPU). After both: show Steph the rendered v1 prompt; midpoint run on 0.6B needs her go-ahead.",
       "checks": [
         {
           "label": "End-to-end run on 0.6B",
