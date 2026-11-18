@@ -112,7 +112,7 @@ def test_happy_path_reaches_the_memory_limit(tmp_path):
     assert [a.val_ppl for a in state["accepted"]] == pytest.approx([10, 10.2, 10.404, 10.61208])
     # FLAP measured once, its perplexity shown to the agent and kept in state
     assert state["baseline"].val_ppl_subset == FLAP_PPL
-    assert '"baseline_ppl":12.0' in backend.prompts[0]
+    assert "FLAP's perplexity at this limit is 12.00" in backend.prompts[0]
     assert state["usage"].calls == 3 and state["history"][0].llm_tokens == 120
     assert state["warnings"] == []  # fits, and better than Baseline: FLAP on the gate's windows
     assert deps.store.log == state["history"] and deps.store.saved[3].plan == state["plan"]
@@ -129,7 +129,7 @@ def test_invalid_replies_then_recovery(tmp_path):
     # the validator's reasons go back to the agent in the next prompt
     assert "could not be read" in backend.prompts[1]
     assert "layer 99 does not exist" in backend.prompts[2]
-    assert "rejected" not in backend.prompts[3]  # cleared after a valid reply
+    assert "About your previous reply" not in backend.prompts[3]  # cleared after a valid reply
     assert state["stop_reason"] == "memory limit met"
 
 
@@ -157,7 +157,7 @@ def test_all_candidates_over_the_step_limit_roll_back(tmp_path):
     assert [c.step_rise for c in first.candidates] == pytest.approx([0.575, 0.575])
     assert outcomes(state)[1:] == ["ACCEPT"] * 3
     assert state["accepted"][1].round == 2  # nothing accepted in round 1: the plan stayed unpruned
-    assert "ROLLBACK: no candidate within 15%" in backend.prompts[1]
+    assert "| rejected: over +15%" in backend.prompts[1]
 
 
 def test_agent_rollback_restores_an_earlier_accepted_plan(tmp_path):
@@ -173,9 +173,9 @@ def test_agent_rollback_restores_an_earlier_accepted_plan(tmp_path):
     assert state["stop_reason"] == "4 rounds"
 
 
-def test_start_from_flap_evaluates_flaps_allocation(tmp_path):
+def test_start_from_flap_evaluates_flaps_allocation(tmp_path):  # off in v1: needs agent_extra_actions
     deps, _ = setup(tmp_path, lambda n, p: reply(action="start_from_flap"))
-    state = G.run(deps, run_config())
+    state = G.run(deps, run_config(agent_extra_actions=True))
     assert outcomes(state) == ["ACCEPT"]
     assert [p["mlp_keep"] for p in state["plan"].values()] == [576] * 4  # 600 rounded down to the 64 grid
     assert state["stop_reason"] == "memory limit met"
@@ -240,7 +240,7 @@ def test_early_warning_when_the_limit_is_already_met(tmp_path):
 def test_probe_without_a_probe_function_tells_the_agent(tmp_path):
     script = {1: reply(action="probe", probe=[{"layer": 1, "strategy": "narrow_mlp"}])}
     deps, backend = setup(tmp_path, lambda n, p: script.get(n, reply([(n - 2, "narrow_mlp")])))
-    state = G.run(deps, run_config())
+    state = G.run(deps, run_config(agent_extra_actions=True))
     assert state["history"][0].action == "probe"
     assert "Probing is not available" in backend.prompts[1]
     assert state["stop_reason"] == "memory limit met"
@@ -248,7 +248,7 @@ def test_probe_without_a_probe_function_tells_the_agent(tmp_path):
 
 def test_agent_stop_ends_the_search_with_a_record(tmp_path):
     deps, _ = setup(tmp_path, lambda n, p: reply([(0, "narrow_mlp")]) if n == 1 else reply(action="stop"))
-    state = G.run(deps, run_config())
+    state = G.run(deps, run_config(agent_extra_actions=True))
     assert [r.action for r in state["history"]] == ["apply", "stop"]
     assert state["stop_reason"] == "the agent stopped"
     assert [w.kind for w in state["warnings"]] == ["out_of_reach"]
@@ -301,17 +301,17 @@ def test_gate_ties_go_to_the_faster_plan_then_the_earlier_candidate():
     assert chosen([]) == "ROLLBACK"
 
 
-def test_round_with_only_memory_neutral_candidates_rolls_back(tmp_path):
-    # Wanda sparsity zeroes weights but frees no weight memory, so it cannot win the gate
+def test_wanda_sparsity_is_off_the_agents_menu(tmp_path):
+    # Wanda sparsity frees no weight memory: the agent may not propose it (the gate would never keep it either,
+    # `test_gate_candidate_that_frees_nothing_cannot_win`); nothing is evaluated
     def policy(n, prompt):
         return reply([(0, "wanda_sparsity")]) if n == 1 else reply([(n - 2, "narrow_mlp")])
 
     deps, backend = setup(tmp_path, policy)
     state = G.run(deps, run_config())
     first = state["history"][0]
-    assert first.outcome == "ROLLBACK" and first.candidates[0].freed_bytes == 0
-    assert first.candidates[0].rise_per_mb is None
-    assert "no candidate within 15% frees memory" in backend.prompts[1]
+    assert first.outcome == "INVALID" and first.candidates == []
+    assert "wanda_sparsity is not one of the methods you can use" in backend.prompts[1]
     assert outcomes(state)[1:] == ["ACCEPT"] * 3
 
 

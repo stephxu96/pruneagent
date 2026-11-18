@@ -119,8 +119,9 @@ def build_prompt(config, table: dict, limit_bytes: int, plan: P.Plan | None = No
         ("Rules per candidate: each choice is one step; the same strategy on the same layer at most twice; "
         f"at most {MAX_DROPS_PER_STEP} drop_layer, and no other choice on a dropped layer; keep at least "
         f"{MIN_MLP_FRACTION:.0%} of MLP width and 1 key/value group per layer; sparsity at most {P.WANDA_MAX:.0%}."),
-        (f"Code builds each candidate and keeps the one with the lowest perplexity, if that is at most "
-         f"{MAX_STEP_RISE:.0%} above the current plan's; later rounds continue from it."),
+        (f"Code builds each candidate; among those whose perplexity is at most {MAX_STEP_RISE:.0%} above the "
+         f"current plan's, it keeps the one with the smallest perplexity rise per MB of memory freed; later rounds "
+         f"continue from it."),
         "",
         ("Quick-test table: change in the layer's output when the strategy is applied alone, relative error x1000 "
         "after 1/2/3 steps (drop_layer: 1 step only); block_influence = how much the layer changes its input."),

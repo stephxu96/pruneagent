@@ -25,7 +25,7 @@ class Killed(BaseException):
 
 
 def round_of(prompt: str) -> int:
-    return int(re.findall(r'"round":(\d+)\}', prompt)[-1])  # the request's own round is its last field
+    return int(re.search(r"Data for round (\d+)\.", prompt).group(1))
 
 
 # Round by round: ACCEPT; ROLLBACK by the gate (attention groups cost +50%); ACCEPT; the agent rolls back to the

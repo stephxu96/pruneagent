@@ -87,6 +87,8 @@ class AgentRequest:
     prompt: str
     schema: dict | None = None   # JSON Schema of the answer; checked by the backend where it can
     tag: str = ""                # free label for the ledger, e.g. "round 3"
+    # keys a reply must have to be read; None: the schema's required keys. Not part of the cache key.
+    required: tuple[str, ...] | None = None
 
 
 @dataclass
@@ -627,7 +629,8 @@ class AgentClient:
 
     def propose(self, request: AgentRequest) -> AgentReply:
         key = cache_key(request, self.backend)
-        required = tuple((request.schema or {}).get("required", ()))
+        required = (request.required if request.required is not None
+                    else tuple((request.schema or {}).get("required", ())))
         if (hit := self.cache.get(key)) is not None:
             self._log(request, key, cached=True, ok=True, seconds=0.0, total_tokens=0)
             return AgentReply(data=hit["data"], text=hit["text"], backend=hit["backend"], model=hit["model"],

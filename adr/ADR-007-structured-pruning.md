@@ -1,10 +1,12 @@
 # ADR-007: Per-Layer Strategy Menu (MLP Neurons, Attention Groups, Whole Layers, Unstructured Wanda), Described Neutrally; Quantization Deferred
 
+> **Revised 2026-11-17 (v0.8, agent instructions v1, task 2.9):** the agent's menu is now the three structured methods (narrow the MLP, remove an attention group, drop the layer). Unstructured Wanda sparsity is off the menu: it frees no weight memory, so it cannot help reach a memory limit, and the gate would never keep it. The validator rejects it with a reason; the Wanda code stays for the optional Wanda-50% backup. The three methods are still described neutrally, by what one step removes and the memory it frees.
+
 > **Revised 2026-11-17 (v0.8):** the comparison is Baseline: FLAP at the same memory limit instead of Baseline: Wanda-50%; the reversal test is restated. The strategy menu is unchanged.
 
 > **Revised 2026-11-17 (v0.7):** the objective given to the agent is now to fit the memory limit while keeping the most quality, not to stay within a quality bar with a margin. The reversal test is restated at the same memory limit.
 
-- **Status:** Proposed (v0.8; compared with Baseline: FLAP; menu unchanged)
+- **Status:** Proposed (v0.8; compared with Baseline: FLAP; agent's menu down to three structured methods)
 - **Date:** 2026-10-31
 - **Deciders:** Steph Xu
 - **Related:** ADR-001, ADR-002, ADR-004, ADR-006; ARCHITECTURE.md §1.4, §4

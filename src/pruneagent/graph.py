@@ -9,9 +9,12 @@
   (`device.feasibility`, task 2.11).
 - baseline: once per run, Baseline: FLAP cut to the memory limit and its perplexity on the gate's windows (shown
   to the agent), and the unpruned model's perplexity on the same windows (the first accepted plan).
-- plan: one agent call. The prompt comes from `Deps.build_prompt` (a placeholder until the instructions of task
-  2.9); after an invalid reply, the validator's reasons go back to the agent in the next prompt.
-- validate: `validator.check_reply`; invalid replies count towards `Rules.max_invalid_in_row`.
+- plan: one agent call. The prompt comes from `Deps.build_prompt`, by default the v1 instructions
+  (`instructions.build_prompt`, task 2.9); after an invalid reply, the validator's reasons go back to the agent in
+  the next prompt. The reply is read in either form (`schema.normalize_reply`) and logged in the internal one.
+- validate: `validator.check_reply`; invalid replies count towards `Rules.max_invalid_in_row`. In v1 the agent may
+  propose candidates from the three structured methods or roll back; `RunConfig.agent_extra_actions` also allows
+  probe, start_from_flap and stop.
 - evaluate: one task (`Send`) per candidate; perplexity from the injected `Deps.evaluate`. The real evaluator
   (`candidate_eval.CandidateEvaluator`, task 2.5) also gets the last accepted plan, skips the layers before the
   candidate's first change, queues the tasks so they run one after another on one GPU, and reports its own GPU
@@ -62,12 +65,13 @@ from langgraph.types import Send
 from pydantic import ValidationError
 
 from pruneagent import agent_client as AC
-from pruneagent import agent_round, runstore
+from pruneagent import agent_round, instructions, runstore
 from pruneagent import device as D
 from pruneagent import estimate as E
 from pruneagent import plan as P
 from pruneagent import validator as V
 from pruneagent.schema import (
+    V1_ACTIONS,
     AcceptedPlan,
     AgentReply,
     AgentRequest,
@@ -76,6 +80,8 @@ from pruneagent.schema import (
     CheckResult,
     Choice,
     GateResult,
+    PastCandidate,
+    PastRound,
     Plan,
     PruneState,
     RunConfig,
@@ -83,6 +89,7 @@ from pruneagent.schema import (
     StepRecord,
     StepSummary,
     Usage,
+    normalize_reply,
 )
 
 if TYPE_CHECKING:  # the evaluator needs torch; the graph itself does not
@@ -91,23 +98,24 @@ if TYPE_CHECKING:  # the evaluator needs torch; the graph itself does not
 GB = 1e9
 RECENT_STEPS = 5  # earlier rounds shown to the agent
 
-# The reply's JSON schema, in the strict form structured output needs (every field required, nullable where
-# unused). The validator, not the schema, gives the agent readable reasons.
-_CHOICE = {"type": "object", "additionalProperties": False, "required": ["layer", "strategy"],
-           "properties": {"layer": {"type": "integer"}, "strategy": {"type": "string", "enum": list(P.STRATEGIES)}}}
+# The reply's JSON schema, as the v1 instructions describe it (method, reason, layer as "layer 12"), in the strict
+# form structured output needs: every field required, so rollback_to is null unless the agent goes back (then the
+# candidates are empty). The validator, not the schema, gives the agent readable reasons; a reply read without the
+# schema may leave out either field (`REPLY_REQUIRED`).
+_CHOICE = {"type": "object", "additionalProperties": False, "required": ["layer", "method"],
+           "properties": {"layer": {"type": "string"},
+                          "method": {"type": "string", "enum": list(P.AGENT_STRATEGIES)}}}
 REPLY_SCHEMA = {
     "type": "object", "additionalProperties": False,
-    "required": ["action", "rationale", "candidates", "probe", "rollback_to"],
+    "required": ["candidates", "rollback_to"],
     "properties": {
-        "action": {"type": "string", "enum": list(V.ACTIONS)},
-        "rationale": {"type": "string"},
         "candidates": {"type": "array", "items": {
-            "type": "object", "additionalProperties": False, "required": ["choices", "rationale"],
-            "properties": {"choices": {"type": "array", "items": _CHOICE}, "rationale": {"type": "string"}}}},
-        "probe": {"type": "array", "items": _CHOICE},
+            "type": "object", "additionalProperties": False, "required": ["choices", "reason"],
+            "properties": {"choices": {"type": "array", "items": _CHOICE}, "reason": {"type": "string"}}}},
         "rollback_to": {"type": ["integer", "null"]},
     },
 }
+REPLY_REQUIRED: tuple[str, ...] = ()  # {"rollback_to": n} alone is a whole reply
 
 
 # ---------------------------------------------------------------------------------------------------- state
@@ -151,26 +159,6 @@ class Agent(Protocol):
     """`agent_client.AgentClient`, or a fake with the same `propose`."""
 
     def propose(self, request: AC.AgentRequest) -> AC.AgentReply: ...
-
-
-def placeholder_prompt(req: AgentRequest, feedback: str | None = None) -> str:
-    """PLACEHOLDER until the agent instructions of task 2.9: the request as JSON and the reply format. Swap it
-    through `Deps.build_prompt`; any function (AgentRequest, feedback) -> str will do."""
-    parts = [
-        "You plan structured pruning of a language model. Answer with JSON only; do not run commands or read files.",
-        f"Objective: {req.objective}",
-        "",
-        "Input (memory in bytes, speed in tokens/s; perplexity on the gate's validation windows):",
-        req.model_dump_json(),
-        "",
-        ("Reply with one JSON object: {\"action\": \"probe\" | \"apply\" | \"start_from_flap\" | \"rollback\" | "
-        "\"stop\", \"rationale\": \"...\", \"candidates\": [{\"choices\": [{\"layer\": 0, \"strategy\": "
-        "\"narrow_mlp\"}], \"rationale\": \"...\"}], \"probe\": [{\"layer\": 0, \"strategy\": \"...\"}], "
-        "\"rollback_to\": null}. Leave unused fields empty ([] or null)."),
-    ]
-    if feedback:
-        parts += ["", "Your previous reply was not accepted:", feedback]
-    return "\n".join(parts)
 
 
 class Store(Protocol):
@@ -232,7 +220,8 @@ class Deps:
     evaluate: Callable[..., float | Evaluation]
     baseline: Callable[[RunConfig], Baseline]  # Baseline: FLAP cut to the run's memory limit, with val_ppl_subset
     load_sensitivity: Callable[[], SensitivityTable]
-    build_prompt: Callable[[AgentRequest, str | None], str] = placeholder_prompt
+    # the agent's instructions: any function (AgentRequest, feedback) -> str; by default v1 (task 2.9)
+    build_prompt: Callable[[AgentRequest, str | None], str] = instructions.build_prompt
     probe: Callable[[Plan, list[Choice]], SensitivityTable] | None = None  # the agent's probe action
     final_eval: Callable[[dict], dict] | None = None  # test split, tasks, measured speed (phase 4)
     store: Store = field(default_factory=MemoryStore)
@@ -307,6 +296,63 @@ def _outcome_text(rec: StepRecord, step_limit: float) -> str:
     return {"probe": "probed", "rollback": "rolled back", "stop": "stopped"}.get(rec.action or "", "")
 
 
+def past_round(rec: StepRecord, accepted: list[AcceptedPlan], step_limit: float) -> PastRound:
+    """One earlier round for the agent's history: every candidate with its result (kept as which plan, rejected
+    over the per-step limit, or not chosen), or a note for a round without candidates."""
+    if rec.outcome == "INVALID":
+        why = "; ".join(rec.check.reasons if rec.check else ["unreadable reply"])
+        return PastRound(round=rec.round, note="reply not usable: " + (why if len(why) <= 300 else why[:297] + "..."))
+    if not rec.candidates:
+        if rec.action == "rollback":
+            target = rec.reply.rollback_to if rec.reply else None
+            return PastRound(round=rec.round, note=("you returned to kept plan " + str(target) if target is not None
+                                                    else "you returned to the kept plan before the current one"))
+        return PastRound(round=rec.round, note=_outcome_text(rec, step_limit) or (rec.action or ""))
+    chosen = rec.gate.chosen_candidate if rec.gate else None
+    kept = next((i for i, a in enumerate(accepted) if i > 0 and a.round == rec.round), None)
+    rows = []
+    for c in rec.candidates:
+        if c.candidate_id == chosen:
+            result = f"kept: plan {kept}" if kept is not None else "kept, later undone by a return to an earlier plan"
+        elif c.step_rise > step_limit + 1e-12:
+            result = f"rejected: over +{step_limit:.0%}"
+        elif c.rise_per_mb is None:
+            result = "rejected: frees no memory"
+        else:
+            result = f"not kept: candidate {chosen + 1} chosen" if chosen is not None else "not kept"
+        rows.append(PastCandidate(candidate=c.candidate_id + 1, choices=c.choices, val_ppl=c.val_ppl,
+                                  step_rise=c.step_rise, freed_bytes=c.freed_bytes, rise_per_mb=c.rise_per_mb,
+                                  result=result))
+    return PastRound(round=rec.round, candidates=rows)
+
+
+def agent_request(cfg, state: dict) -> AgentRequest:
+    """What the agent is shown for the next round, from the graph state (after `baseline`): `Deps.build_prompt`
+    turns it into the prompt."""
+    run, plan, accepted = state["run"], state["plan"], state["accepted"]
+    last = accepted[-1]
+    est, dense_est = E.estimate(cfg, plan, run.device), E.estimate(cfg, P.dense_plan(cfg), run.device)
+    history = state.get("history", [])
+    recent = [StepSummary(round=r.round, action=r.action, rationale=r.rationale,
+                          outcome=_outcome_text(r, run.rules.step_limit)) for r in history[-RECENT_STEPS:]]
+    n_layers, width, groups = P.shape(cfg)
+    menu = {s: t for s, t in agent_round.strategy_menu(cfg).items() if s in P.AGENT_STRATEGIES}
+    save = agent_round.step_savings(cfg)
+    rounds_left = max(0, min(run.rules.max_rounds - state["round"], run.max_agent_calls - state["usage"].calls))
+    return AgentRequest(objective=agent_round.OBJECTIVE, device=run.device, strategy_menu=menu, rules=run.rules,
+                        sensitivity=state["sensitivity"], plan=plan,
+                        dense_weight_bytes=dense_est.weight_bytes, current_weight_bytes=est.weight_bytes,
+                        limit_bytes=run.limit_bytes, est_decode_tok_s=est.est_decode_tok_s,
+                        dense_est_decode_tok_s=dense_est.est_decode_tok_s, current_ppl=last.val_ppl,
+                        last_accepted_ppl=last.val_ppl, baseline_ppl=state["baseline"].val_ppl_subset,
+                        recent=recent, round=state["round"] + 1,
+                        n_layers=n_layers, n_groups=groups, mlp_width=width,
+                        step_bytes={s: save[s] for s in P.AGENT_STRATEGIES}, dense_ppl=accepted[0].val_ppl,
+                        rounds_left=rounds_left, max_agent_calls=run.max_agent_calls,
+                        since_kept=state["since_accept"], kept=accepted,
+                        past=[past_round(r, accepted, run.rules.step_limit) for r in history])
+
+
 # ------------------------------------------------------------------------------------------------- graph
 
 
@@ -354,30 +400,16 @@ def build_graph(deps: Deps, checkpointer=None):
         store.save_accepted(0, first)
         return {"baseline": base, "accepted": [first], "eval_seconds": []}
 
-    def agent_request(state: GraphState) -> AgentRequest:
-        run, plan, last = state["run"], state["plan"], state["accepted"][-1]
-        est, dense_est = E.estimate(cfg, plan, run.device), E.estimate(cfg, P.dense_plan(cfg), run.device)
-        recent = [StepSummary(round=r.round, action=r.action, rationale=r.rationale,
-                              outcome=_outcome_text(r, run.rules.step_limit))
-                  for r in state.get("history", [])[-RECENT_STEPS:]]
-        return AgentRequest(objective=agent_round.OBJECTIVE, device=run.device,
-                            strategy_menu=agent_round.strategy_menu(cfg), rules=run.rules,
-                            sensitivity=state["sensitivity"], plan=plan,
-                            dense_weight_bytes=dense_est.weight_bytes, current_weight_bytes=est.weight_bytes,
-                            limit_bytes=run.limit_bytes, est_decode_tok_s=est.est_decode_tok_s,
-                            dense_est_decode_tok_s=dense_est.est_decode_tok_s, current_ppl=last.val_ppl,
-                            last_accepted_ppl=last.val_ppl, baseline_ppl=state["baseline"].val_ppl_subset,
-                            recent=recent, round=state["round"] + 1)
-
     def plan_node(state: GraphState) -> dict:
         run = state["run"]
         if state["usage"].calls >= run.max_agent_calls:
             return {"stop_reason": f"agent call cap reached ({run.max_agent_calls} calls)"}
         n = state["round"] + 1
-        prompt = deps.build_prompt(agent_request(state), state.get("feedback"))
+        prompt = deps.build_prompt(agent_request(cfg, state), state.get("feedback"))
         start = time.perf_counter()
         try:
-            reply = deps.agent.propose(AC.AgentRequest(prompt, REPLY_SCHEMA, tag=f"round {n}"))
+            reply = deps.agent.propose(AC.AgentRequest(prompt, REPLY_SCHEMA, tag=f"round {n}",
+                                                       required=REPLY_REQUIRED))
         except AC.UsageLimitReached as e:  # also the API cost cap: pause; this round is replayed on resume
             raise RunPaused(str(e), e.resets_at) from e
         except AC.CapReached as e:
@@ -393,8 +425,8 @@ def build_graph(deps: Deps, checkpointer=None):
         if getattr(reply, "pause_reason", None):
             limits = getattr(reply, "limits", None)
             pause = (reply.pause_reason, limits.resets_at() if limits else None)
-        return {"round": n, "raw_reply": reply.data, "read_error": None, "call": call, "usage": call,
-                "pause": pause}
+        return {"round": n, "raw_reply": normalize_reply(reply.data), "read_error": None, "call": call,
+                "usage": call, "pause": pause}
 
     def validate(state: GraphState) -> dict:
         run = state["run"]
@@ -406,7 +438,8 @@ def build_graph(deps: Deps, checkpointer=None):
         else:
             ctx = V.Context(cfg, state["plan"], run.limit_bytes, run.rules,
                             tried=tuple(c.plan for c in state.get("candidates", [])),
-                            n_accepted=len(state["accepted"]))
+                            n_accepted=len(state["accepted"]), strategies=P.AGENT_STRATEGIES,
+                            actions=V.ACTIONS if run.agent_extra_actions else V1_ACTIONS)
             check = V.check_reply(raw, ctx)
             if check.ok and raw.get("action") == "start_from_flap":
                 flap = flap_allocation(state["baseline"], cfg)

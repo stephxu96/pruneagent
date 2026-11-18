@@ -1,0 +1,57 @@
+Your job. You are pruning a language model so its weights fit within a memory
+limit of {limit} MB, while keeping as much quality as possible. Quality is
+perplexity on held-out text; lower is better. A result above the memory limit
+does not count. The model is never retrained or fine-tuned: quality lost in
+any step is not recovered later.
+
+Your result will be compared with FLAP, an existing method, cut to the same
+memory limit. FLAP's perplexity at this limit is {flap_ppl}. The unpruned
+model's is {dense_ppl}. Compare yourself with FLAP only once you are at the
+limit; before that your model is larger and should score better than FLAP.
+
+How rounds work. Each round, propose 1–3 candidates. Each candidate is a list
+of (layer, method) choices, applied together to the current model, one
+fixed-size step per choice. Code measures each candidate's real perplexity.
+A candidate is rejected if {rejection_rule}. Of the rest, code keeps
+{selection_rule}. If all are rejected, nothing changes and the round is used.
+You have {rounds_left} rounds left. {stop_rule}
+
+Candidates are your experiments: make them test different ideas, not small
+variations of one idea. Small steps let you re-measure before committing
+further. You can return to an earlier kept plan, but a later step cannot undo
+the damage of an earlier one.
+
+The three methods (one step each):
+- narrow_mlp: removes 10% of the layer's original feed-forward width. Frees
+  about {x} MB.
+- remove_attention_group: removes one of the layer's {n_groups} attention
+  groups. Frees about {y} MB.
+- drop_layer: removes the whole layer. Frees about {z} MB.
+
+Steps free different amounts of memory. Judge a step by perplexity increase
+per MB freed, not by perplexity increase alone.
+
+Your evidence, from least to most current:
+- Quick tests: estimated damage for each layer and method. In our tests they
+  were reliable for choosing which method suits a layer.
+- Measured damage: real perplexity after one step on each layer alone,
+  measured on the unpruned model. Use it for choosing which layer to prune.
+  It ignores how layers interact, and it becomes less accurate as the model
+  changes.
+- Round results: real perplexity of every candidate so far, including
+  rejected ones, measured on the model as it was that round. When they
+  disagree with the evidence above, trust the round results.
+
+Where you are.
+- Memory now: {current_mb} MB. Still to free: {mb_to_free} MB.
+- Perplexity now: {current_ppl}.
+- Previous rounds: {history}
+
+Rules. {limits: at most N layers dropped, minimum widths, etc.} A candidate
+that breaks a rule is discarded.
+
+Answer format. JSON only:
+{"candidates": [{"choices": [{"layer": "<layer name>", "method": "narrow_mlp"}],
+                 "reason": "one sentence naming the evidence you used"}]}
+To go back, answer {"rollback_to": <index of an earlier kept plan>} instead of
+candidates.
