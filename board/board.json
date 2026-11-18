@@ -597,8 +597,8 @@
       ],
       "done_when": "Tests with recorded limit readings: fits, warns, pauses, resumes without repeating a call",
       "gpu": "",
-      "status": "doing",
-      "notes": "Measured 2026-11-16: 5 calls ≈ 2% of the 5-hour window, < 1% weekly (Plus plan)\n[2026-11-17] Agent started (2.12: up to 2 tiny Codex calls)"
+      "status": "done",
+      "notes": "Measured 2026-11-16: 5 calls ≈ 2% of the 5-hour window, < 1% weekly (Plus plan)\n[2026-11-17] Agent started (2.12: up to 2 tiny Codex calls)\n[2026-11-17] Done: readings from saved Codex sessions in ~/.codex-pruneagent (login linked to ~/.codex/auth.json); estimate before each run; pause at 90%; resume after reset. 2 real calls."
     },
     {
       "id": "G2",
