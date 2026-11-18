@@ -440,8 +440,8 @@
       ],
       "done_when": "Type-checked",
       "gpu": "",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started, no compute"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started, no compute\n[2026-11-17] Done (schema.py, validator.py); round-1 plans pass and rebuild exactly."
     },
     {
       "id": "2.2",
@@ -454,8 +454,8 @@
       ],
       "done_when": "Unit tests for every rule",
       "gpu": "",
-      "status": "doing",
-      "notes": "[2026-11-17] Agent started, no compute"
+      "status": "done",
+      "notes": "[2026-11-17] Agent started, no compute\n[2026-11-17] Done (schema.py, validator.py); round-1 plans pass and rebuild exactly."
     },
     {
       "id": "2.3",
