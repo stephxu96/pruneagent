@@ -1,15 +1,17 @@
 # ADR-006: Device Target with a Required Memory Limit and Early and Final Warnings; Compare at the Same Memory Limit; Speed Estimated for the Target Device, Measured on M4 and T4
 
+> **Revised 2026-11-17 (v0.8):** compared methods are now Baseline: FLAP cut to the same memory limit, with uniform Wanda-sp as an optional backup; ShortGPT is dropped. The final warning compares with Baseline: FLAP instead of Wanda-50%.
+
 > **Revised 2026-11-17 (v0.7):** the memory limit is now required, and the search keeps the most quality within it. The no-target mode ("save as much weight memory as the bar allows") is dropped. Compared methods are cut to the same memory limit and compared on quality, instead of pruned to equal quality and compared on savings.
 
-- **Status:** Proposed (v0.7; memory limit required; comparison at the same memory limit)
+- **Status:** Proposed (v0.8; memory limit required; Baseline: FLAP at the same memory limit)
 - **Date:** 2026-11-16
 - **Deciders:** Steph Xu
 - **Related:** ADR-003, ADR-004, ADR-007; ARCHITECTURE.md §1.1, §4.4, §6
 
 ## Context
 
-Small models like Qwen3-0.6B and 1.7B are deployed on laptops and phones, not on a T4. Users have different limits (memory available, how fast text must appear), so the pruning target should be theirs to set. Pruning alone may not reach a given memory limit without falling below Wanda-50% quality: at these model sizes, a laptop already fits the unpruned model, and a phone may need more than pruning can remove. The user needs to know that, early if possible.
+Small models like Qwen3-0.6B and 1.7B are deployed on laptops and phones, not on a T4. Users have different limits (memory available, how fast text must appear), so the pruning target should be theirs to set. Pruning alone may not reach a given memory limit without a large loss of quality: at these model sizes, a laptop already fits the unpruned model, and a phone may need more than pruning can remove. The user needs to know that, early if possible.
 
 Savings must be real: unstructured zeros stored densely save nothing. Every candidate needs memory and speed numbers each round, and measuring speed on a device for every candidate is slow; phones cannot be measured at all in this project (phone runtimes generally assume uniform layer widths).
 
@@ -26,11 +28,11 @@ Savings must be real: unstructured zeros stored densely save nothing. Every cand
 **C.**
 
 - **Device target:** memory limit (GB, required), minimum decode speed (tokens/s, optional), memory bandwidth (GB/s), compute (TFLOPs), CPU or GPU. Example values for an M4 laptop, the T4 and a phone are documented, not built in as the only choices.
-- **Search objective:** prune until the memory limit is met, accepting at each step the candidate with the lowest perplexity (how well the model predicts real text; lower is better), then stop: further pruning only costs quality. Quality is reported against Baseline: Wanda-50%, with no allowance for now (ADR-004).
+- **Search objective:** prune until the memory limit is met, accepting at each step the candidate with the lowest perplexity (how well the model predicts real text; lower is better), then stop: further pruning only costs quality. Quality is reported against Baseline: FLAP at the same memory limit, with no allowance (ADR-004).
 - **Estimated speed (search):** decode tokens/s ≈ memory bandwidth ÷ bytes of weights and key/value cache read per generated token at a 512-token context; prompt time ≈ prompt FLOPs ÷ compute. Computed from the plan, no hardware needed.
 - **Early warning (before the search):** the target memory is below the smallest model the structure rules allow (every layer at its minimum, 6 layers dropped, embeddings unchanged), or the unpruned model already meets the target.
-- **Final warning (end of search):** the search stopped before the memory limit was met, or the result fits but falls short of Baseline: Wanda-50%; the report gives the closest plan and the gaps (GB over the limit, perplexity and accuracy below Wanda-50%, tokens/s short of any speed target).
-- **Same memory limit for compared methods:** each compared method (FLAP, uniform Wanda-sp, ShortGPT) is cut to the agent's memory limit; methods are compared on quality (perplexity and mean accuracy).
+- **Final warning (end of search):** the search stopped before the memory limit was met, or the result fits but keeps less quality than Baseline: FLAP; the report gives the closest plan and the gaps (GB over the limit, perplexity and accuracy below Baseline: FLAP, tokens/s short of any speed target).
+- **Same memory limit for compared methods:** Baseline: FLAP (and uniform Wanda-sp, if run as a backup) is cut to the agent's memory limit; methods are compared on quality (perplexity and mean accuracy).
 - **Weight memory:** bytes in dense fp16 storage, embeddings included, zeroed weights counted at full cost. Confirmed by file size at the end.
 - **Measured (final, every compared method):** parameter count, file size, peak memory, prefill and decode tokens/s, on the M4 laptop (PyTorch on the Mac GPU) and the Colab T4, at a fixed prompt length, batch size and generation length.
 - **Phase-1 check:** estimated vs. measured decode speed on ~10 plans, on both machines. Phone estimates are reported only if the estimate is within ~25% of measured speed on both.

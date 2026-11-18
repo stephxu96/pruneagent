@@ -1,4 +1,4 @@
-"""Baseline: Wanda-50% for one model on a fresh Colab GPU: unpruned and Wanda-50% perplexity and multiple-choice accuracy (task 1.10).
+"""The Wanda-50% reference (a backup since architecture v0.8) for one model on a fresh Colab GPU: unpruned and Wanda-50% perplexity and multiple-choice accuracy (task 1.10).
 
     scripts/colab_job.sh pa-a100 A100 scripts/colab_baseline_ref.py results/bar/qwen3-1.7b-base__colab.json
 

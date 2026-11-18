@@ -1,15 +1,17 @@
 # ADR-001: Orchestration — LangGraph Agent Graph with Parallel Probes, Parallel Candidate Evaluation and Experiment-Choice Branches
 
+> **Revised 2026-11-17 (v0.8):** quality is compared with Baseline: FLAP (FLAP cut to the same memory limit) instead of Baseline: Wanda-50%. Code cuts FLAP to the memory limit once before the search and shows its perplexity to the agent. The gate is unchanged: among candidates within the per-step limit, keep the one with the lowest perplexity.
+
 > **Revised 2026-11-17 (v0.7):** the search fits a required memory limit and keeps the most quality. Code records each candidate against Baseline: Wanda-50% (no allowance for now) instead of gating on a quality bar with a margin.
 
-- **Status:** Proposed (v0.7; memory limit required; Baseline: Wanda-50% recorded, not gated on)
+- **Status:** Proposed (v0.8; memory limit required; compared with Baseline: FLAP)
 - **Date:** 2026-11-16
 - **Deciders:** Steph Xu
 - **Related:** ADR-002, ADR-004, ADR-005, ADR-006, ADR-007; ARCHITECTURE.md §4
 
 ## Context
 
-PruneAgent searches for a per-layer pruning plan that fits a memory limit the user sets and keeps the most quality, measured against Baseline: Wanda-50% (ADR-004, ADR-006). The agent chooses the next experiment (probe, apply, start from FLAP, roll back, stop) and, per layer, which strategy to use (ADR-007). Two kinds of work are independent and can run in parallel: layer-local sensitivity probes, and the evaluation of several candidate plans in one round (memory, estimated speed on the target device and perplexity (how well the model predicts real text; lower is better) for each). Code must still enforce the per-step quality limit and budget, and stop when the memory limit is met. A run lasts 20–40 rounds and must survive a Colab disconnect. Course guidance: name who chooses the next step; code enforces gates.
+PruneAgent searches for a per-layer pruning plan that fits a memory limit the user sets and keeps the most quality, compared with Baseline: FLAP cut to the same memory limit (ADR-004, ADR-006). The agent chooses the next experiment (probe, apply, start from FLAP, roll back, stop) and, per layer, which strategy to use (ADR-007). Two kinds of work are independent and can run in parallel: layer-local sensitivity probes, and the evaluation of several candidate plans in one round (memory, estimated speed on the target device and perplexity (how well the model predicts real text; lower is better) for each). Code must still enforce the per-step quality limit and budget, and stop when the memory limit is met. A run lasts 20–40 rounds and must survive a Colab disconnect. Course guidance: name who chooses the next step; code enforces gates.
 
 ## Options
 
@@ -22,7 +24,7 @@ PruneAgent searches for a per-layer pruning plan that fits a memory limit the us
 
 ## Decision
 
-**B.** `ORCHESTRATION: hybrid. The LLM agent chooses the next experiment and which strategy to apply to which layers; it never sets amounts. Code owns step sizes, the choice of weights to remove, probing, validation, pruning, parallel evaluation of up to three candidates, the gate (per-step quality limit; lowest perplexity wins), accept / rollback, the device-target feasibility check and warnings, and stopping when the memory limit is met.` Agent calls go through the project's own client, which sends the same prompt and JSON schema to either Codex CLI (read-only, no tools) or an LLM API (cache, usage meter, rationale log; ADR-005).
+**B.** `ORCHESTRATION: hybrid. The LLM agent chooses the next experiment and which strategy to apply to which layers; it never sets amounts. Code owns step sizes, the choice of weights to remove, probing, validation, pruning, parallel evaluation of up to three candidates, the gate (per-step quality limit; lowest perplexity wins), accept / rollback, the device-target feasibility check and warnings, cutting Baseline: FLAP to the memory limit once before the search, and stopping when the memory limit is met.` Agent calls go through the project's own client, which sends the same prompt and JSON schema to either Codex CLI (read-only, no tools) or an LLM API (cache, usage meter, rationale log; ADR-005).
 
 ## Consequences
 

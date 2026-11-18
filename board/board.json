@@ -1,5 +1,5 @@
 {
-  "title": "PruneAgent v0.6",
+  "title": "PruneAgent v0.8",
   "start_date": "2026-11-16",
   "total_days": 9,
   "phases": [
@@ -177,12 +177,12 @@
       "id": "1.1",
       "type": "task",
       "phase": 1,
-      "title": "Adapt Wanda to Qwen3; run Wanda at 50% on 0.6B (Baseline: Wanda-50%)",
+      "title": "Adapt Wanda to Qwen3; run Wanda at 50% on 0.6B (Wanda-50% reference, a backup since v0.8)",
       "owner": "Coding agent",
       "deps": [
         "G0"
       ],
-      "done_when": "Baseline: Wanda-50% recorded: validation and test perplexity, 7 multiple-choice question sets",
+      "done_when": "Wanda-50% reference recorded: validation and test perplexity, 7 multiple-choice question sets",
       "gpu": "T4",
       "status": "done",
       "notes": "[2026-11-16] Our Wanda 50% (all 7 block linears, C4 128×2048, layer by layer), M4 fp16: sparsity 0.5000; val ppl 23.68, test 22.57 (dense 13.27 / 12.66). Bar: val ≤ 26.05, test ≤ 24.83. Cross-check vs llm-compressor 0.8.1 pending; multiple-choice accuracy pending.\n[2026-11-16] Cross-check passed: llm-compressor 0.8.1 WandaPruningModifier on T4 gives val 23.679 / test 22.564 vs ours 23.683 / 22.569 (+0.01% / +0.02%; limit 2%). Multiple-choice accuracy still to do.\n[2026-11-17] Multiple-choice accuracy command added (ded851f); full run of unpruned and Wanda-50% started on T4\n[2026-11-17] First T4 run: mean accuracy unpruned 51.72%, Wanda-50% 43.80% (bar ≥ 41.80%); result file lost to a download bug (fixed a1a8d55), rerunning\n[2026-11-17] Rerun matches first run exactly. Bar: perplexity ≤ 26.05 (validation), mean accuracy ≥ 41.80% (Wanda-50% 43.80%, unpruned 51.72%). results/mc/qwen3-0.6b-base__colab.json"
@@ -291,7 +291,7 @@
       "id": "1.9",
       "type": "task",
       "phase": 1,
-      "title": "FLAP and uniform Wanda-sp pruned to the largest ratio near Baseline: Wanda-50% (A7)",
+      "title": "FLAP and uniform Wanda-sp pruned to the largest ratio that keeps Wanda-50% quality (A7)",
       "owner": "Coding agent",
       "deps": [
         "1.1",
@@ -307,12 +307,12 @@
       "id": "1.10",
       "type": "task",
       "phase": 1,
-      "title": "Wanda at 50% on Qwen3-1.7B, recorded as Baseline: Wanda-50% for the production run",
+      "title": "Wanda at 50% on Qwen3-1.7B, recorded as the Wanda-50% reference (a backup since v0.8)",
       "owner": "Coding agent",
       "deps": [
         "1.1"
       ],
-      "done_when": "Baseline: Wanda-50% recorded for 1.7B",
+      "done_when": "Wanda-50% reference recorded for 1.7B",
       "gpu": "A100",
       "status": "done",
       "notes": "[2026-11-17] Agent started 09:45 on its own branch; Colab A100\n[2026-11-17] Merged. Ran on L4 (no A100 free), 28 min. 1.7B unpruned val ppl 9.87, mean acc 59.20%; Wanda-50% val 15.38, test 14.53, mean acc 49.18%. Bar: val ppl <= 16.92, mean acc >= 47.18%"
@@ -369,7 +369,7 @@
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
       "status": "todo",
-      "notes": "[2026-11-17] Steph decided the checks (see results). Codex CLI chosen for task 1.11; test call works (~19.5k tokens per call, mostly Codex's own context).\n[2026-11-17] Architecture v0.7: memory limit required; Baseline: Wanda-50% with no allowance for now; FLAP and Wanda-sp compared at the same memory limit",
+      "notes": "[2026-11-17] Steph decided the checks (see results). Codex CLI chosen for task 1.11; test call works (~19.5k tokens per call, mostly Codex's own context).\n[2026-11-17] Architecture v0.7: memory limit required; Baseline: Wanda-50% with no allowance for now; FLAP and Wanda-sp compared at the same memory limit\n[2026-11-17] Architecture v0.8: Baseline: FLAP (FLAP cut to the same memory limit) is the primary comparison; Wanda-50% and uniform Wanda-sp are optional backups; ShortGPT comparison dropped",
       "checks": [
         {
           "label": "References reproduce (1.1–1.3)",
@@ -407,7 +407,7 @@
           "observed": "Not close: estimate too fast by ~56-63% on M4 and ~200-830% on T4 on average, even with measured device figures. A fitted per-token overhead gets M4 within 25% but not T4; decided: phone results report memory fit only"
         },
         {
-          "label": "Structured pruning saves memory near Baseline: Wanda-50% quality (A7)",
+          "label": "Structured pruning saves memory near Wanda-50% quality (A7)",
           "go_if": "FLAP saves ≥ 5% of weight memory within 10% of Wanda-50% perplexity and 2 points of its accuracy (the v0.6 allowance this check was set with)",
           "fallback": "Continue; headline becomes how the agent mixes strategies",
           "result": "go",
@@ -421,7 +421,7 @@
           "observed": "1.000 on 14 plans (32 and 64 windows); no accept/reject decision changes"
         },
         {
-          "label": "Baseline: Wanda-50% is not trivial",
+          "label": "The Wanda-50% reference is not trivial",
           "go_if": "Wanda-50% validation perplexity > 1.3 × dense",
           "fallback": "Weaker reference only if structured pruning matches it at > 30% saving; fix before phase 4",
           "result": "go",
@@ -504,7 +504,7 @@
       "id": "2.6",
       "type": "task",
       "phase": 2,
-      "title": "Gate: 15% per-step limit, lowest perplexity wins; each candidate recorded against Baseline: Wanda-50%",
+      "title": "Gate: 15% per-step limit, lowest perplexity wins",
       "owner": "Coding agent",
       "deps": [
         "2.5"
@@ -638,7 +638,7 @@
       "id": "3.1",
       "type": "task",
       "phase": 3,
-      "title": "Tuning runs on 0.6B (~8–10, queued overnight; Mac and Colab in parallel); compare with FLAP and uniform Wanda-sp at the same memory limit",
+      "title": "Tuning runs on 0.6B (~8–10, queued overnight; Mac and Colab in parallel); compare with Baseline: FLAP at the same memory limit",
       "owner": "Steph",
       "deps": [
         "G2"
@@ -672,20 +672,6 @@
         "2.8"
       ],
       "done_when": "Resumed run matches an uninterrupted run",
-      "gpu": "T4",
-      "status": "todo",
-      "notes": ""
-    },
-    {
-      "id": "3.4",
-      "type": "task",
-      "phase": 3,
-      "title": "ShortGPT cut to the same memory limit",
-      "owner": "Coding agent",
-      "deps": [
-        "1.9"
-      ],
-      "done_when": "Quality recorded",
       "gpu": "T4",
       "status": "todo",
       "notes": ""
@@ -728,14 +714,13 @@
         "3.1",
         "3.2",
         "3.3",
-        "3.4",
         "3.5",
         "3.6"
       ],
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
       "status": "todo",
-      "notes": "",
+      "notes": "[2026-11-17] Architecture v0.8: task 3.4 (ShortGPT cut to the same memory limit) dropped and removed from the board; FLAP is the one primary baseline",
       "checks": [
         {
           "label": "Instructions frozen at a tagged commit by end of D6",
@@ -750,16 +735,16 @@
       "id": "4.1",
       "type": "task",
       "phase": 4,
-      "title": "FLAP, uniform Wanda-sp, ShortGPT cut to the 1.7B memory limit",
+      "title": "Baseline: FLAP cut to the 1.7B memory limits used (uniform Wanda-sp optional)",
       "owner": "Coding agent",
       "deps": [
         "1.10",
-        "3.4"
+        "1.2"
       ],
-      "done_when": "Plans saved",
+      "done_when": "Plans saved; each fits its memory limit",
       "gpu": "A100",
       "status": "todo",
-      "notes": ""
+      "notes": "[2026-11-17] Architecture v0.8: was FLAP, uniform Wanda-sp and ShortGPT; now Baseline: FLAP at the memory limits of 4.2 and 4.3, with uniform Wanda-sp optional; ShortGPT dropped (task 3.4 removed)"
     },
     {
       "id": "4.2",

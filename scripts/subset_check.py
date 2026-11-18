@@ -6,7 +6,7 @@ Prunes the unpruned model to every plan in plans/subset_check/, evaluates all 12
 and reads the 32- and 64-window perplexities off the same per-window losses (each window is scored
 independently, so this equals evaluating the subset alone; checked directly on the unpruned model and the
 first plan with `subset_perplexity`). Reports Spearman and Kendall rank correlation of subset vs. full, and
-how many accept/reject decisions at a perplexity threshold set from Baseline: Wanda-50% would differ.
+how many accept/reject decisions at a perplexity threshold set from the Wanda-50% reference would differ.
 The threshold is `--ppl-margin` x Wanda-50%'s perplexity: 1.0 (no allowance) by default; the committed
 task-1.12 results used 1.10, which `--ppl-margin 1.10` reproduces.
 """
@@ -27,7 +27,7 @@ from pruneagent import evaluate as ev
 from pruneagent import flap, pruner
 from pruneagent import plan as P
 
-WANDA50_VAL_PPL = 23.68  # Baseline: Wanda-50% validation perplexity (llm-compressor reference)
+WANDA50_VAL_PPL = 23.68  # Wanda-50% reference validation perplexity (llm-compressor cross-check)
 REFERENCE = "p00_wanda50_all"
 
 

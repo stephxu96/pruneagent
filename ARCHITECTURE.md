@@ -1,14 +1,16 @@
-# PruneAgent v0.5: Wanda-Level Quality with Real Memory and Speed Savings
+# PruneAgent v0.8: More Quality than FLAP at the Same Memory Limit
 
-1.125 Agentic Engineering & Architecture, term project. Four build phases of 1–2 days each (about 9 days from 2026-11-16), one builder. Author: Steph Xu. Status: proposed, v0.7 (2026-11-17).
+1.125 Agentic Engineering & Architecture, term project. Four build phases of 1–2 days each (about 9 days from 2026-11-16), one builder. Author: Steph Xu. Status: proposed, v0.8 (2026-11-17).
 
-**Value statement.** PruneAgent produces a pruned model that fits a memory limit you set for your device while keeping as much quality as possible, measured against Wanda's; unlike Wanda, it is actually smaller and faster, with a warning when pruning alone cannot reach it.
+**Value statement.** PruneAgent produces a pruned model that fits a memory limit you set for your device while keeping more quality than FLAP, a standard method for shrinking a model without retraining, cut to the same limit; the result is actually smaller and faster, with a warning when pruning alone cannot reach the limit.
 
-**Summary.** Wanda (unstructured pruning) keeps quality well at 50% sparsity, but its zeroed weights still occupy memory and compute, so the model is no smaller or faster. Structured pruning removes whole neurons, attention groups or layers, so the model really shrinks, but it costs more quality per parameter removed. PruneAgent solves one problem: given a memory limit (a required input), find the pruning that fits within it and keeps the most quality. Wanda at 50% sparsity is the quality reference (Baseline: Wanda-50%): every result is reported against its perplexity and accuracy, with no allowance for now; whether any allowance is acceptable is decided after seeing the results. The user can also give a minimum speed and the device's memory bandwidth and compute. If the memory limit is out of reach, the run warns before searching (beyond what pruning can remove at all), and reports the closest plan and the gap. An LLM agent chooses, per layer, from a neutral menu of strategies: narrow the MLP, remove attention groups, drop the layer, or apply unstructured Wanda. The agent decides only strategy: which strategy to apply to which layers. Code decides how much (one fixed step per choice), which neurons, groups or weights go (by their scores), and performs the pruning. Each round the agent proposes up to three candidate plans; code validates them and evaluates memory, estimated speed on the target device and perplexity (how well the model predicts real text; lower is better) for all candidates in parallel, then accepts the one with the best quality. Output: the pruned model, per-layer plan, a rationale for every decision, a device report (fits or not, estimated speed, warnings), and a comparison against Wanda, FLAP and uniform Wanda-sp, the last two cut to the same memory limit.
+**Summary.** Wanda (unstructured pruning) keeps quality well at 50% sparsity, but its zeroed weights still occupy memory and compute, so the model is no smaller or faster. Structured pruning removes whole neurons, attention groups or layers, so the model really shrinks, but it costs more quality per parameter removed. PruneAgent solves one problem: given a memory limit (a required input), find the pruning that fits within it and keeps the most quality. The question it answers: does the agent keep more quality (perplexity and mean accuracy) than FLAP cut to the same memory limit (Baseline: FLAP)? FLAP is a structured method, and at moderate cuts it keeps the quality of Wanda at 50% sparsity, so one comparison answers the question. Results are reported against Baseline: FLAP with no allowance and no quality threshold. The unpruned model is the no-pruning reference point, not a baseline. The user can also give a minimum speed and the device's memory bandwidth and compute. If the memory limit is out of reach, the run warns before searching (beyond what pruning can remove at all), and reports the closest plan and the gap. An LLM agent chooses, per layer, from a neutral menu of strategies: narrow the MLP, remove attention groups, drop the layer, or apply unstructured Wanda. The agent decides only strategy: which strategy to apply to which layers. Code decides how much (one fixed step per choice), which neurons, groups or weights go (by their scores), and performs the pruning. Each round the agent proposes up to three candidate plans; code validates them and evaluates memory, estimated speed on the target device and perplexity (how well the model predicts real text; lower is better) for all candidates in parallel, then accepts the one with the best quality. Output: the pruned model, per-layer plan, a rationale for every decision, a device report (fits or not, estimated speed, warnings), and a comparison against Baseline: FLAP cut to the same memory limit (Wanda-50% and uniform Wanda-sp are optional backups, reported only if useful).
 
 **Models (2026-11-16):** Qwen3-0.6B and Qwen3-1.7B mean the **Base** checkpoints throughout (`Qwen/Qwen3-0.6B-Base`, `Qwen/Qwen3-1.7B-Base`), as in Wanda, FLAP and most pruning work, so results compare directly with published numbers.
 
 **Agent backend (2026-11-16):** the agent's decisions come from a swappable backend, chosen per run: Codex CLI (`codex exec` on the ChatGPT plan, read-only, no tools; no per-call charge, bounded by the plan's usage limits) or an LLM API (per-token cost, $5 per run cap). Both use the same prompt, JSON schema, validator, cache and log, with the model pinned (ADR-005).
+
+**Changes from v0.7 (2026-11-17):** the primary baseline is now FLAP cut to the same memory limit (Baseline: FLAP), replacing Baseline: Wanda-50%. Wanda-50% and uniform Wanda-sp become optional backups, reported only if useful; ShortGPT is dropped as a compared method (still cited, and its Block Influence score is still used). No allowance or quality threshold: results are reported against Baseline: FLAP. Reason: FLAP actually shrinks the model and, at moderate cuts, matches Wanda-50% quality (Qwen3-0.6B with 11.1% of weight memory removed: perplexity 16.63 vs. Wanda-50%'s 23.68; mean accuracy 43.95% vs. 43.80%).
 
 **Changes from v0.6 (2026-11-17):** the problem is now: given a memory limit (required), keep the most quality. The no-target "save as much memory as the bar allows" mode is dropped; FLAP and uniform Wanda-sp are compared at the same memory limit on quality, not searched to the largest saving; Baseline: Wanda-50% is a reference with no allowance for now, and any allowance is decided after seeing results.
 
@@ -37,9 +39,9 @@
 
 | Work | Approach | Gap |
 |---|---|---|
-| **Wanda** (Sun et al., ICLR 2024) | One-shot unstructured pruning; score = \|W\| × ‖X‖; no retraining | Zeroed weights keep matrix shapes: no memory or speed gain on standard hardware. Used here as the quality reference (Baseline: Wanda-50%) |
-| **FLAP** (An et al., AAAI 2024) | Retraining-free structured pruning: fluctuation metric per channel, adaptive global allocation, bias compensation; one forward pass. Introduces **Wanda-sp** (structured Wanda) as a baseline | Allocation by a fixed rule; LLaMA code; no feedback |
-| **ShortGPT** (Men et al., 2024) | Removes whole layers ranked by Block Influence | Layer removal only |
+| **Wanda** (Sun et al., ICLR 2024) | One-shot unstructured pruning; score = \|W\| × ‖X‖; no retraining | Zeroed weights keep matrix shapes: no memory or speed gain on standard hardware. Wanda-50% is an optional backup quality reference here |
+| **FLAP** (An et al., AAAI 2024) | Retraining-free structured pruning: fluctuation metric per channel, adaptive global allocation, bias compensation; one forward pass. Introduces **Wanda-sp** (structured Wanda) as a baseline | Allocation by a fixed rule; LLaMA code; no feedback. Used here as the primary comparison (Baseline: FLAP) |
+| **ShortGPT** (Men et al., 2024) | Removes whole layers ranked by Block Influence | Layer removal only; cited, not run (its Block Influence score is used for layer probes) |
 | **LLM-Pruner** (Ma et al., NeurIPS 2023) | Structured pruning by dependency groups | Needs a LoRA recovery fine-tune; cited, not run |
 | **OWL** (Yin et al., ICML 2024) | Non-uniform unstructured sparsity from outlier ratios | Unstructured; fixed heuristic |
 | **AMC** (He et al., ECCV 2018) | RL agent (DDPG) sets per-layer pruning ratios for CNNs | Policy trained per model; vision only |
@@ -47,7 +49,7 @@
 | **ProfilingAgent** (Jafari et al., 2025) | LLM agent picks compression settings from profiling data | Vision models only |
 | **Kodathala & Vunnam** (Jan 2026) | LLM agent predicts per-layer unstructured Wanda sparsity for Qwen3-4B/8B; rolls back steps with perplexity rise > 15% | Unstructured only, so no memory or speed gain; no public code |
 
-**Positioning.** Not a new pruning algorithm. An agent that mixes existing pruning strategies per layer to reach Wanda's quality with savings Wanda cannot deliver, measured on real memory and speed.
+**Positioning.** Not a new pruning algorithm. An agent that mixes existing pruning strategies per layer to keep more quality than FLAP at the same memory limit, measured on real memory and speed.
 
 ### 0.2 Course Conventions Applied
 
@@ -56,19 +58,19 @@
 | Name **who chooses the next step** | `ORCHESTRATION: hybrid.` The LLM agent chooses the next experiment and which strategy to apply to which layers; code owns step sizes, which weights are removed, pruning, validation, pruning, evaluation and accept / rollback. |
 | **Evidence gates** with explicit states | Every round ends ACCEPT, ROLLBACK or INVALID by a fixed rule. |
 | **Evidence must match the claim** | Quality from perplexity and multiple-choice accuracy (share of questions answered correctly); size from measured memory; speed estimated for the target device during search and measured in tokens per second on an M4 laptop and a T4 at the end. Never judged by an LLM. |
-| **Fair test**, criteria fixed in advance | Baseline: Wanda-50% and any allowance fixed before the production run; every method cut to the same memory limit, same calibration data (example text run through the model to measure which inputs are large; it decides which weights are removed, and is kept separate from the test text), same tests, same machines for speed. |
-| **Validate before relying on it** | Phase 1 reproduces Wanda, FLAP and uniform Wanda-sp on Qwen3, checks layer-local probes against full evaluation, and checks the device speed estimate against measured speed on the M4 and T4. |
+| **Fair test**, criteria fixed in advance | Baseline: FLAP and the memory limit fixed before the production run; every method cut to the same memory limit, same calibration data (example text run through the model to measure which inputs are large; it decides which weights are removed, and is kept separate from the test text), same tests, same machines for speed. |
+| **Validate before relying on it** | Phase 1 reproduces FLAP, Wanda and uniform Wanda-sp on Qwen3, checks layer-local probes against full evaluation, and checks the device speed estimate against measured speed on the M4 and T4. |
 | **Smallest system that meets the needs** | One model family; quantization deferred; LangGraph used for parallel probes, parallel candidate evaluation and the experiment-choice branches (ADR-001). |
 
 ### 0.3 Conflicts and Resolutions
 
 | # | Conflict | Resolution |
 |---|---|---|
-| C1 | "The key question is whether the agent makes better decisions than an existing algorithm" (instructor) | At the same memory limit, the agent must keep more quality than FLAP and uniform Wanda-sp (S2); a negative result is reported as a valid outcome (S4). |
+| C1 | "The key question is whether the agent makes better decisions than an existing algorithm" (instructor) | At the same memory limit, the agent must keep more quality than Baseline: FLAP (S2); a negative result is reported as a valid outcome (S4). |
 | C2 | A single loop does not need a graph framework | The workflow fans out parallel probes and parallel candidate evaluations, and branches on the agent's choice of experiment (ADR-001). |
-| C3 | Unstructured sparsity saves no memory or time on a T4 or Mac | That is why Wanda is the quality reference, not the goal; savings come from structured strategies, and memory is measured with zeros counted at full cost (ADR-006, ADR-007). |
-| C4 | The LLM-agent pruning idea is published (Jan 2026) | Different claim: Wanda-level quality with real savings, from a mixed structured and unstructured menu, with open code; cited directly. |
-| C5 | "Cut scope" (instructor) | Quantization deferred; manual-sweep baseline and effort claim dropped. |
+| C3 | Unstructured sparsity saves no memory or time on a T4 or Mac | That is why the primary comparison is FLAP, which removes whole neurons and groups; Wanda-50% is at most a backup quality reference. Savings come from structured strategies, and memory is measured with zeros counted at full cost (ADR-006, ADR-007). |
+| C4 | The LLM-agent pruning idea is published (Jan 2026) | Different claim: more quality than FLAP at the same memory limit, with real savings, from a mixed structured and unstructured menu, with open code; cited directly. |
+| C5 | "Cut scope" (instructor) | Quantization deferred; manual-sweep baseline and effort claim dropped; one primary baseline (FLAP) and no ShortGPT comparison (v0.8). |
 | C6 | A strategy that saves nothing (unstructured Wanda) in the agent's menu | Kept and described neutrally: removing it would make the choice for the agent. How often each strategy is chosen is reported (P1). |
 | C8 | An LLM is unreliable at choosing numbers (a Codex test proposed a 20% cut where the rules allow 10%) | The agent chooses strategies only; code sets every amount and does all pruning (§4.2) |
 | C7 | Which device to optimize for: a T4 is not where small models are deployed | Device target is a user input; the objective (most quality within the memory limit) is the same on every device (ADR-006). |
@@ -81,17 +83,17 @@
 
 | | |
 |---|---|
-| **Input** | Qwen3 model; memory limit (see device target); Baseline: Wanda-50% (Wanda at 50% unstructured sparsity on the same model) as the quality reference, with no allowance for now |
+| **Input** | Qwen3 model; memory limit (see device target) |
 | **Device target** | Memory limit (GB, required); optional minimum decode speed (tokens/s), the device's memory bandwidth (GB/s), compute (TFLOPs) and CPU or GPU |
 | **Constraints** | ≤ 15% perplexity rise per accepted step; ≤ 60 agent calls per run; with the API backend, also ≤ $5 per run |
-| **Output** | Pruned model, per-layer plan, decision rationale log, device report (fits or not, estimated speed, warnings), comparison vs. Baseline: Wanda-50% and vs. FLAP and uniform Wanda-sp cut to the same memory limit, with measured quality, memory and tokens per second |
-| **Target out of reach** | Early warning before the search if the target is beyond what pruning can remove at all, or already met by the unpruned model. Final warning if the result fits but falls short of Baseline: Wanda-50%: reports the gap in perplexity and accuracy, and any speed shortfall |
+| **Output** | Pruned model, per-layer plan, decision rationale log, device report (fits or not, estimated speed, warnings), comparison vs. Baseline: FLAP cut to the same memory limit and vs. the unpruned model (no-pruning reference), with measured quality, memory and tokens per second; Wanda-50% and uniform Wanda-sp only if useful |
+| **Target out of reach** | Early warning before the search if the target is beyond what pruning can remove at all, or already met by the unpruned model. Final warning if the result fits but keeps less quality than Baseline: FLAP: reports the gap in perplexity and accuracy, and any speed shortfall |
 
 ### 1.2 Functional Requirements
 
 | ID | Requirement | Verified by |
 |---|---|---|
-| FR1 | Accept model, memory limit, optional speed target, agent backend (Codex or API) and call cap; compute Baseline: Wanda-50% by running Wanda at 50% | CLI test; baseline matches Wanda reference code |
+| FR1 | Accept model, memory limit, optional speed target, agent backend (Codex or API) and call cap; compute Baseline: FLAP by cutting FLAP to the memory limit | CLI test; FLAP matches its adapted reference code; FLAP's model fits the limit |
 | FR2 | Run layer-local sensitivity probes (MLP width, attention groups, layer drop, Wanda sparsity) in parallel; merge into one sensitivity table | Probe test on Qwen3-0.6B |
 | FR3 | Agent selects the next experiment (probe, apply 1–3 candidates, start from FLAP, roll back or stop) and, for apply and probe, which strategy for which layers; its output contains no amounts | Agent-graph test with a fake LLM |
 | FR4 | Validator enforces structure, step-size and budget rules | Validator unit tests |
@@ -100,19 +102,19 @@
 | FR7 | Gate: among candidates within the per-step quality limit, accept the one with the lowest perplexity; otherwise roll back | Rollback test |
 | FR8 | Stop when the memory limit is met, on a stop action, 5 rounds without an accepted step, 40 rounds or call cap | Graph tests |
 | FR9 | Log every decision with its rationale, strategies chosen, evaluation count and GPU time | Log schema test |
-| FR10 | Final evaluation of the agent, Baseline: Wanda-50%, the dense model, and FLAP and uniform Wanda-sp cut to the same memory limit, with measured memory and tokens per second on the M4 laptop and the T4 | End-to-end run |
+| FR10 | Final evaluation of the agent, Baseline: FLAP cut to the same memory limit and the unpruned model (optionally Wanda-50% and uniform Wanda-sp), with measured memory and tokens per second on the M4 laptop and the T4 | End-to-end run |
 | FR11 | Checkpoint each step to Google Drive or local drive under the run's id; `pruneagent resume <run-id>` (or no id when exactly one run is paused) continues after a disconnect | Kill-and-resume test; two paused runs: resume without an id refuses and lists them |
 | FR12 | Save the pruned model as safetensors + plan JSON; loader rebuilds it with per-layer widths | Round-trip test: same perplexity after reload |
 | FR15 | Agent usage limits: before a run, estimate whether its calls fit the remaining Codex limits and warn if not; after every call, read the limit status; on a limit (or API cap) reached, checkpoint and pause with the reset time; `resume` continues from the last checkpoint after the reset or on the other backend | Tests with recorded limit readings: fits, warns, pauses, resumes without repeating a call |
 | FR13 | Early warning before the search: target below the smallest model the structure rules allow, or already met by the unpruned model | Unit tests with an impossible, an already-met and a reachable target |
-| FR14 | Final warning when the memory limit cannot be reached or the result falls short of Baseline: Wanda-50%: closest plan, GB over the limit, quality gap, tokens/s short of any speed target | Device-target runs in phase 4 (one reachable, one not) |
+| FR14 | Final warning when the memory limit cannot be reached or the result keeps less quality than Baseline: FLAP: closest plan, GB over the limit, quality gap, tokens/s short of any speed target | Device-target runs in phase 4 (one reachable, one not) |
 
 ### 1.3 Success Criteria
 
 | # | Criterion |
 |---|---|
-| S1 | Quality reported against Baseline: Wanda-50% on held-out data (WikiText-2 test perplexity and average multiple-choice accuracy), with no allowance; whether an allowance is acceptable is decided after seeing the results |
-| S2 | At the same memory limit, better quality (perplexity and mean accuracy) than FLAP and uniform Wanda-sp cut to that limit; quality reported against Baseline: Wanda-50% with no allowance; faster than the dense model in measured decode tokens per second on the M4 laptop and the T4 |
+| S1 | Quality reported against Baseline: FLAP at the same memory limit on held-out data (WikiText-2 test perplexity and average multiple-choice accuracy), with no allowance or quality threshold; the unpruned model is shown as the no-pruning reference point |
+| S2 | At the same memory limit, better quality (perplexity and mean accuracy) than Baseline: FLAP cut to that limit; faster than the unpruned model in measured decode tokens per second on the M4 laptop and the T4 |
 | S3 | ≤ 2 h per run; within the ChatGPT plan's usage limits (Codex backend) or ≤ $5 (API backend); resumes after interruption |
 | S4 | A well-supported negative result is a valid outcome |
 
@@ -136,7 +138,7 @@
 |---|---|
 | **Steph** | Writes the agent instructions; tunes them on Qwen3-0.6B only; makes design decisions (§13) |
 | **Coding agent** | Implements probes, validator, FLAP and Wanda adaptation, loader, evaluator, memory and latency meters, agent graph, report, tests |
-| **System** | Computes Baseline: Wanda-50%, probes, plans, prunes, evaluates, accepts or rolls back, runs baselines, writes the report, logs every decision |
+| **System** | Computes Baseline: FLAP at the memory limit, probes, plans, prunes, evaluates, accepts or rolls back, runs any backup baselines, writes the report, logs every decision |
 
 No hand labelling and no hand-made data: all models and datasets are public.
 
@@ -152,7 +154,7 @@ No hand labelling and no hand-made data: all models and datasets are public.
 | A6 | Estimated decode speed (memory bandwidth ÷ bytes read per token) ranks plans like measured tokens per second on the M4 and the T4 | Measure tokens per second on the accepted plan every 5 rounds; report measured speed only |
 | A9 | A fixed 32-window subset of the validation split ranks candidate plans like the full 128 windows | Gate on 64 windows, or on the full split with candidates spread across Mac and Colab |
 | A8 | Estimates for a device that cannot be measured (a phone) are useful if the estimate is within ~25% of measured speed on both the M4 and the T4 | Report phone results as memory fit only, without a speed estimate |
-| A7 | Structured pruning can reach the Wanda-50% bar with a meaningful saving (FLAP at the bar removes ≥ 5% of weight memory on Qwen3-0.6B) | Report the limit; the agent's mixing of strategies is then the main result |
+| A7 | FLAP is a strong enough comparison: at moderate cuts it keeps Wanda-50%'s quality while actually shrinking the model (checked on Qwen3-0.6B: 11.1% of weight memory removed, perplexity 16.63 vs. 23.68, mean accuracy 43.95% vs. 43.80%) | Report Wanda-50% alongside as a backup quality reference |
 
 ---
 
@@ -161,7 +163,7 @@ No hand labelling and no hand-made data: all models and datasets are public.
 ```mermaid
 flowchart LR
     U["<b>Researcher</b><br/>[Person]<br/>Model, memory limit, device"]
-    S["<b>PruneAgent</b><br/>[Software System]<br/>LLM agent mixes pruning strategies<br/>to reach Wanda quality with real savings"]
+    S["<b>PruneAgent</b><br/>[Software System]<br/>LLM agent mixes pruning strategies<br/>to keep more quality than FLAP<br/>at the same memory limit"]
     L["<b>Agent backend</b><br/>[External System]<br/>Codex CLI (ChatGPT plan) or LLM API;<br/>one pinned model, JSON-schema answers"]
     H["<b>Hugging Face Hub</b><br/>[External System]<br/>Qwen3, C4, WikiText-2, eval tasks"]
     C["<b>Colab Pro (T4 / A100) · Mac</b><br/>[Compute]"]
@@ -186,7 +188,7 @@ flowchart TB
     U["Researcher [Person]"]
 
     subgraph CLIENT["CLIENT"]
-        CLI["<b>pruneagent CLI / Colab notebook</b><br/>[Python, Typer]<br/>data | ppl | baseline-ref | run | runs | resume &lt;run-id&gt; | baselines | report"]
+        CLI["<b>pruneagent CLI / Colab notebook</b><br/>[Python, Typer]<br/>data | ppl | run | runs | resume &lt;run-id&gt; | compare | report"]
     end
 
     subgraph SERVER["SERVER (one Python process on the GPU machine)"]
@@ -199,7 +201,7 @@ flowchart TB
         EV["<b>Evaluator</b><br/>[PyTorch + lm-eval harness]<br/>gate: WikiText-2 validation;<br/>final: test split + tasks"]
         DE["<b>Device Estimator</b><br/>[Python]<br/>weight bytes, estimated tokens/s on the<br/>target device; early and final warnings"]
         MM["<b>Speed Meter</b><br/>[PyTorch]<br/>file size, peak memory,<br/>tokens/s on M4 laptop and T4"]
-        BL["<b>Baselines</b><br/>[Wanda-50%, FLAP, uniform Wanda-sp,<br/>ShortGPT]<br/>cut to the same memory limit"]
+        BL["<b>Baselines</b><br/>[Baseline: FLAP; optional backups:<br/>uniform Wanda-sp, Wanda-50%]<br/>cut to the same memory limit"]
         RP["<b>Report Writer</b><br/>[Python, matplotlib]"]
     end
 
@@ -228,7 +230,7 @@ flowchart TB
 | Git + GitHub | Code, agent instructions, ADRs; commit id in every log |
 | uv + lock file | Pinned PyTorch, Transformers, LangGraph, lm-eval |
 | PyTorch + Hugging Face Transformers | Model loading and inference |
-| Wanda and FLAP reference code (adapted to Qwen3) | Baseline: Wanda-50%, scoring, bias compensation, FLAP and Wanda-sp comparisons |
+| FLAP and Wanda reference code (adapted to Qwen3) | Baseline: FLAP, scoring, bias compensation, backup Wanda-50% and Wanda-sp comparisons |
 | lm-evaluation-harness | Multiple-choice question sets and MMLU |
 | Colab Pro (T4 / A100) | T4 for development and speed measurement; A100 for the production run; 200 of 270 compute units |
 | Google Drive or local drive | Checkpoints, logs, outputs |
@@ -246,11 +248,11 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    S([START]) --> BR["baseline<br/><i>once: Wanda 50% on the model;<br/>validation and test perplexity, multiple-choice accuracy</i>"]
-    BR --> SC["score<br/><i>once: FLAP metric, bias values,<br/>Wanda scores, Block Influence on dense model</i>"]
+    S([START]) --> SC["score<br/><i>once: FLAP metric, bias values,<br/>Wanda scores, Block Influence on dense model</i>"]
     SC --> FE{"feasibility<br/><i>code: is the device target reachable<br/>by pruning at all? already met?</i>"}
     FE -- "early warning: out of reach / already met" --> FN
-    FE -- "reachable" --> FO["fan_out probes<br/><i>Send: one probe per layer group</i>"]
+    FE -- "reachable" --> BR["baseline<br/><i>once: Baseline: FLAP cut to the memory limit;<br/>its plan and validation perplexity</i>"]
+    BR --> FO["fan_out probes<br/><i>Send: one probe per layer group</i>"]
     FO --> PB1["probe (group 1)"] & PB2["probe (group 2)"] & PBN["probe (group n)"]
     PB1 & PB2 & PBN --> RD["reduce<br/><i>merge into sensitivity table</i>"]
     RD --> PL["plan<br/><i>LLM agent: next experiment + rationale</i>"]
@@ -265,7 +267,7 @@ flowchart TD
     GT -- "ROLLBACK: none pass" --> PL
     GT -- "ACCEPT, target not met" --> PL
     GT -- "ACCEPT, device target met" --> FN
-    GT -- "5 rounds without ACCEPT / 40 rounds / call cap<br/>(final warning if a target was set)" --> FN["final_evaluation<br/><i>test split + 7 tasks + MMLU;<br/>tokens/s on M4 and T4; device report;<br/>FLAP, Wanda-sp at the same memory limit</i>"]
+    GT -- "5 rounds without ACCEPT / 40 rounds / call cap<br/>(final warning if a target was set)" --> FN["final_evaluation<br/><i>test split + 7 tasks + MMLU;<br/>tokens/s on M4 and T4; device report;<br/>Baseline: FLAP at the same memory limit</i>"]
     FN --> RP["report"] --> E([END])
 ```
 
@@ -281,7 +283,7 @@ flowchart TD
 |---|---|
 | `probe` | Choose layers and strategies to probe; code tests each at 1, 2 and 3 steps ahead of the current plan |
 | `apply` | Propose 1–3 candidates, each a set of (layer, strategy) choices; code applies one step of each |
-| `start_from_flap` | Use FLAP's allocation cut to the memory limit (computed by code) as a candidate |
+| `start_from_flap` | Use Baseline: FLAP's allocation, cut to the memory limit (computed by code), as a candidate |
 | `rollback` | Restore an earlier accepted plan |
 | `stop` | End search; go to final evaluation (code also stops the search when the device target is met) |
 
@@ -308,8 +310,8 @@ class LayerPlan(TypedDict):
     wanda_sparsity: float  # unstructured sparsity on remaining weights, 0.0–0.7
 
 class PruneState(TypedDict, total=False):
-    run: RunConfig                              # model, baseline settings, device target, limits, call cap, seed
-    baseline: Baseline                          # Wanda-50% perplexity and accuracy; no allowance for now
+    run: RunConfig                              # model, device target, limits, call cap, seed
+    baseline: Baseline                          # Baseline: FLAP cut to the memory limit: plan and perplexity
     sensitivity: Annotated[dict[str, LayerProbe], merge_probes]   # reducer for parallel probes
     plan: dict[int, LayerPlan]                  # the ONLY thing pruning depends on
     accepted: list[AcceptedPlan]                # history of accepted plans (rollback targets)
@@ -329,7 +331,6 @@ class PruneState(TypedDict, total=False):
 | Per layer per step | One step per chosen (layer, strategy), sizes as in §4.2; at most 2 steps of the same strategy on one layer per candidate |
 | Layers dropped per step / per run | ≤ 1 / ≤ 6 |
 | Minimum per remaining layer | ≥ 25% of MLP width; ≥ 1 key/value group; Wanda sparsity ≤ 70% |
-| Baseline | Record each candidate's validation perplexity on the 32-window subset against Wanda-50% on the same subset; no rejection on it for now (no allowance) |
 | Per-step limit | Reject a candidate if validation perplexity rises > 15% over the last accepted plan |
 | Accept | Among candidates that pass: the one with the lowest perplexity, ties broken by estimated speed |
 | Candidates per round | ≤ 3 |
@@ -339,7 +340,7 @@ class PruneState(TypedDict, total=False):
 
 ### 4.5 Agent Input and Output
 
-Input: the objective; the device target, if any; the strategy menu (§4.2); sensitivity table (one row per layer: probe error per strategy at 1, 2 and 3 steps, Block Influence, current plan); current weight memory and estimated speed vs. dense and vs. the target; current, last accepted and Baseline: Wanda-50% perplexity; last steps with decisions and reasons. Output (JSON):
+Input: the objective; the device target, if any; the strategy menu (§4.2); sensitivity table (one row per layer: probe error per strategy at 1, 2 and 3 steps, Block Influence, current plan); current weight memory and estimated speed vs. dense and vs. the target; current and last accepted perplexity, and Baseline: FLAP's perplexity at the memory limit (on the same 32 windows); last steps with decisions and reasons. Output (JSON):
 
 ```json
 {"action": "apply",
@@ -359,7 +360,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 
 | Component | Responsibility | Interface |
 |---|---|---|
-| Baseline | Run Wanda at 50% on the model; record validation and test perplexity and multiple-choice accuracy | `baseline(model, calib) -> Baseline` |
+| Baseline | Cut FLAP to the memory limit (the smallest FLAP ratio whose weights fit); record its plan and validation perplexity before the search, test perplexity and multiple-choice accuracy at the end | `flap_at_memory_limit(model, stats, memory_limit) -> Baseline` |
 | Scorer | FLAP fluctuation scores per MLP neuron and attention group; bias compensation values; Wanda weight scores; Block Influence per layer; computed once on the dense model | `score(model, calib) -> Scores` |
 | Layer Probes | Layer-local output error for each chosen strategy at 1, 2 and 3 steps (settings set by code) | `probe(layer, strategies, cached_acts, scores) -> LayerProbe` |
 | Agent Client | Prompt, JSON schema, parse, cache, usage meter; calls one backend: `CodexBackend` (`codex exec`, read-only, ephemeral) or `ApiBackend` (provider SDK, structured output, cost meter) | `decide(state) -> AgentAction`; `Backend.complete(prompt, schema) -> (json, usage)` |
@@ -369,7 +370,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 | Evaluator | Gate (validation split) and final evaluation (test split, tasks) | `gate_ppl(model) -> float`; `final(model) -> FinalScores` |
 | Device Estimator | Weight bytes, bytes read per generated token and prompt FLOPs from the plan; estimated tokens/s on the target device; early and final warnings | `estimate(plan, device) -> Estimate`; `feasibility(model, rules, device) -> DeviceWarning \| None` |
 | Speed Meter | File size, peak memory, prefill and decode tokens/s on the M4 laptop (Mac GPU) and the T4 | `measure(model, machine) -> MemoryReport` |
-| Comparisons | Baseline: Wanda-50%, dense model; FLAP, uniform Wanda-sp and ShortGPT each cut to the agent's memory limit | `make(name, model, memory_limit) -> dict[int, LayerPlan]` |
+| Comparisons | Baseline: FLAP cut to the agent's memory limit; unpruned model (no-pruning reference); optional backups: uniform Wanda-sp cut to the same limit, Wanda-50% (saves no memory) | `make(name, model, memory_limit) -> dict[int, LayerPlan]` |
 | Report Writer | Quality, memory, speed, strategy counts, rationale log, charts | `write(state, scores, baseline_scores, out_dir) -> Report` |
 | Agent Graph | LangGraph graph | `build_graph(deps) -> CompiledGraph`; `run(cfg, resume=False)` |
 
@@ -379,14 +380,14 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 
 | Role | Dataset | Link |
 |---|---|---|
-| Calibration (baseline, scoring, probes, compared methods) | C4 `en`, 128 samples × 2,048 tokens | https://huggingface.co/datasets/allenai/c4 |
-| Gate (every candidate) | WikiText-2 validation split, a fixed subset of 32 of its 128 windows, every 4th window starting at the first; candidates are compared with Wanda-50% on these same 32 windows (23.36 on Qwen3-0.6B). The full split is used for reported results and for pruning the comparison methods | https://huggingface.co/datasets/Salesforce/wikitext (`wikitext-2-raw-v1`) |
+| Calibration (scoring, probes, compared methods) | C4 `en`, 128 samples × 2,048 tokens | https://huggingface.co/datasets/allenai/c4 |
+| Gate (every candidate) | WikiText-2 validation split, a fixed subset of 32 of its 128 windows, every 4th window starting at the first; Baseline: FLAP's perplexity on these same 32 windows is shown to the agent. The full split is used for reported results | https://huggingface.co/datasets/Salesforce/wikitext (`wikitext-2-raw-v1`) |
 | Final perplexity | WikiText-2 test split | same |
 | Final multiple-choice accuracy (Wanda's 7 question sets; no practice examples given) | BoolQ, RTE, HellaSwag, WinoGrande, ARC-Easy, ARC-Challenge, OpenBookQA via lm-evaluation-harness | https://github.com/EleutherAI/lm-evaluation-harness |
 | Knowledge | MMLU | https://huggingface.co/datasets/cais/mmlu |
 | Models | Qwen3-0.6B-Base (development), Qwen3-1.7B-Base (production run), Apache 2.0 | Hugging Face Hub |
 
-**Methods compared (ADR-004, ADR-006):** dense model (reference); Wanda at 50% unstructured (Baseline: Wanda-50%, the quality reference; same memory and speed as dense); FLAP and uniform Wanda-sp, each cut to the same memory limit as the agent (S2 comparison); ShortGPT cut the same way (reported alongside). LLM-Pruner is cited, not run.
+**Methods compared (ADR-004, ADR-006):** Baseline: FLAP, cut to the same memory limit as the agent (the S2 comparison); the unpruned model as the no-pruning reference point (not a baseline). Optional backups, reported only if useful: uniform Wanda-sp cut to the same memory limit (a weaker structured method), and Wanda at 50% unstructured sparsity (saves no memory, so at most a quality reference). ShortGPT and LLM-Pruner are cited, not run.
 
 **Memory and speed.** During search: weight memory in dense fp16 storage, zeros counted at full cost, embeddings included; estimated decode speed on the target device = memory bandwidth ÷ bytes of weights and key/value cache read per generated token at a 512-token context; estimated prompt time = FLOPs for a 512-token prompt ÷ device compute. At the end, on the M4 laptop and the Colab T4 for every method: parameter count, file size, peak memory, prefill and decode tokens per second at a fixed prompt length, batch size and generation length (ADR-006).
 
@@ -398,7 +399,7 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 | Colab T4 | 15 GB | ~320 GB/s | Yes |
 | Phone (example) | ~2–3 GB for one app | ~50–60 GB/s | No: estimate only |
 
-**Separation.** The baseline comparison and gate use the validation split; reported results use the test split; instructions are tuned on Qwen3-0.6B only and frozen before the Qwen3-1.7B production run.
+**Separation.** The gate, and the perplexity of Baseline: FLAP shown to the agent, use the validation split; reported results use the test split; instructions are tuned on Qwen3-0.6B only and frozen before the Qwen3-1.7B production run.
 
 **Search measures.** Full-model evaluations, probe count, GPU time, agent calls and tokens, and how often each strategy is proposed and accepted, from the decision log.
 
@@ -410,17 +411,17 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 
 | Type | Fields |
 |---|---|
-| `RunConfig` | model_id, baseline_sparsity (0.5), allowance (none for now), device: DeviceTarget (memory limit required), step_limit, max_candidates, max_rounds, agent_backend (codex / api), agent_provider, agent_model, agent_reasoning_effort, max_agent_calls, max_cost_usd (API), seed, dtype, gpu |
+| `RunConfig` | model_id, baseline_method (flap), device: DeviceTarget (memory limit required), step_limit, max_candidates, max_rounds, agent_backend (codex / api), agent_provider, agent_model, agent_reasoning_effort, max_agent_calls, max_cost_usd (API), seed, dtype, gpu |
 | `DeviceTarget` | name, memory_limit_gb, min_decode_tok_s (optional), bandwidth_gb_s, compute_tflops, backend (cpu / gpu) |
-| `DeviceWarning` | kind (out_of_reach / already_met / below_baseline), closest_plan, memory_gap_gb, speed_gap_tok_s, message |
-| `Baseline` | val_ppl, val_ppl_subset (the gate's 32 windows), test_ppl, multiple_choice_mean, allowance (none for now) |
+| `DeviceWarning` | kind (out_of_reach / already_met / below_flap), closest_plan, memory_gap_gb, speed_gap_tok_s, message |
+| `Baseline` | method (flap), memory_limit_gb, ratio, plan, weight_bytes, val_ppl, val_ppl_subset (the gate's 32 windows), test_ppl, multiple_choice_mean |
 | `Scores` | channel_fluct per layer, group_fluct per layer, bias_baseline per layer, wanda_scores per layer, block_influence per layer |
 | `LayerProbe` | layer, candidates (strategy, setting), local_error per candidate, block_influence |
 | `LayerPlan` | mlp_keep, groups_keep, dropped, wanda_sparsity |
 | `AgentAction` | action, rationale, candidates: list of lists of {layer, strategy (narrow_mlp / remove_attention_group / drop_layer / wanda_sparsity)}; probe: layers and strategies; no amounts |
 | `CheckResult` | ok, reasons |
 | `Estimate` | weight_bytes, decode_bytes_per_token, prefill_flops, est_decode_tok_s, est_prefill_s, meets_target |
-| `CandidateResult` | candidate_id, plan, estimate, val_ppl, vs_baseline (ratio to Wanda-50% on the same windows), step_rise |
+| `CandidateResult` | candidate_id, plan, estimate, val_ppl, step_rise |
 | `GateResult` | chosen_candidate, decision (ACCEPT / ROLLBACK) |
 | `StepRecord` | round, action, rationale, check, candidates, gate, strategies_used, llm_tokens, llm_seconds, llm_cost_usd (API), gpu_seconds |
 | `MemoryReport` | params, file_size_mb, peak_memory_mb, prefill_tok_s, decode_tok_s, machine (m4 / t4) |
@@ -443,7 +444,7 @@ sequenceDiagram
 
     G->>B: Send: probe layer groups 1..n
     B-->>G: local errors (reducer merges)
-    G->>A: sensitivity table, plan, baseline, history
+    G->>A: sensitivity table, plan, Baseline: FLAP perplexity, history
     A-->>G: action = apply, 3 candidates, rationale
     G->>V: validate
     V-->>G: ok
@@ -459,14 +460,14 @@ sequenceDiagram
 
 | Phase (days) | Build | Done when |
 |---|---|---|
-| **1: Feasibility (D1–D2)** | Wanda at 50% on Qwen3-0.6B and 1.7B (the bar); FLAP and Wanda-sp adapted to Qwen3 (grouped-query attention); loader from plan JSON; device estimator; speed meter on M4 and T4; FLAP and uniform Wanda-sp pruned to the bar on 0.6B; probes and speed estimate checked against full evaluation and measured speed on both machines; one agent round end to end | Bar recorded for both models; references reproduce; save-and-reload exact; FLAP's saving at the bar known (A7); probe and estimate rankings validated (A1, A6, A8) |
+| **1: Feasibility (D1–D2)** | Wanda at 50% on Qwen3-0.6B and 1.7B (the reference until v0.7, now a backup); FLAP and Wanda-sp adapted to Qwen3 (grouped-query attention); loader from plan JSON; device estimator; speed meter on M4 and T4; FLAP and uniform Wanda-sp compared with Wanda-50% on 0.6B; probes and speed estimate checked against full evaluation and measured speed on both machines; one agent round end to end | References reproduce; save-and-reload exact; FLAP's quality against Wanda-50% known (A7); probe and estimate rankings validated (A1, A6, A8) |
 | **2: Agent Graph (D3–D4)** | Parallel probes; planner and action space; validator; parallel candidate evaluation; gate; device target with early and final warnings; rollback; checkpoints; fake-LLM tests | Midpoint: end-to-end run on Qwen3-0.6B with at least one ACCEPT and one ROLLBACK |
-| **3: Tuning (D5–D6)** | Tune agent instructions on 0.6B; kill-and-resume; ShortGPT baseline; report writer | Instructions frozen |
-| **4: Evaluation (D7–D8, buffer D9)** | Production run on Qwen3-1.7B (A100) at a set memory limit; one run at a limit pruning cannot reach; final evaluation vs. all compared methods; memory and tokens/s on M4 and T4; report; demo; 1 day buffer | Report with quality, memory, speed, device reports and strategy counts; README reproduces it |
+| **3: Tuning (D5–D6)** | Tune agent instructions on 0.6B against Baseline: FLAP at the same memory limit; kill-and-resume; report writer | Instructions frozen |
+| **4: Evaluation (D7–D8, buffer D9)** | Baseline: FLAP cut to the production run's memory limit on Qwen3-1.7B (uniform Wanda-sp optional); production run on Qwen3-1.7B (A100) at that memory limit; one run at a limit pruning cannot reach; final evaluation vs. Baseline: FLAP and the unpruned model; memory and tokens/s on M4 and T4; report; demo; 1 day buffer | Report with quality, memory, speed, device reports and strategy counts; README reproduces it |
 
-**Descoping order:** ShortGPT baseline → device-target runs on 0.6B instead of 1.7B → one candidate per round instead of three → MMLU → Qwen3-0.6B only.
+**Descoping order:** backup baselines (uniform Wanda-sp, Wanda-50%) → device-target runs on 0.6B instead of 1.7B → one candidate per round instead of three → MMLU → Qwen3-0.6B only.
 
-**Later (optional, not in this build): weight quantization.** A one-time step after the search ends: quantize the final model's weights to 8-bit or 4-bit (weights only; activations and the key/value cache stay in fp16), then repeat the same memory, speed and perplexity checks. Wanda is not quantized: it is only the quality reference (Baseline: Wanda-50%).
+**Later (optional, not in this build): weight quantization.** A one-time step after the search ends: quantize the final model's weights to 8-bit or 4-bit (weights only; activations and the key/value cache stay in fp16), then repeat the same memory, speed and perplexity checks. Baseline: FLAP is quantized the same way so the comparison stays at the same memory; Wanda-50% is not quantized.
 
 **Later (bonus, not in this build): sweep of device targets.** Run the tool across a range of memory and speed targets to map how much quality pruning alone keeps at each target and where it warns: a sensitivity analysis of the tool itself.
 
@@ -486,8 +487,8 @@ sequenceDiagram
 
 | # | Risk | Impact | Mitigation | Early signal |
 |---|---|---|---|---|
-| R1 | Agent keeps no more quality than FLAP at the same memory limit | S2 not met | `start_from_flap`; report negative result (S4) | Midpoint run on 0.6B |
-| R2 | At the memory limits tested, structured pruning falls well short of Baseline: Wanda-50% | Weak headline result | Report as measured (A7); mixing strategies per layer is the agent's remaining lever | Phase-1 FLAP result (A7) |
+| R1 | Agent keeps no more quality than Baseline: FLAP at the same memory limit | S2 not met | `start_from_flap`; report negative result (S4) | Midpoint run on 0.6B |
+| R2 | At the memory limit tested, FLAP is far below Wanda-50% quality, so beating it says little | Weak headline result | Report Wanda-50% alongside as a backup quality reference (A7) | Baseline: FLAP's perplexity at the limit, before the search |
 | R3 | Layer-local probes mispredict | Poor experiment choices | Gate on full-model perplexity; validate probes in phase 1 | Low rank correlation in phase 1 |
 | R4 | Reference code assumes LLaMA and uniform widths | Phase-1 slip | Prune key/value groups jointly; loader rebuilds from plan; reimplement metric if needed | Day 2 of phase 1 |
 | R5 | Speed estimate mis-ranks plans or is far off measured speed | Wrong stopping point for speed targets; unreliable phone estimates | Phase-1 check on M4 and T4 (A6, A8); measured speed every 5 rounds; phone reported as memory fit only | Phase-1 estimate check |
@@ -507,9 +508,9 @@ sequenceDiagram
 | [ADR-001](adr/ADR-001-orchestration.md) | LangGraph agent graph: parallel probes, parallel candidate evaluation and experiment-choice branches; code owns validation and accept / rollback |
 | [ADR-002](adr/ADR-002-plan-and-undo.md) | State is a per-layer plan; scores cached once; pruning rebuilt from dense weights; rollback = earlier accepted plan |
 | [ADR-003](adr/ADR-003-compute.md) | M4 Mac and Colab Pro T4 for development and speed measurement; A100 for the production run; 200 of 270 compute units |
-| [ADR-004](adr/ADR-004-evaluation.md) | Baseline: Wanda-50% as quality reference, no allowance for now; gate on validation split; final evaluation on test split + 7 tasks + MMLU; FLAP and uniform Wanda-sp cut to the same memory limit |
+| [ADR-004](adr/ADR-004-evaluation.md) | Baseline: FLAP cut to the same memory limit is the primary comparison, with no allowance or quality threshold; Wanda-50% and uniform Wanda-sp optional backups; gate on validation split; final evaluation on test split + 7 tasks + MMLU |
 | [ADR-005](adr/ADR-005-logging-cost.md) | Decision log with rationale and strategy choices; swappable agent backend (Codex CLI or LLM API) with shared schema, cache and usage ledger; pinned versions |
-| [ADR-006](adr/ADR-006-measured-memory.md) | Memory limit required, with early and final warnings; compare at the same memory limit; speed estimated for the target device during search, measured on the M4 and T4 at the end |
+| [ADR-006](adr/ADR-006-measured-memory.md) | Memory limit required, with early and final warnings; compare with Baseline: FLAP at the same memory limit; speed estimated for the target device during search, measured on the M4 and T4 at the end |
 | [ADR-007](adr/ADR-007-structured-pruning.md) | Per-layer strategy menu (MLP neurons, attention groups, whole layers, unstructured Wanda), described neutrally; quantization deferred |
 
 ---

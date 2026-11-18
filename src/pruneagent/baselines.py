@@ -1,13 +1,15 @@
-"""FLAP and uniform Wanda-sp against Baseline: Wanda-50% (task 1.9): the largest pruning ratio a method can use
-and still match the baseline's quality.
+"""Compared methods (architecture v0.8).
 
-Matching the baseline (task 1.1's Wanda-50% results) has two parts, both must hold:
+Primary comparison, Baseline: FLAP: FLAP cut to the same memory limit as the agent. `smallest_fitting_ratio`
+finds the smallest pruning ratio whose model fits a weight-memory limit; `flap_at_memory_limit` applies it to FLAP.
+
+Backup, the Wanda-50% match (task 1.9; optional since v0.8): the largest ratio at which FLAP or uniform Wanda-sp
+still keeps the quality of the Wanda-50% reference (task 1.1's results). Both parts must hold:
 - WikiText-2 validation perplexity <= Wanda-50%'s (times `ppl_margin`, default 1.0: no allowance),
 - mean multiple-choice accuracy over the seven question sets >= Wanda-50%'s mean (minus `acc_margin`, default 0).
-Architecture v0.7 sets no allowance for now; the margins stay available as options. Task 1.9's committed results
-used the earlier allowance (1.10 x perplexity, 2 points of accuracy).
+Task 1.9's committed results used an earlier allowance (1.10 x perplexity, 2 points of accuracy).
 
-Search: bisect the ratio on validation perplexity alone (cheap: ~30 s per evaluation on a T4), assuming
+Search for the Wanda-50% match: bisect the ratio on validation perplexity alone (cheap: ~30 s per evaluation on a T4), assuming
 perplexity rises with the ratio. The interval [lo, hi] always has lo passing (or untested at 0) and hi failing;
 it halves until it is narrower than `tol`, and lo is the answer. Accuracy (~12 min) is then checked only at that
 ratio; if it fails, a second bisection runs below that ratio on both parts together (perplexity first, accuracy
@@ -30,15 +32,89 @@ class Trial:
 
 
 @dataclass
-class BaselineSearch:
-    ratio: float | None  # largest ratio found that meets both parts of the baseline; None if none did
+class Wanda50MatchSearch:
+    ratio: float | None  # largest ratio found that keeps Wanda-50% quality (both parts); None if none did
     ppl_trials: list[Trial] = field(default_factory=list)
     acc_trials: list[Trial] = field(default_factory=list)
-    meets_baseline: bool = False
+    matches_wanda50: bool = False
     note: str = ""
 
     def to_json(self) -> dict:
         return asdict(self)
+
+
+@dataclass
+class AtMemoryLimit:
+    limit_bytes: int
+    ratio: float | None  # smallest ratio found whose model fits; None if even `hi` does not fit
+    weight_bytes: int | None  # at that ratio
+    trials: list[Trial] = field(default_factory=list)  # value = weight bytes, passed = fits
+    note: str = ""
+
+    def to_json(self) -> dict:
+        return asdict(self)
+
+
+def smallest_fitting_ratio(
+    weight_bytes: Callable[[float], int], limit_bytes: int, hi: float = 0.6, tol: float = 0.001, digits: int = 4,
+) -> AtMemoryLimit:
+    """Smallest pruning ratio in [0, hi] (to within `tol`) whose model's weight bytes are <= `limit_bytes`,
+    assuming bytes fall as the ratio rises. Ratio 0 (the unpruned model) is checked first: if it fits, nothing
+    needs pruning. Then `hi`; if it does not fit, the limit is out of reach for this method."""
+    out = AtMemoryLimit(limit_bytes=limit_bytes, ratio=None, weight_bytes=None)
+
+    def fits(r: float) -> bool:
+        b = weight_bytes(r)
+        out.trials.append(Trial(r, b, b <= limit_bytes))
+        if b <= limit_bytes:
+            out.ratio, out.weight_bytes = r, b
+        return b <= limit_bytes
+
+    if fits(0.0):
+        out.note = "the unpruned model already fits"
+        return out
+    if not fits(hi):
+        out.note = f"does not fit even at ratio {hi}"
+        return out
+    lo = 0.0
+    while hi - lo > tol:
+        mid = round((lo + hi) / 2, digits)
+        if mid in (lo, hi):
+            break
+        if fits(mid):
+            hi = mid
+        else:
+            lo = mid
+    return out  # out.ratio is hi: the last ratio that fitted
+
+
+def flap_at_memory_limit(dense, stats, limit_bytes: int, hi: float = 0.6, tol: float = 0.001):
+    """Baseline: FLAP: FLAP cut to a weight-memory limit (bytes of all parameters, as `memory`), at the smallest
+    ratio that fits. `dense` is left unchanged; `stats` come from `flap.collect` on it. Returns (pruned model or
+    None if the limit is out of reach, AtMemoryLimit)."""
+    import copy
+
+    from pruneagent import flap
+
+    built: dict[float, object] = {}
+
+    def weight_bytes(ratio: float) -> int:
+        net = copy.deepcopy(dense)
+        if ratio > 0:
+            flap.prune_flap_from_stats(net, stats, ratio)
+        built.clear()
+        built[ratio] = net
+        return memory(net)["weight_bytes"]
+
+    try:
+        out = smallest_fitting_ratio(weight_bytes, limit_bytes, hi=hi, tol=tol)
+    except ValueError as e:  # e.g. the ratio would remove every attention group of a layer
+        return None, AtMemoryLimit(limit_bytes, None, None, note=f"FLAP cannot prune at ratio {hi}: {e}")
+    if out.ratio is None:
+        return None, out
+    if out.ratio not in built:
+        weight_bytes(out.ratio)
+    return built[out.ratio], out
 
 
 def bisect_ratio(
@@ -69,22 +145,22 @@ def bisect_ratio(
     return lo, trials
 
 
-def search_baseline(
+def search_wanda50_match(
     ppl: Callable[[float], float], acc: Callable[[float], float], max_ppl: float, min_acc: float,
     lo: float = 0.0, hi: float = 0.5, tol: float = 0.005, acc_lo: float = 0.0, acc_tol: float = 0.01,
     acc_fails_at: float | None = None,
-) -> BaselineSearch:
+) -> Wanda50MatchSearch:
     """Bisect on perplexity, check accuracy at the ratio found; if it fails there, bisect on both parts over
     [acc_lo, that ratio] (to within `acc_tol`; acc_lo is evaluated if the search ends on it).
     `acc_fails_at`: a ratio already known to fail accuracy, so ratios at or above it are not checked again."""
     ratio, ppl_trials = bisect_ratio(ppl, max_ppl, lo, hi, tol)
-    out = BaselineSearch(ratio=None, ppl_trials=ppl_trials)
+    out = Wanda50MatchSearch(ratio=None, ppl_trials=ppl_trials)
     if not any(t.passed for t in ppl_trials):
         if ratio > 0:  # the search ended on lo, which was assumed to pass: check it
             v = ppl(ratio)
             out.ppl_trials.append(Trial(ratio, v, v <= max_ppl))
         if not any(t.passed for t in out.ppl_trials):
-            out.note = f"no evaluated ratio meets the baseline perplexity (bisection stopped at {ratio})"
+            out.note = f"no evaluated ratio keeps Wanda-50% perplexity (bisection stopped at {ratio})"
             return out
 
     def both(r: float) -> bool:
@@ -100,7 +176,7 @@ def search_baseline(
         a = acc(ratio)
         out.acc_trials.append(Trial(ratio, a, a >= min_acc))
         if a >= min_acc:
-            out.ratio, out.meets_baseline = ratio, True
+            out.ratio, out.matches_wanda50 = ratio, True
             return out
         acc_hi = ratio
     else:
@@ -113,18 +189,19 @@ def search_baseline(
         else:
             acc_hi = mid
     if a_lo > 0 and not any(t.ratio == a_lo and t.passed for t in out.acc_trials) and not both(a_lo):
-        out.note = f"baseline accuracy not met at any ratio tried down to {a_lo}"
+        out.note = f"Wanda-50% accuracy not kept at any ratio tried down to {a_lo}"
         return out
     if a_lo == 0:
-        out.note = "baseline accuracy not met at any positive ratio tried"
+        out.note = "Wanda-50% accuracy not kept at any positive ratio tried"
         return out
-    out.ratio, out.meets_baseline = a_lo, True
+    out.ratio, out.matches_wanda50 = a_lo, True
     return out
 
 
-def baseline_from_results(wanda_ppl_json: Path, mc_json: Path, mc_run: str, ppl_margin: float = 1.0,
-                          acc_margin: float = 0.0) -> dict:
-    """Baseline: Wanda-50% from task 1.1's recorded results, and the limits a method must meet to match it.
+def wanda50_reference(wanda_ppl_json: Path, mc_json: Path, mc_run: str, ppl_margin: float = 1.0,
+                      acc_margin: float = 0.0) -> dict:
+    """The Wanda-50% reference (backup) from task 1.1's recorded results, and the limits a method must meet to
+    keep its quality.
     `ppl_margin` multiplies the perplexity and `acc_margin` is subtracted from the accuracy; the defaults
     (1.0 and 0.0) mean no allowance. Task 1.9 used 1.10 and 0.02."""
     w = json.loads(Path(wanda_ppl_json).read_text())
