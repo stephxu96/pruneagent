@@ -1,0 +1,91 @@
+{
+  "run": "20261118-0046-qwen3-0.6b-codex",
+  "memory_limit_bytes": 1072889856,
+  "device": "mps",
+  "results": {
+    "agent": {
+      "weight_bytes": 1071416320,
+      "tasks": {
+        "boolq": {
+          "acc": 0.6474006116207951,
+          "acc_norm": null,
+          "acc_stderr": 0.008356412493562181
+        },
+        "rte": {
+          "acc": 0.5631768953068592,
+          "acc_norm": null,
+          "acc_stderr": 0.029855247390314928
+        },
+        "hellaswag": {
+          "acc": 0.3646683927504481,
+          "acc_norm": 0.46355307707627963,
+          "acc_stderr": 0.004803533333363877
+        },
+        "winogrande": {
+          "acc": 0.5595895816890292,
+          "acc_norm": null,
+          "acc_stderr": 0.01395233031191569
+        },
+        "arc_easy": {
+          "acc": 0.6165824915824916,
+          "acc_norm": 0.5517676767676768,
+          "acc_stderr": 0.009976995068264598
+        },
+        "arc_challenge": {
+          "acc": 0.2764505119453925,
+          "acc_norm": 0.3148464163822526,
+          "acc_stderr": 0.013069662474252427
+        },
+        "openbookqa": {
+          "acc": 0.212,
+          "acc_norm": 0.33,
+          "acc_stderr": 0.01829703700401386
+        }
+      },
+      "mean_acc": 0.46283835498500225,
+      "seconds": 2168.4
+    },
+    "Baseline: FLAP": {
+      "weight_bytes": 1072418816,
+      "tasks": {
+        "boolq": {
+          "acc": 0.6232415902140673,
+          "acc_norm": null,
+          "acc_stderr": 0.008475244400491348
+        },
+        "rte": {
+          "acc": 0.5270758122743683,
+          "acc_norm": null,
+          "acc_stderr": 0.030052303463143734
+        },
+        "hellaswag": {
+          "acc": 0.3626767576180044,
+          "acc_norm": 0.4547898824935272,
+          "acc_stderr": 0.004797900720081499
+        },
+        "winogrande": {
+          "acc": 0.5714285714285714,
+          "acc_norm": null,
+          "acc_stderr": 0.01390835381460673
+        },
+        "arc_easy": {
+          "acc": 0.5496632996632996,
+          "acc_norm": 0.49074074074074076,
+          "acc_stderr": 0.010209047724374136
+        },
+        "arc_challenge": {
+          "acc": 0.25426621160409557,
+          "acc_norm": 0.28754266211604096,
+          "acc_stderr": 0.012724999945157845
+        },
+        "openbookqa": {
+          "acc": 0.234,
+          "acc_norm": 0.312,
+          "acc_stderr": 0.018952741564893755
+        }
+      },
+      "mean_acc": 0.44605032040034376,
+      "seconds": 2236.9
+    }
+  }
+}
