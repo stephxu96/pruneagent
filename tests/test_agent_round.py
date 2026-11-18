@@ -66,7 +66,7 @@ def test_validate_candidates_applies_one_step_per_choice_and_rejects_two_drops()
     plan = checks[0]["plan"]
     assert plan["24"]["dropped"] and plan["10"]["mlp_keep"] == 3072 - 2 * 320
     assert checks[1]["plan"]["5"]["groups_keep"] == 7
-    assert "at most 1 per candidate" in checks[2]["reasons"][0]
+    assert "at most 1 drop_layer per candidate" in checks[2]["reasons"][0]
     dense = A.E.weight_bytes(CFG, P.dense_plan(CFG))
     save = A.step_savings(CFG)
     # steps add up, except that the compensation bias is stored once per layer (not once per step)
@@ -74,12 +74,12 @@ def test_validate_candidates_applies_one_step_per_choice_and_rejects_two_drops()
 
 
 @pytest.mark.parametrize("choices, reason", [
-    ([], "no choices"),
-    ([{"layer": 1, "strategy": "narrow_mlp"}] * 3, "narrow_mlp 3 times"),
-    ([{"layer": 28, "strategy": "narrow_mlp"}], "not a layer index"),
-    ([{"layer": "1", "strategy": "narrow_mlp"}], "not a layer index"),
+    ([], "has no choices"),
+    ([{"layer": 1, "strategy": "narrow_mlp"}] * 3, "chosen 3 times"),
+    ([{"layer": 28, "strategy": "narrow_mlp"}], "does not exist"),
+    ([{"layer": "1", "strategy": "narrow_mlp"}], "does not exist"),
     ([{"layer": 1, "strategy": "quantize"}], "unknown strategy"),
-    ([{"layer": 1, "strategy": "narrow_mlp", "amount": 2}], "expected"),
+    ([{"layer": 1, "strategy": "narrow_mlp", "amount": 2}], "Code sets every amount"),
     ([{"layer": 2, "strategy": "narrow_mlp"}, {"layer": 2, "strategy": "drop_layer"}], "dropped and also"),
 ])
 def test_check_candidate_rejections(choices, reason):
@@ -89,19 +89,19 @@ def test_check_candidate_rejections(choices, reason):
 
 def test_check_candidate_run_limits_from_base_plan():
     base = P.normalize({i: {"dropped": True} for i in range(6)}, CFG)
-    _, reasons = A.check_candidate([{"layer": 10, "strategy": "drop_layer"}], CFG, base, dropped_before=6)
-    assert any("in the run" in r for r in reasons)
+    _, reasons = A.check_candidate([{"layer": 10, "strategy": "drop_layer"}], CFG, base)
+    assert any("7 dropped layers" in r for r in reasons)
     narrow = P.normalize({3: {"mlp_keep": 832}}, CFG)  # one more step lands at 512 < 25% of 3,072
     _, reasons = A.check_candidate([{"layer": 3, "strategy": "narrow_mlp"}], CFG, narrow)
-    assert any("below 25%" in r for r in reasons)
+    assert any("below the minimum of 768 (25%)" in r for r in reasons)
     last = P.normalize({3: {"groups_keep": 1}}, CFG)
     plan, reasons = A.check_candidate([{"layer": 3, "strategy": "remove_attention_group"}], CFG, last)
     assert plan is None and reasons
 
 
 def test_more_than_three_candidates_rejected():
-    one = {"choices": [{"layer": 1, "strategy": "narrow_mlp"}], "rationale": ""}
-    checks = A.validate_candidates([one] * 4, CFG)
+    cands = [{"choices": [{"layer": i, "strategy": "narrow_mlp"}], "rationale": ""} for i in range(4)]
+    checks = A.validate_candidates(cands, CFG)
     assert [c["valid"] for c in checks] == [True, True, True, False]
 
 

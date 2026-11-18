@@ -5,18 +5,13 @@ current plan and the current and target weight memory (§4.5). It answers with u
 list of (layer, strategy) choices and a rationale, with no amounts: code applies one fixed step per choice
 (`plan.step`), checks the fixed rules (§4.4), builds each valid candidate from cached scores and measures it.
 
-Rules checked here (§4.4), on top of `plan.validate`:
-- at most 2 steps of the same strategy on one layer per candidate;
-- at most 1 layer dropped per candidate and 6 per run;
-- at least 25% of the original MLP width and 1 key/value group per remaining layer; Wanda sparsity <= 70%;
-- a dropped layer takes no other choice in the same candidate (the result would depend on the order);
-- at most 3 candidates per round (extra ones are rejected).
+The rules (§4.4) are checked by `validator` (task 2.2). The budget rule (no more than one step past the memory
+limit) applies when a limit is passed; round 1 was recorded before it existed.
 """
 
 from __future__ import annotations
 
 import json
-import math
 import re
 import subprocess
 import tempfile
@@ -25,13 +20,14 @@ from collections import Counter
 
 from pruneagent import estimate as E
 from pruneagent import plan as P
+from pruneagent import validator as V
+from pruneagent.schema import Rules
 
-MAX_CANDIDATES = 3
-MAX_SAME_STEPS = 2  # same strategy on one layer, per candidate
-MAX_DROPS_PER_STEP = 1
-MAX_DROPS_PER_RUN = 6
-MIN_MLP_FRACTION = 0.25
-MAX_STEP_RISE = 0.15  # per-step limit (§4.4): told to the agent; not applied in this hand-wired round
+RULES = Rules()  # §4.4, as the validator applies them
+MAX_CANDIDATES = RULES.max_candidates
+MAX_DROPS_PER_STEP = RULES.max_drops_per_candidate
+MIN_MLP_FRACTION = RULES.min_mlp_fraction
+MAX_STEP_RISE = RULES.step_limit  # per-step limit: told to the agent; not applied in this hand-wired round
 DEFAULT_MEMORY_CUT = 0.10  # memory limit: 10% less weight memory than the unpruned model
 MB = 1e6
 
@@ -202,71 +198,24 @@ def parse_reply(text: str) -> list[dict]:
 # ---------------------------------------------------------------------------------------------- validation
 
 
-def check_candidate(choices, config, base: P.Plan | None = None, dropped_before: int = 0) -> tuple[P.Plan | None,
-                                                                                                    list[str]]:
-    """(plan after one step per choice, []) or (None, reasons) under the rules in the module docstring."""
-    if not isinstance(choices, list) or not choices:
-        return None, ["no choices"]
-    reasons: list[str] = []
-    clean: list[tuple[int, str]] = []
-    n_layers, width, _ = P.shape(config)
-    for k, ch in enumerate(choices):
-        if not isinstance(ch, dict) or set(ch) - {"layer", "strategy"} or not {"layer", "strategy"} <= set(ch):
-            reasons.append(f"choice {k}: expected {{'layer', 'strategy'}}, got {ch!r}")
-            continue
-        layer, strategy = ch["layer"], ch["strategy"]
-        if isinstance(layer, bool) or not isinstance(layer, int) or not 0 <= layer < n_layers:
-            reasons.append(f"choice {k}: layer {layer!r} is not a layer index 0..{n_layers - 1}")
-        elif strategy not in P.STRATEGIES:
-            reasons.append(f"choice {k}: unknown strategy {strategy!r}")
-        else:
-            clean.append((layer, strategy))
-    counts = Counter(clean)
-    for (layer, strategy), n in sorted(counts.items()):
-        if n > MAX_SAME_STEPS:
-            reasons.append(f"layer {layer}: {strategy} {n} times (at most {MAX_SAME_STEPS} per candidate)")
-    drops = sorted({layer for layer, s in clean if s == "drop_layer"})
-    if len(drops) > MAX_DROPS_PER_STEP:
-        reasons.append(f"drops {len(drops)} layers {drops} (at most {MAX_DROPS_PER_STEP} per candidate)")
-    if dropped_before + len(drops) > MAX_DROPS_PER_RUN:
-        reasons.append(f"would drop {dropped_before + len(drops)} layers in the run (at most {MAX_DROPS_PER_RUN})")
-    for layer in drops:
-        others = sorted({s for la, s in clean if la == layer and s != "drop_layer"})
-        if others:
-            reasons.append(f"layer {layer}: dropped and also {', '.join(others)}")
-    if reasons:
-        return None, reasons
-    plan = P.normalize(base or {}, config)
-    for layer, strategy in clean:
-        try:
-            plan = P.step(plan, layer, strategy, config)
-        except P.PlanError as e:
-            return None, [str(e)]
-    try:
-        plan = P.validate(plan, config)
-    except P.PlanError as e:
-        return None, [str(e)]
-    min_mlp = math.ceil(width * MIN_MLP_FRACTION)
-    for i, p in sorted(plan.items()):
-        if not p["dropped"] and p["mlp_keep"] < min_mlp:
-            reasons.append(f"layer {i}: MLP width {p['mlp_keep']} below {MIN_MLP_FRACTION:.0%} ({min_mlp})")
-    return (None, reasons) if reasons else (plan, [])
+def check_candidate(choices, config, base: P.Plan | None = None, limit_bytes: int = 0) -> tuple[P.Plan | None,
+                                                                                               list[str]]:
+    """(plan after one step per choice, []) or (None, reasons), by `validator.check_candidate`. The budget rule
+    applies only with a `limit_bytes` (0: none, as in the round-1 record)."""
+    c = V.check_candidate(choices, V.Context(config, base or {}, limit_bytes))
+    return (c.plan, []) if c.ok else (None, c.reasons)
 
 
-def validate_candidates(cands: list[dict], config, base: P.Plan | None = None) -> list[dict]:
-    """One record per candidate: valid or not, reasons, plan and weight memory."""
-    dropped_before = sum(p["dropped"] for p in P.normalize(base or {}, config).values())
+def validate_candidates(cands: list[dict], config, base: P.Plan | None = None, limit_bytes: int = 0) -> list[dict]:
+    """One record per candidate: valid or not, reasons, plan and weight memory (`validator.check_candidates`)."""
+    res = V.check_candidates(cands, V.Context(config, base or {}, limit_bytes))
     out = []
-    for k, c in enumerate(cands):
-        if k >= MAX_CANDIDATES:
-            out.append({"index": k, "valid": False, "reasons": [f"more than {MAX_CANDIDATES} candidates"]})
-            continue
-        plan, reasons = check_candidate(c["choices"], config, base, dropped_before)
-        rec = {"index": k, "valid": plan is not None, "reasons": reasons}
-        if plan is not None:
-            rec["plan"] = P.to_json(plan)
-            rec["weight_bytes"] = E.weight_bytes(config, plan)
-            rec["steps"] = dict(Counter(s for s in (ch["strategy"] for ch in c["choices"])))
+    for c, check in zip(cands, res.candidates, strict=True):
+        rec = {"index": check.index, "valid": check.ok, "reasons": check.reasons}
+        if check.ok:
+            rec["plan"] = P.to_json(check.plan)
+            rec["weight_bytes"] = check.weight_bytes
+            rec["steps"] = dict(Counter(ch["strategy"] for ch in c["choices"]))
         out.append(rec)
     return out
 

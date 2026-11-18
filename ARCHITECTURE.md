@@ -413,22 +413,29 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 
 | Type | Fields |
 |---|---|
-| `RunConfig` | model_id, baseline_method (flap), device: DeviceTarget (memory limit required), step_limit, max_candidates, max_rounds, agent_backend (codex / api), agent_provider, agent_model, agent_reasoning_effort, max_agent_calls, max_cost_usd (API), seed, dtype, gpu |
+| `RunConfig` | model_id, baseline_method (flap), device: DeviceTarget (memory limit required), calibration: Calibration, rules: Rules, gate_windows (32), layer_cost_s (per-layer cost added to the speed estimate when ranking plans), agent_backend (codex / api), agent_provider, agent_model, agent_reasoning_effort, max_agent_calls, max_cost_usd (API only; $5 by default), seed, dtype, gpu |
+| `Calibration` | dataset (c4), n_samples (128), seqlen (2,048), seed: the one set every method uses |
+| `Rules` | the §4.4 numbers: max_same_steps, max_drops_per_candidate, max_drops_per_run, min_mlp_fraction, min_groups, max_wanda_sparsity, max_candidates, step_limit, max_rounds, max_rounds_without_accept, max_invalid_in_row |
 | `DeviceTarget` | name, memory_limit_gb, min_decode_tok_s (optional), bandwidth_gb_s, compute_tflops, backend (cpu / gpu) |
 | `DeviceWarning` | kind (out_of_reach / already_met / below_flap), closest_plan, memory_gap_gb, speed_gap_tok_s, message |
-| `Baseline` | method (flap), memory_limit_gb, ratio, plan, weight_bytes, val_ppl, val_ppl_subset (the gate's 32 windows), test_ppl, multiple_choice_mean |
+| `Baseline` | method (flap), calibration, memory_limit_gb, ratio, plan, weight_bytes, val_ppl, val_ppl_subset (the gate's 32 windows), test_ppl, multiple_choice_mean |
 | `Scores` | channel_fluct per layer, group_fluct per layer, bias_baseline per layer, wanda_scores per layer, block_influence per layer |
 | `LayerProbe` | layer, candidates (strategy, setting), local_error per candidate, block_influence |
+| `SensitivityTable` | dense_ppl, measured_windows, rows: {layer: layer, block_influence, quick_tests (strategy, steps, local_error), measured_ppl per strategy (whole-model perplexity with one step on that layer alone, measured once before the search)} |
 | `LayerPlan` | mlp_keep, groups_keep, dropped, wanda_sparsity |
-| `AgentAction` | action, rationale, candidates: list of lists of {layer, strategy (narrow_mlp / remove_attention_group / drop_layer / wanda_sparsity)}; probe: layers and strategies; no amounts |
-| `CheckResult` | ok, reasons |
+| `AgentReply` (was `AgentAction`) | action, rationale, candidates: list of {choices: list of {layer, strategy (narrow_mlp / remove_attention_group / drop_layer / wanda_sparsity)}, rationale} (a bare list of choices is also read); probe: list of {layer, strategy}; rollback_to (accepted-plan index, optional); no amounts |
+| `AgentRequest` | what the agent sees (§4.5): objective, device, strategy_menu, rules, sensitivity, plan, dense / current / limit weight bytes, estimated speed now and unpruned, current, last accepted and Baseline: FLAP perplexity, recent steps, round |
+| `CheckResult` | ok, reasons (written for the agent), candidates: per candidate {index, ok, reasons, plan, weight_bytes} |
 | `Estimate` | weight_bytes, decode_bytes_per_token, prefill_flops, est_decode_tok_s, est_prefill_s, meets_target |
-| `CandidateResult` | candidate_id, plan, estimate, val_ppl, step_rise |
+| `CandidateResult` | candidate_id, choices, rationale, plan, estimate, rank_decode_tok_s (estimate with the per-layer cost), val_ppl, step_rise |
 | `GateResult` | chosen_candidate, decision (ACCEPT / ROLLBACK) |
-| `StepRecord` | round, action, rationale, check, candidates, gate, strategies_used, llm_tokens, llm_seconds, llm_cost_usd (API), gpu_seconds |
+| `StepRecord` | round, action, rationale, reply, check, candidates, gate, outcome (ACCEPT / ROLLBACK / INVALID), strategies_used, llm_tokens, llm_seconds, llm_cost_usd (API), gpu_seconds |
 | `MemoryReport` | params, file_size_mb, peak_memory_mb, prefill_tok_s, decode_tok_s, machine (m4 / t4) |
 | `FinalScores` | ppl_test, tasks: {name: accuracy}, mmlu, memory: list[MemoryReport] |
-| `Report` | run, baseline, device target, final plan, quality, memory and speed for the agent and every compared method, device report and warnings, strategy counts, rationale log |
+| `DeviceReport` | target, fits_memory, memory_gap_gb, speed_reported, est_decode_tok_s, speed_gap_tok_s; speed only for the M4 and the T4, memory fit only for other devices such as a phone (G1, A8) |
+| `Report` | run, baseline, final plan, methods (name, plan, weight bytes, final scores: the agent, Baseline: FLAP, the unpruned model, any backup), device report and warnings, strategy counts (proposed, accepted), rationale log, usage; rejected if Baseline: FLAP used another calibration set or memory limit |
+
+Types are in `src/pruneagent/schema.py` (pydantic; unknown fields rejected; JSON round-trip). Changes from v0.8's table, made in task 2.1: the §4.4 numbers move into `Rules` (so `step_limit` and `max_candidates` sit there, not at the top of `RunConfig`), so the validator and the gate read one copy; `Calibration` records the one calibration set, and the report rejects a baseline with another; the sensitivity table carries the measured per-layer damage beside the quick tests, the speed ranking a per-layer cost, and the device report memory fit only for unmeasured devices (the G1 decisions); `AgentAction` is renamed `AgentReply`, and each candidate carries its own rationale, as the round-1 replies did; `CheckResult` gives a verdict per candidate.
 
 ---
 

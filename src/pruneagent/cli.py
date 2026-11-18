@@ -1093,7 +1093,7 @@ def agent_round_cmd(
         out.write_text(json.dumps(record, indent=2) + "\n")
         typer.echo(f"Could not parse the reply: {e}. Saved {out}")
         raise typer.Exit(1) from e
-    checks = A.validate_candidates(cands, config)
+    checks = A.validate_candidates(cands, config, limit_bytes=limit)
     record |= {"candidates": cands, "validation": checks}
     for c, v in zip(cands, checks, strict=True):
         typer.echo(f"  candidate {v['index'] + 1}: {len(c['choices'] or [])} choices, "
