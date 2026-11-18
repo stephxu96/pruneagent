@@ -4,7 +4,7 @@
 
 **Value statement.** PruneAgent produces a pruned model that fits a memory limit you set for your device while keeping more quality than FLAP, a standard method for shrinking a model without retraining, cut to the same limit; the result is actually smaller and faster, with a warning when pruning alone cannot reach the limit.
 
-**Summary.** Wanda (unstructured pruning) keeps quality well at 50% sparsity, but its zeroed weights still occupy memory and compute, so the model is no smaller or faster. Structured pruning removes whole neurons, attention groups or layers, so the model really shrinks, but it costs more quality per parameter removed. PruneAgent solves one problem: given a memory limit (a required input), find the pruning that fits within it and keeps the most quality. The question it answers: does the agent keep more quality (perplexity and mean accuracy) than FLAP cut to the same memory limit (Baseline: FLAP)? FLAP is a structured method, and at moderate cuts it keeps the quality of Wanda at 50% sparsity, so one comparison answers the question. Results are reported against Baseline: FLAP with no allowance and no quality threshold. The unpruned model is the no-pruning reference point, not a baseline. The user can also give a minimum speed and the device's memory bandwidth and compute. If the memory limit is out of reach, the run warns before searching (beyond what pruning can remove at all), and reports the closest plan and the gap. An LLM agent chooses, per layer, from a neutral menu of strategies: narrow the MLP, remove attention groups, drop the layer, or apply unstructured Wanda. The agent decides only strategy: which strategy to apply to which layers. Code decides how much (one fixed step per choice), which neurons, groups or weights go (by their scores), and performs the pruning. Each round the agent proposes up to three candidate plans; code validates them and evaluates memory, estimated speed on the target device and perplexity (how well the model predicts real text; lower is better) for all candidates in parallel, then accepts the one with the best quality. Output: the pruned model, per-layer plan, a rationale for every decision, a device report (fits or not, estimated speed, warnings), and a comparison against Baseline: FLAP cut to the same memory limit (Wanda-50% and uniform Wanda-sp are optional backups, reported only if useful).
+**Summary.** Wanda (unstructured pruning) keeps quality well at 50% sparsity, but its zeroed weights still occupy memory and compute, so the model is no smaller or faster. Structured pruning removes whole neurons, attention groups or layers, so the model really shrinks, but it costs more quality per parameter removed. PruneAgent solves one problem: given a memory limit (a required input), find the pruning that fits within it and keeps the most quality. The question it answers: does the agent keep more quality (perplexity and mean accuracy) than FLAP cut to the same memory limit (Baseline: FLAP)? FLAP is a structured method, and at moderate cuts it keeps the quality of Wanda at 50% sparsity, so one comparison answers the question. Results are reported against Baseline: FLAP with no allowance and no quality threshold. The unpruned model is the no-pruning reference point, not a baseline. The user can also give a minimum speed and the device's memory bandwidth and compute. If the memory limit is out of reach, the run warns before searching (beyond what pruning can remove at all), and reports the closest plan and the gap. An LLM agent chooses, per layer, from a neutral menu of three structured strategies: narrow the MLP, remove an attention group, or drop the layer. The agent decides only strategy: which strategy to apply to which layers. Code decides how much (one fixed step per choice), which neurons, groups or weights go (by their scores), and performs the pruning. Each round the agent proposes up to three candidate plans; code validates them and evaluates memory, estimated speed on the target device and perplexity (how well the model predicts real text; lower is better) for all candidates in parallel, then, among candidates whose perplexity rises at most 15% in the step, keeps the one with the smallest perplexity rise per MB of memory freed. Output: the pruned model, per-layer plan, a rationale for every decision, a device report (fits or not, estimated speed, warnings), and a comparison against Baseline: FLAP cut to the same memory limit (Wanda-50% and uniform Wanda-sp are optional backups, reported only if useful).
 
 **Models (2026-11-16):** Qwen3-0.6B and Qwen3-1.7B mean the **Base** checkpoints throughout (`Qwen/Qwen3-0.6B-Base`, `Qwen/Qwen3-1.7B-Base`), as in Wanda, FLAP and most pruning work, so results compare directly with published numbers.
 
@@ -13,6 +13,8 @@
 **Calibration (2026-11-17):** every method learns which weights to remove from the same example text: 128 passages of 2,048 tokens from C4, a large collection of web pages (the set Wanda uses). This covers the agent's scores, Baseline: FLAP, and the backups (Wanda-50%, uniform Wanda-sp). Two reasons: every compared method sees the same data, and the example text comes from a different source than the WikiText-2 text used to measure quality, so no method is tuned on text like the test. FLAP's authors used WikiText-2 training text; that setting is kept only for the check of our FLAP code against theirs. FLAP numbers measured before 2026-11-17 (task 1.9's 15.2% of weight memory removed, and the 11.1% run with no allowance quoted in A7) used FLAP's own WikiText-2 calibration text, and are not directly comparable with later numbers; uniform Wanda-sp numbers from before that date used shorter C4 passages (128 tokens).
 
 **Changes from v0.7 (2026-11-17):** the primary baseline is now FLAP cut to the same memory limit (Baseline: FLAP), replacing Baseline: Wanda-50%. Wanda-50% and uniform Wanda-sp become optional backups, reported only if useful; ShortGPT is dropped as a compared method (still cited, and its Block Influence score is still used). No allowance or quality threshold: results are reported against Baseline: FLAP. Reason: FLAP actually shrinks the model and, at moderate cuts, matches Wanda-50% quality (Qwen3-0.6B with 11.1% of weight memory removed: perplexity 16.63 vs. Wanda-50%'s 23.68; mean accuracy 43.95% vs. 43.80%).
+
+**v0.8 update (2026-11-17, agent instructions v1, task 2.9):** the agent's menu is three structured strategies (narrow the MLP, remove an attention group, drop the layer); Wanda sparsity is off the menu because it frees no weight memory (the Wanda code stays for the optional Wanda-50% backup). In v1 the agent proposes 1–3 candidates or returns to an earlier kept plan; probing, starting from FLAP's allocation and stopping are turned off for the agent, behind a flag, with the code kept. The instructions text is `src/pruneagent/prompts/instructions_v1.txt`; code fills in every number from the rules, the gate, the estimator and Baseline: FLAP. The gate's description is corrected throughout: it keeps the candidate with the smallest perplexity rise per MB freed, not the lowest perplexity.
 
 **Changes from v0.6 (2026-11-17):** the problem is now: given a memory limit (required), keep the most quality. The no-target "save as much memory as the bar allows" mode is dropped; FLAP and uniform Wanda-sp are compared at the same memory limit on quality, not searched to the largest saving; Baseline: Wanda-50% is a reference with no allowance for now, and any allowance is decided after seeing results.
 
@@ -281,22 +283,25 @@ flowchart TD
 
 ### 4.2 Agent Action Space
 
-| Action | Effect |
-|---|---|
-| `probe` | Choose layers and strategies to probe; code tests each at 1, 2 and 3 steps ahead of the current plan |
-| `apply` | Propose 1–3 candidates, each a set of (layer, strategy) choices; code applies one step of each |
-| `start_from_flap` | Use Baseline: FLAP's allocation, cut to the memory limit (computed by code), as a candidate |
-| `rollback` | Restore an earlier accepted plan |
-| `stop` | End search; go to final evaluation (code also stops the search when the device target is met) |
+| Action | Effect | In v1 |
+|---|---|---|
+| `apply` | Propose 1–3 candidates, each a set of (layer, strategy) choices; code applies one step of each | On |
+| `rollback` | Restore an earlier accepted plan | On |
+| `probe` | Choose layers and strategies to probe; code tests each at 1, 2 and 3 steps ahead of the current plan | Off |
+| `start_from_flap` | Use Baseline: FLAP's allocation, cut to the memory limit (computed by code), as a candidate | Off |
+| `stop` | End search; go to final evaluation | Off |
 
-**Per-layer strategies** (available in every `probe` and `apply`). The agent names the strategy; code sets the step and picks what is removed:
+**v1 actions (task 2.9).** The agent proposes candidates or returns to an earlier kept plan; code stops the search (memory limit met, 5 rounds without a kept step, 40 rounds, 60 calls, 3 unusable replies in a row). The other three actions are off for the agent: the validator rejects them with a reason. Their code is kept and `RunConfig.agent_extra_actions` turns them back on.
+
+**Per-layer strategies** (the agent's menu, in every `apply`). The agent names the strategy; code sets the step and picks what is removed:
 
 | Strategy | One step (set by code) | What is removed (chosen by code) |
 |---|---|---|
 | `narrow_mlp` | 10% of the layer's original MLP width, rounded to 64 neurons | Lowest-scoring neurons (FLAP metric), with bias compensation |
 | `remove_attention_group` | One key/value group and its 2 query heads | Lowest-scoring group (FLAP metric) |
 | `drop_layer` | The whole layer | That layer |
-| `wanda_sparsity` | +10 points of unstructured sparsity on the layer's remaining weights | Lowest-scoring weights (Wanda score) |
+
+`wanda_sparsity` (+10 points of unstructured sparsity, lowest Wanda scores) is off the agent's menu since v1: it frees no weight memory, so it cannot help reach the limit and the gate would never keep it. Plans and the pruner still support it, for the optional Wanda-50% backup.
 
 **Division of work.** The agent's judgment goes where it adds value: which strategy suits which layer, given the sensitivity table and history. Everything numeric or mechanical is code: step sizes, which weights go, the pruning itself, limits, evaluation and accept / rollback. A candidate that applies the same strategy to the same layer twice takes two steps.
 
@@ -342,17 +347,18 @@ class PruneState(TypedDict, total=False):
 
 ### 4.5 Agent Input and Output
 
-Input: the objective; the device target, if any; the strategy menu (§4.2); sensitivity table (one row per layer: probe error per strategy at 1, 2 and 3 steps, Block Influence, current plan); current weight memory and estimated speed vs. dense and vs. the target; current and last accepted perplexity, and Baseline: FLAP's perplexity at the memory limit (on the same 32 windows); last steps with decisions and reasons. Output (JSON):
+The instructions (v1, `src/pruneagent/prompts/instructions_v1.txt`, task 2.9) are fixed text with placeholders; `instructions.build_prompt` fills each one from the code's real values every round. Input: the objective (fit the memory limit, keep the most quality; no retraining); the memory limit, Baseline: FLAP's perplexity at that limit and the unpruned model's (both on the gate's 32 windows); how rounds work, with the gate's real rules (rejected over 15% per step, smallest perplexity rise per MB freed kept, ties to the faster plan) and the stop rules; rounds left; the three strategies with the memory one step frees (from the estimator) and the number of attention groups (from the model config); the evidence and how far to trust it (quick tests, measured damage, round results); current memory, memory still to free and perplexity; every earlier candidate, rejected ones included, and the kept plans it can return to; the fixed rules (§4.4). After the instructions come the data: the current plan (changed layers), the quick-test table and the measured damage. Layers are named "layer 12". Output (JSON):
 
 ```json
-{"action": "apply",
- "rationale": "Layers 20–24 lose little when narrowed; layer 25 has the lowest Block Influence and a small drop error.",
- "candidates": [
-   [{"layer": 21, "strategy": "narrow_mlp"}, {"layer": 25, "strategy": "drop_layer"}],
-   [{"layer": 21, "strategy": "narrow_mlp"}, {"layer": 22, "strategy": "remove_attention_group"}],
-   [{"layer": 21, "strategy": "narrow_mlp"}, {"layer": 23, "strategy": "wanda_sparsity"}]
+{"candidates": [
+   {"choices": [{"layer": "layer 21", "method": "narrow_mlp"}, {"layer": "layer 25", "method": "drop_layer"}],
+    "reason": "Measured damage: layer 25 costs the least per MB to drop; layer 21 narrows almost for free."},
+   {"choices": [{"layer": "layer 21", "method": "narrow_mlp"}, {"layer": "layer 22", "method": "remove_attention_group"}],
+    "reason": "Quick tests: attention in layer 22 looks cheap."}
  ]}
 ```
+
+or, to go back, `{"rollback_to": 1}` (the index of an earlier kept plan; 0 is the unpruned model). Code also reads the older field names (`strategy` for `method`, `rationale` for `reason`, the layer as `12` or `"12"`) and logs every reply in one internal form.
 
 Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072 → 2,752 neurons on Qwen3-0.6B), checks the limits, prunes and evaluates.
 

@@ -15,6 +15,9 @@ MLP_STEP_FRACTION = 0.10  # narrow_mlp: 10% of the original width per step
 WANDA_STEP = 0.10  # wanda_sparsity: +10 points per step
 WANDA_MAX = 0.70
 STRATEGIES = ("narrow_mlp", "remove_attention_group", "drop_layer", "wanda_sparsity")
+# what the agent may propose (agent instructions v1, task 2.9): wanda_sparsity frees no weight memory, so it is
+# off the agent's menu; plans and the pruner still support it (the optional Wanda-50% backup)
+AGENT_STRATEGIES = ("narrow_mlp", "remove_attention_group", "drop_layer")
 
 
 class LayerPlan(TypedDict):

@@ -19,6 +19,13 @@ NO_LIMIT = 0  # a limit nothing fits: the budget rule never applies
 
 
 def ctx(plan=None, limit=NO_LIMIT, **kw):
+    """The full menu and every action, so that every rule is tested; `v1` is what the agent may use."""
+    kw.setdefault("strategies", P.STRATEGIES)
+    kw.setdefault("actions", V.ACTIONS)
+    return V.Context(CFG, plan or {}, limit, **kw)
+
+
+def v1(plan=None, limit=NO_LIMIT, **kw):
     return V.Context(CFG, plan or {}, limit, **kw)
 
 
@@ -68,15 +75,18 @@ def test_round1_candidates_rejected_once_one_choice_is_added():
 
 
 @pytest.mark.parametrize("choice, phrase", [
-    ({"layer": 1, "strategy": "narrow_mlp", "amount": 2}, "has field 'amount'; give only \"layer\" and \"strategy\""),
+    ({"layer": 1, "strategy": "narrow_mlp", "amount": 2}, "has field 'amount'; give only \"layer\" and \"method\""),
     ({"layer": 1, "strategy": "narrow_mlp", "steps": 2, "ratio": 0.2}, "has fields 'ratio', 'steps'"),
-    ({"layer": 28, "strategy": "narrow_mlp"}, "layer 28 does not exist; layers are whole numbers from 0 to 27"),
+    ({"layer": 28, "strategy": "narrow_mlp"}, "layer 28 does not exist; layers are numbered 0 to 27"),
+    ({"layer": "layer 28", "method": "narrow_mlp"}, "layer 28 does not exist"),
     ({"layer": -1, "strategy": "narrow_mlp"}, "layer -1 does not exist"),
-    ({"layer": "1", "strategy": "narrow_mlp"}, "layer \"1\" does not exist"),
+    ({"layer": "first", "strategy": "narrow_mlp"}, "layer \"first\" does not exist"),
+    ({"layer": "-1", "strategy": "narrow_mlp"}, "layer \"-1\" does not exist"),
     ({"layer": True, "strategy": "narrow_mlp"}, "layer true does not exist"),
     ({"layer": 1.0, "strategy": "narrow_mlp"}, "layer 1.0 does not exist"),
-    ({"layer": 1, "strategy": "quantize"}, "unknown strategy \"quantize\"; use one of narrow_mlp"),
-    ({"layer": 1}, "is missing 'strategy'"),
+    ({"layer": 1, "strategy": "quantize"}, "unknown method \"quantize\"; use one of narrow_mlp"),
+    ({"layer": 1, "method": "narrow_mlp", "strategy": "narrow_mlp"}, "has field 'method'"),
+    ({"layer": 1}, "is missing 'method'"),
     ("layer 1", "a choice is an object"),
 ])
 def test_choice_structure(choice, phrase):
@@ -85,7 +95,7 @@ def test_choice_structure(choice, phrase):
 
 def test_reasons_name_candidate_and_choice_from_one():
     res = apply([ch(1, "narrow_mlp")], [ch(2, "narrow_mlp"), ch(99, "narrow_mlp")])
-    assert res.reasons == ["candidate 2, choice 2: layer 99 does not exist; layers are whole numbers from 0 to 27."]
+    assert res.reasons == ["candidate 2, choice 2: layer 99 does not exist; layers are numbered 0 to 27 (write \"layer 12\")."]
     assert [c.ok for c in res.candidates] == [True, False]
 
 
@@ -117,7 +127,7 @@ def test_candidate_as_object_or_bare_list():
     ({"action": "apply", "rationale": "r"}, "No candidates; propose 1 to 3"),
     ({"action": "apply", "rationale": "r", "candidates": []}, "No candidates"),
     ({"action": "probe", "rationale": "r"}, "needs a non-empty \"probe\" list"),
-    ({"action": "probe", "rationale": "r", "probe": [ch(1, "shrink")]}, "probe 1: unknown strategy"),
+    ({"action": "probe", "rationale": "r", "probe": [ch(1, "shrink")]}, "probe 1: unknown method"),
     ({"action": "rollback", "rationale": "r"}, "Nothing to roll back to"),
 ])
 def test_reply_structure(reply, phrase):
@@ -178,7 +188,7 @@ def test_steps_continue_from_current_plan():
 
 
 def test_same_strategy_at_most_twice_per_layer():
-    assert "narrow_mlp on layer 1 is chosen 3 times; at most 2 steps of the same strategy" in reasons_of(
+    assert "narrow_mlp on layer 1 is chosen 3 times; at most 2 steps of the same method" in reasons_of(
         [ch(1, "narrow_mlp")] * 3)
     assert V.check_candidate([ch(1, "narrow_mlp")] * 2 + [ch(2, "narrow_mlp")] * 2, ctx()).ok
 

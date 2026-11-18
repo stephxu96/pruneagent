@@ -14,6 +14,7 @@ Rules that need the model's shape (layer indices, MLP widths, step sizes, the me
 from __future__ import annotations
 
 import operator
+import re
 from typing import Annotated, Any, Literal, TypedDict
 
 from pydantic import (
@@ -35,6 +36,7 @@ assert set(Strategy.__args__) == set(STRATEGIES)  # one menu (plan.STRATEGIES)
 
 Plan = dict[int, LayerPlan]
 Action = Literal["probe", "apply", "start_from_flap", "rollback", "stop"]
+V1_ACTIONS: tuple[str, ...] = ("apply", "rollback")  # what the agent may do in v1 (task 2.9); see RunConfig
 
 
 class _Model(BaseModel):
@@ -85,6 +87,9 @@ class RunConfig(_Model):
     agent_provider: str | None = None
     agent_model: str | None = None
     agent_reasoning_effort: str | None = None
+    # v1 (task 2.9): the agent proposes candidates or rolls back. True also allows probe, start_from_flap and stop
+    # (the code is kept; the v1 instructions do not offer them).
+    agent_extra_actions: bool = False
     max_agent_calls: PositiveInt = 60
     max_cost_usd: NonNegativeFloat | None = None  # API backend only; defaults to $5 there
     seed: int = 0
@@ -201,20 +206,100 @@ class SensitivityTable(_Model):
 
 
 # -------------------------------------------------------------------------------------------- agent in and out
+#
+# The agent's instructions (task 2.9) call a strategy a "method" and a rationale a "reason", and name layers
+# "layer 12"; older replies and the decision log use "strategy", "rationale" and integers. Both are accepted and
+# normalised to the internal names (`normalize_reply`), so the log always reads the same.
+
+_LAYER = re.compile(r"^\s*(?:layer\s*)?(\d+)\s*$", re.IGNORECASE)
+
+
+def parse_layer(value: Any) -> Any:
+    """12, "12" or "layer 12" -> 12; anything else is returned unchanged (the validator explains why)."""
+    if isinstance(value, str) and (m := _LAYER.match(value)):
+        return int(m.group(1))
+    return value
+
+
+def _rename(d: dict, alias: str, name: str) -> dict:
+    if alias in d and name not in d:
+        d = dict(d)
+        d[name] = d.pop(alias)
+    return d
+
+
+def normalize_choice(raw: Any) -> Any:
+    """{"layer": "layer 12", "method": m} -> {"layer": 12, "strategy": m}; non-objects unchanged."""
+    if not isinstance(raw, dict):
+        return raw
+    d = _rename(raw, "method", "strategy")
+    return {**d, "layer": parse_layer(d["layer"])} if "layer" in d else d
+
+
+def normalize_candidate(raw: Any) -> Any:
+    """A candidate as {"choices", "rationale"} (from "reason"), or a bare list of choices."""
+    if isinstance(raw, list):
+        return [normalize_choice(c) for c in raw]
+    if not isinstance(raw, dict):
+        return raw
+    d = _rename(raw, "reason", "rationale")
+    if isinstance(d.get("choices"), list):
+        d = {**d, "choices": [normalize_choice(c) for c in d["choices"]]}
+    return d
+
+
+def normalize_reply(raw: Any) -> Any:
+    """An agent reply in the internal form. A v1 reply has no "action": {"candidates": [...]} is "apply" and
+    {"rollback_to": n} (with no or empty candidates) is "rollback"; its rationale comes from the candidates'
+    reasons. A reply that gives both, or neither, is left without an action for the validator to explain. Aliases
+    are renamed only when the internal name is absent, so a reply that gives both keeps both (and is rejected for
+    the extra field). Anything that is not an object is returned unchanged."""
+    if not isinstance(raw, dict):
+        return raw
+    d = _rename(raw, "reason", "rationale")
+    if isinstance(d.get("candidates"), list):
+        d = {**d, "candidates": [normalize_candidate(c) for c in d["candidates"]]}
+    if isinstance(d.get("probe"), list):
+        d = {**d, "probe": [normalize_choice(c) for c in d["probe"]]}
+    if "action" not in d:
+        has_candidates = d.get("candidates") not in (None, [])
+        has_target = d.get("rollback_to") is not None
+        if has_target and not has_candidates:
+            d = {k: v for k, v in d.items() if k != "candidates"}
+            d["action"] = "rollback"
+            d.setdefault("rationale", f"return to kept plan {d['rollback_to']}")
+        elif has_candidates and not has_target:
+            d = {k: v for k, v in d.items() if k != "rollback_to"}
+            d["action"] = "apply"
+            if "rationale" not in d:
+                reasons = [c.get("rationale") for c in d["candidates"] if isinstance(c, dict)]
+                d["rationale"] = " | ".join(r for r in reasons if isinstance(r, str) and r.strip()) or "(no reason)"
+    return d
 
 
 class Choice(_Model):
-    """One choice: a strategy on a layer. Code applies one fixed step of it; there is no amount."""
+    """One choice: a strategy on a layer. Code applies one fixed step of it; there is no amount. Also read from
+    {"layer": "layer 12", "method": ...}."""
 
     layer: NonNegativeInt
     strategy: Strategy
 
+    @model_validator(mode="before")
+    @classmethod
+    def _aliases(cls, data: Any) -> Any:
+        return normalize_choice(data)
+
 
 class Candidate(_Model):
-    """One candidate plan change: choices applied together, with the agent's reason."""
+    """One candidate plan change: choices applied together, with the agent's reason ("rationale" or "reason")."""
 
     choices: list[Choice]
     rationale: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _aliases(cls, data: Any) -> Any:
+        return normalize_candidate(data) if isinstance(data, dict) else data
 
 
 class AgentReply(_Model):
@@ -229,6 +314,11 @@ class AgentReply(_Model):
     candidates: list[Candidate] = []
     probe: list[Choice] = []
     rollback_to: NonNegativeInt | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _v1_form(cls, data: Any) -> Any:
+        return normalize_reply(data)
 
     @field_validator("candidates", mode="before")
     @classmethod
@@ -245,6 +335,26 @@ class StepSummary(_Model):
     action: Action | None  # None when the reply could not be read
     rationale: str
     outcome: str  # e.g. "ACCEPT candidate 2, perplexity 15.10 (+3.2%)" or "INVALID: ..."
+
+
+class PastCandidate(_Model):
+    """One evaluated candidate of an earlier round, as the agent sees it."""
+
+    candidate: PositiveInt  # numbered from 1, as in the agent's reply
+    choices: list[Choice]
+    val_ppl: float = Field(gt=0)
+    step_rise: float
+    freed_bytes: int
+    rise_per_mb: float | None = None
+    result: str  # e.g. "kept: plan 1", "rejected: over +15%", "not kept: candidate 2 chosen"
+
+
+class PastRound(_Model):
+    """One earlier round, as the agent sees it: its candidates, or a note (an unusable reply, a rollback)."""
+
+    round: PositiveInt
+    candidates: list[PastCandidate] = []
+    note: str = ""
 
 
 class AgentRequest(_Model):
@@ -266,6 +376,17 @@ class AgentRequest(_Model):
     baseline_ppl: float = Field(gt=0)  # Baseline: FLAP on the same gate windows
     recent: list[StepSummary] = []
     round: NonNegativeInt = 0
+    # for the v1 instructions (task 2.9)
+    n_layers: PositiveInt | None = None
+    n_groups: PositiveInt | None = None  # key/value (attention) groups per layer in the unpruned model
+    mlp_width: PositiveInt | None = None
+    step_bytes: dict[Strategy, int] = {}  # weight bytes one step of each method frees on an unpruned layer
+    dense_ppl: float | None = Field(None, gt=0)  # the unpruned model on the gate's windows
+    rounds_left: NonNegativeInt | None = None  # including this one, within both the round and the call caps
+    max_agent_calls: PositiveInt = 60
+    since_kept: NonNegativeInt = 0  # rounds in a row without a kept step
+    kept: list[AcceptedPlan] = []  # rollback targets, by index (0 is the unpruned model)
+    past: list[PastRound] = []  # every earlier round
 
 
 # ------------------------------------------------------------------------------------------- checks and results

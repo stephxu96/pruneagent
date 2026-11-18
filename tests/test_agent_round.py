@@ -77,8 +77,8 @@ def test_validate_candidates_applies_one_step_per_choice_and_rejects_two_drops()
     ([], "has no choices"),
     ([{"layer": 1, "strategy": "narrow_mlp"}] * 3, "chosen 3 times"),
     ([{"layer": 28, "strategy": "narrow_mlp"}], "does not exist"),
-    ([{"layer": "1", "strategy": "narrow_mlp"}], "does not exist"),
-    ([{"layer": 1, "strategy": "quantize"}], "unknown strategy"),
+    ([{"layer": "one", "strategy": "narrow_mlp"}], "does not exist"),
+    ([{"layer": 1, "strategy": "quantize"}], "unknown method"),
     ([{"layer": 1, "strategy": "narrow_mlp", "amount": 2}], "Code sets every amount"),
     ([{"layer": 2, "strategy": "narrow_mlp"}, {"layer": 2, "strategy": "drop_layer"}], "dropped and also"),
 ])

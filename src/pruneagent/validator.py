@@ -3,10 +3,17 @@
 Every reason is written for the agent, which gets them back verbatim: it says which candidate and choice is wrong,
 what the rule is, and what would be allowed. Candidates and choices are numbered from 1 in the messages.
 
+Replies are read in either form (`schema.normalize_reply`): the v1 instructions' {"candidates": [{"choices":
+[{"layer": "layer 12", "method": ...}], "reason": ...}]} or {"rollback_to": n}, and the internal {"action",
+"rationale", "candidates": [{"choices": [{"layer": 12, "strategy": ...}], "rationale"}], ...}. Messages use the
+instructions' words ("method", "kept plan").
+
 Rules, in the order they are checked:
-- Structure: a known action with a rationale; each candidate is a list of choices (or {"choices", "rationale"});
-  each choice is exactly {"layer", "strategy"} with an existing layer and a known strategy. Any other field
-  (an amount, a ratio, a step count) is rejected: code sets every amount.
+- Structure: an action the agent may take (`Context.actions`; v1: propose candidates or roll back) with a
+  rationale; each candidate is a list of choices (or {"choices", "rationale"}); each choice is exactly {"layer",
+  "method"} with an existing layer and a method on the agent's menu (`Context.strategies`; v1: the three
+  structured methods, not wanda_sparsity). Any other field (an amount, a ratio, a step count) is rejected: code
+  sets every amount.
 - Step sizes: each choice is one fixed step (§4.2); the same strategy on the same layer at most `max_same_steps`
   times per candidate; a layer is dropped at most once, and a dropped layer takes no other choice.
 - Structure rules: at most `max_drops_per_candidate` drops per candidate and `max_drops_per_run` in the run; no
@@ -33,10 +40,21 @@ from typing import Any, get_args
 
 from pruneagent import estimate as E
 from pruneagent import plan as P
-from pruneagent.schema import Action, AgentReply, CandidateCheck, CheckResult, Rules
+from pruneagent.schema import (
+    V1_ACTIONS,
+    Action,
+    AgentReply,
+    CandidateCheck,
+    CheckResult,
+    Rules,
+    normalize_candidate,
+    normalize_choice,
+    normalize_reply,
+)
 
 ACTIONS = get_args(Action)
 MB = 1e6
+ROLLBACK_HINT = 'answer {"rollback_to": <index of an earlier kept plan>} to go back'
 
 
 @dataclass(frozen=True)
@@ -45,7 +63,8 @@ class Context:
 
     config: the unpruned model's config (object or dict); plan: the current (last accepted) plan; limit_bytes:
     the memory limit; tried: plans already evaluated in earlier rounds; n_accepted: accepted plans in the history,
-    counting the starting plan (rollback targets are 0..n_accepted-2)."""
+    counting the starting plan (rollback targets are 0..n_accepted-2); strategies: the methods the agent may
+    propose; actions: what the agent may do."""
 
     config: Any
     plan: dict
@@ -53,6 +72,8 @@ class Context:
     rules: Rules = field(default_factory=Rules)
     tried: tuple = ()
     n_accepted: int = 1
+    strategies: tuple = P.AGENT_STRATEGIES
+    actions: tuple = V1_ACTIONS
 
 
 def _mb(n: float) -> str:
@@ -70,26 +91,31 @@ def _times(n: int) -> str:
 # ------------------------------------------------------------------------------------------------- choices
 
 
-def _choice(raw: Any, where: str, n_layers: int) -> tuple[tuple[int, str] | None, list[str]]:
+def _choice(raw: Any, where: str, n_layers: int,
+            strategies: tuple = P.AGENT_STRATEGIES) -> tuple[tuple[int, str] | None, list[str]]:
     if not isinstance(raw, dict):
-        return None, [(f"{where} is {json.dumps(raw)}; a choice is an object {{\"layer\": <index>, \"strategy\": "
-                      f"<name>}}.")]
+        return None, [(f"{where} is {json.dumps(raw)}; a choice is an object {{\"layer\": \"layer <number>\", "
+                      f"\"method\": <name>}}.")]
+    raw = normalize_choice(raw)  # "method" -> "strategy", "layer 12" -> 12
     extra = sorted(set(raw) - {"layer", "strategy"})
-    missing = [k for k in ("layer", "strategy") if k not in raw]
+    missing = [{"strategy": "method"}.get(k, k) for k in ("layer", "strategy") if k not in raw]
     reasons = []
     if extra:
         reasons.append(f"{where} has {'fields' if len(extra) > 1 else 'field'} {', '.join(map(repr, extra))}; give "
-                       f"only \"layer\" and \"strategy\". Code sets every amount: each choice is one fixed step.")
+                       f"only \"layer\" and \"method\". Code sets every amount: each choice is one fixed step.")
     if missing:
         reasons.append(f"{where} is missing {' and '.join(map(repr, missing))}.")
     if missing:
         return None, reasons
     layer, strategy = raw["layer"], raw["strategy"]
     if isinstance(layer, bool) or not isinstance(layer, int) or not 0 <= layer < n_layers:
-        reasons.append(f"{where}: layer {json.dumps(layer)} does not exist; layers are whole numbers from 0 to "
-                       f"{n_layers - 1}.")
-    if strategy not in P.STRATEGIES:
-        reasons.append(f"{where}: unknown strategy {json.dumps(strategy)}; use one of {', '.join(P.STRATEGIES)}.")
+        reasons.append(f"{where}: layer {json.dumps(layer)} does not exist; layers are numbered 0 to "
+                       f"{n_layers - 1} (write \"layer 12\").")
+    if strategy in P.STRATEGIES and strategy not in strategies:
+        reasons.append(f"{where}: {strategy} is not one of the methods you can use; use one of "
+                       f"{', '.join(strategies)}.")
+    elif strategy not in strategies:
+        reasons.append(f"{where}: unknown method {json.dumps(strategy)}; use one of {', '.join(strategies)}.")
     return (None, reasons) if reasons else ((layer, strategy), [])
 
 
@@ -133,17 +159,18 @@ def _minimum_problem(p: P.LayerPlan, strategy: str, width: int, rules: Rules) ->
 
 
 def _choices_of(raw: Any, name: str) -> tuple[list | None, list[str]]:
-    """The raw choices list of a candidate given as a list or as {"choices": [...], "rationale": "..."}."""
+    """The raw choices list of a candidate given as a list or as {"choices": [...], "reason": "..."}."""
+    raw = normalize_candidate(raw)  # "reason" -> "rationale"
     if isinstance(raw, dict):
         extra = sorted(set(raw) - {"choices", "rationale"})
         if extra:
             return None, [(f"{name} has {'fields' if len(extra) > 1 else 'field'} {', '.join(map(repr, extra))}; a "
-                          f"candidate has only \"choices\" and \"rationale\". Code sets every amount.")]
+                          f"candidate has only \"choices\" and \"reason\". Code sets every amount.")]
         raw = raw.get("choices")
     if not isinstance(raw, list):
         return None, [f"{name} has no list of choices."]
     if not raw:
-        return None, [f"{name} has no choices; give at least one {{\"layer\", \"strategy\"}}."]
+        return None, [f"{name} has no choices; give at least one {{\"layer\", \"method\"}}."]
     return raw, []
 
 
@@ -161,7 +188,7 @@ def check_candidate(raw: Any, ctx: Context, index: int = 0) -> CandidateCheck:
         return fail(reasons)
     choices: list[tuple[int, str]] = []
     for k, ch in enumerate(raw_choices):
-        parsed, why = _choice(ch, f"{name}, choice {k + 1}", n_layers)
+        parsed, why = _choice(ch, f"{name}, choice {k + 1}", n_layers, ctx.strategies)
         reasons += why
         if parsed:
             choices.append(parsed)
@@ -181,7 +208,7 @@ def check_candidate(raw: Any, ctx: Context, index: int = 0) -> CandidateCheck:
                            f"once.")
         elif n > rules.max_same_steps:
             reasons.append(f"{name}: {strategy} on layer {layer} is chosen {_times(n)}; at most "
-                           f"{rules.max_same_steps} steps of the same strategy on one layer per candidate.")
+                           f"{rules.max_same_steps} steps of the same method on one layer per candidate.")
     for layer, c in sorted(by_layer.items()):
         if current[layer]["dropped"]:
             reasons.append(f"{name}: layer {layer} is already dropped in the current plan; choose a remaining layer.")
@@ -271,19 +298,34 @@ def check_candidates(raw: Any, ctx: Context) -> CheckResult:
 
 
 def check_reply(reply: Any, ctx: Context) -> CheckResult:
-    """A whole agent reply (a dict as parsed from JSON, or an `AgentReply`)."""
+    """A whole agent reply (a dict as parsed from JSON, in either form, or an `AgentReply`)."""
     if isinstance(reply, AgentReply):
         reply = reply.model_dump(exclude_defaults=True)
     if not isinstance(reply, dict):
         return CheckResult(ok=False, reasons=["The reply is not a JSON object."])
+    reply = normalize_reply(reply)
     reasons: list[str] = []
     extra = sorted(set(reply) - set(AgentReply.model_fields))
     if extra:
+        allowed = ("candidates, rollback_to" if set(ctx.actions) <= set(V1_ACTIONS)
+                   else ", ".join(AgentReply.model_fields))
         reasons.append(f"The reply has unknown {'fields' if len(extra) > 1 else 'field'} {', '.join(map(repr, extra))}"
-                       f"; allowed: {', '.join(AgentReply.model_fields)}. Code sets every amount.")
+                       f"; allowed: {allowed}. Code sets every amount.")
     action = reply.get("action")
+    if action is None and "action" not in reply:  # the v1 form, with both or neither of its two answers
+        if reply.get("candidates") not in (None, []) and reply.get("rollback_to") is not None:
+            reasons.append("The reply gives both candidates and rollback_to; give one: candidates to try, or "
+                           "rollback_to alone to go back.")
+        else:
+            reasons.append(f"The reply has no candidates; propose 1 to {ctx.rules.max_candidates}, or "
+                           f"{ROLLBACK_HINT}.")
+        return CheckResult(ok=False, reasons=reasons)
     if action not in ACTIONS:
-        reasons.append(f"Unknown action {json.dumps(action)}; use one of {', '.join(ACTIONS)}.")
+        reasons.append(f"Unknown action {json.dumps(action)}; use one of {', '.join(ctx.actions)}.")
+        return CheckResult(ok=False, reasons=reasons)
+    if action not in ctx.actions:
+        reasons.append(f"Action {action!r} is not available in this version; propose 1 to "
+                       f"{ctx.rules.max_candidates} candidates, or {ROLLBACK_HINT}.")
         return CheckResult(ok=False, reasons=reasons)
     if not isinstance(reply.get("rationale"), str) or not reply["rationale"].strip():
         reasons.append("The reply has no rationale; every action needs one.")
@@ -299,11 +341,11 @@ def check_reply(reply: Any, ctx: Context) -> CheckResult:
     if action == "probe":
         tests = reply.get("probe")
         if not isinstance(tests, list) or not tests:
-            reasons.append("Action 'probe' needs a non-empty \"probe\" list of {\"layer\", \"strategy\"} pairs.")
+            reasons.append("Action 'probe' needs a non-empty \"probe\" list of {\"layer\", \"method\"} pairs.")
         else:
             current = P.normalize(ctx.plan, ctx.config)
             for k, ch in enumerate(tests):
-                parsed, why = _choice(ch, f"probe {k + 1}", n_layers)
+                parsed, why = _choice(ch, f"probe {k + 1}", n_layers, ctx.strategies)
                 reasons += why
                 if parsed and current[parsed[0]]["dropped"]:
                     reasons.append(f"probe {k + 1}: layer {parsed[0]} is already dropped in the current plan.")
@@ -311,9 +353,10 @@ def check_reply(reply: Any, ctx: Context) -> CheckResult:
         target = reply.get("rollback_to")
         latest = ctx.n_accepted - 2  # the most recent plan before the current one
         if latest < 0:
-            reasons.append("Nothing to roll back to: no plan has been accepted since the start.")
+            reasons.append("Nothing to roll back to: no step has been kept yet, so the current plan is the "
+                           "unpruned model.")
         elif target is not None and (isinstance(target, bool) or not isinstance(target, int)
                                      or not 0 <= target <= latest):
-            reasons.append(f"rollback_to {json.dumps(target)} is not an earlier accepted plan; use 0 to {latest} "
-                           f"(0 is the starting plan), or leave it out for the one before the current plan.")
+            reasons.append(f"rollback_to {json.dumps(target)} is not an earlier kept plan; use 0 to {latest} "
+                           f"(0 is the unpruned model).")
     return CheckResult(ok=not reasons, reasons=reasons)
