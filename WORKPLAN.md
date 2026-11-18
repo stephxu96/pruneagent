@@ -8,6 +8,8 @@ Days are calendar days from the start of the build: D1 = Monday 16 November 2026
 
 **Baseline (v0.8, 2026-11-17):** the agent is compared with FLAP cut to the same memory limit (Baseline: FLAP). Wanda-50% and uniform Wanda-sp are optional backups, reported only if useful; the ShortGPT comparison (task 3.4) is dropped. Tasks 1.1, 1.9 and 1.10 were run when Wanda-50% was the reference and are kept as done.
 
+**Calibration (2026-11-17):** every compared method calibrates on the same example text, 128 passages of 2,048 tokens from C4 (the set Wanda uses): the agent's scores, Baseline: FLAP and the backups. Reasons: every method sees the same data, and the example text comes from a different source than the WikiText-2 evaluation text. FLAP's own WikiText-2 training set is kept only for the check against the authors' code (task 1.2). FLAP numbers measured before 2026-11-17 (task 1.9's 15.2% of weight memory removed, and the 11.1% run with no allowance quoted in A7) used FLAP's own WikiText-2 calibration text, and are not directly comparable with later numbers. Agent round 1 (task 1.11) was re-measured with the shared set: `results/agent_round/round1_c4.md`.
+
 **Models:** Qwen3-0.6B-Base for all development and tuning; Qwen3-1.7B-Base only for the production run (phase 4). "Qwen3-0.6B" and "Qwen3-1.7B" elsewhere mean these Base checkpoints.
 
 ---
@@ -54,7 +56,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | 1.6 | Speed meter on the M4 (Mac GPU) and T4: peak memory, prefill and decode tokens/s; fix settings (prompt 512, batch 1, 128 generated); record each machine's bandwidth and compute as a device target | Coding agent; Steph fixes settings (Q3) | 1.4 | Repeat runs vary < 5% on each machine |
 | 1.7 | Estimate check: ~10 plans mixing all strategies; estimated vs. measured decode speed on M4 and T4 | Coding agent | 1.5, 1.6 | Rank correlation and % error recorded per machine (A6, A8) |
 | 1.8 | Layer-local probes for all four strategies; compare their layer ranking with full-model perplexity | Coding agent | 1.4 | Rank correlation recorded (A1) |
-| 1.9 | FLAP and uniform Wanda-sp pruned to the largest ratio that keeps Wanda-50% quality, by bisection on validation perplexity | Coding agent | 1.1–1.3 | Savings at that ratio recorded (A7) |
+| 1.9 | FLAP and uniform Wanda-sp pruned to the largest ratio that keeps Wanda-50% quality, by bisection on validation perplexity (run with each method's published calibration; see the 2026-11-17 calibration note) | Coding agent | 1.1–1.3 | Savings at that ratio recorded (A7) |
 | 1.10 | Wanda at 50% on Qwen3-1.7B (A100, one session), recorded as the Wanda-50% reference for the production run (a backup since v0.8) | Coding agent | 1.1 | Reference recorded for 1.7B |
 | 1.12 | Gate subset: 32-window subset vs. full validation split on ~10 plans (A9) | Coding agent | 1.4 | Rank correlation recorded |
 | 1.11 | One agent round wired by hand (no graph): sensitivity table → LLM → JSON with 3 candidates → evaluate | Steph (prompt draft), coding agent | 1.5, 1.8 | Valid JSON; candidates evaluate |

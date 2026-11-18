@@ -2,9 +2,12 @@
 
 - Calibration: 128 random 2,048-token windows from the first C4 English training shard, sampled with
   the same procedure (and seed) as the Wanda and SparseGPT reference code, so their results reproduce.
-- Wanda-sp calibration: 128 random 128-token windows from the same shard and by the same procedure (FLAP's
-  `get_c4` is Wanda's), as FLAP's `prune_wanda_sp` loads them.
-- FLAP calibration: 1,024 random 128-token windows of the WikiText-2 training split (FLAP's `get_wikitext2`).
+  Every method calibrates on this one set (FLAP and Wanda-sp too, and the agent's scores), so compared methods
+  see the same data, and it is a different source from the WikiText-2 evaluation text (decision of 2026-11-17).
+- Reference-only calibration sets, kept for the scripts that check our code against the authors' code at their
+  published settings: Wanda-sp's 128 random 128-token C4 windows (`wanda_sp_reference_calib_name`), and FLAP's
+  1,024 random 128-token windows of the WikiText-2 training split (`flap_reference_calib_name`, FLAP's
+  `get_wikitext2`). No compared or benchmarked result uses them.
 - Evaluation: WikiText-2 (raw) validation and test splits, each joined with blank lines and tokenized
   as one sequence, as in the reference code.
 
@@ -59,10 +62,23 @@ def calib_name(model_id: str = DEFAULT_MODEL) -> str:
 
 
 def flap_calib_name(model_id: str = DEFAULT_MODEL) -> str:
-    return f"wikitext2_train_flap_calib__{slug(model_id)}"
+    """FLAP's calibration: the shared C4 set (`calib_name`), as every other method."""
+    return calib_name(model_id)
 
 
 def wanda_sp_calib_name(model_id: str = DEFAULT_MODEL) -> str:
+    """Wanda-sp's calibration: the shared C4 set (`calib_name`), as every other method."""
+    return calib_name(model_id)
+
+
+def flap_reference_calib_name(model_id: str = DEFAULT_MODEL) -> str:
+    """FLAP's published calibration (1,024 x 128 tokens of WikiText-2 train). Only for
+    scripts/check_flap_reference.py, which checks our FLAP against the reference at its published settings."""
+    return f"wikitext2_train_flap_calib__{slug(model_id)}"
+
+
+def wanda_sp_reference_calib_name(model_id: str = DEFAULT_MODEL) -> str:
+    """Wanda-sp's published calibration (128 x 128 tokens of C4). Only for scripts/check_wanda_sp_reference.py."""
     return f"c4_wanda_sp_calib__{slug(model_id)}"
 
 
@@ -225,7 +241,7 @@ def build_cache(
     wsp = sample_calibration(_Column(c4, "text"), tokenize, WANDA_SP_NSAMPLES, WANDA_SP_SEQLEN, seed)
     write_entry(
         out,
-        wanda_sp_calib_name(model_id),
+        wanda_sp_reference_calib_name(model_id),
         wsp,
         {
             "source": {"repo": C4_REPO, "revision": c4_rev, "data_files": C4_SHARD, "split": "train"},
@@ -236,7 +252,7 @@ def build_cache(
             "tokenizer": tokenizer_meta,
         },
     )
-    log(f"  Wanda-sp calibration {tuple(wsp.shape)}")
+    log(f"  Wanda-sp reference calibration {tuple(wsp.shape)}")
 
     for split in ("validation", "test"):
         ds = load_dataset(WIKITEXT_REPO, WIKITEXT_CONFIG, split=split, revision=wt_rev)
@@ -258,7 +274,7 @@ def build_cache(
     flap = sample_stream(stream, FLAP_NSAMPLES, FLAP_SEQLEN, seed)
     write_entry(
         out,
-        flap_calib_name(model_id),
+        flap_reference_calib_name(model_id),
         flap,
         {
             "source": {"repo": WIKITEXT_REPO, "revision": wt_rev, "config": WIKITEXT_CONFIG, "split": "train"},
@@ -269,7 +285,7 @@ def build_cache(
             "tokenizer": tokenizer_meta,
         },
     )
-    log(f"  FLAP calibration {tuple(flap.shape)} from wikitext-2 train ({stream.shape[1]} tokens)")
+    log(f"  FLAP reference calibration {tuple(flap.shape)} from wikitext-2 train ({stream.shape[1]} tokens)")
 
     return read_manifest(out)
 

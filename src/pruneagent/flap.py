@@ -1,8 +1,14 @@
 """FLAP: fluctuation-based structured pruning (An et al., AAAI 2024), adapted to Qwen3.
 
 Follows the reference code (github.com/CASIA-IVA-Lab/FLAP, commit 3bb57db, Apache-2.0) with its defaults:
-WIFV metric, AL-AM structure (adaptive per layer and per module), bias compensation, calibration on 1,024 random
-128-token pieces of the WikiText-2 training split. Statistics are taken on the unpruned model, block by block.
+WIFV metric, AL-AM structure (adaptive per layer and per module), bias compensation. Statistics are taken on the
+unpruned model, block by block.
+
+Calibration (one deliberate change from the reference): the shared C4 set every method here uses, 128 samples of
+2,048 tokens (`data.flap_calib_name`), not the reference's 1,024 x 128 tokens of WikiText-2 train, which is also
+the evaluation text's source. The statistics take any sample length: one update per sample, and scores are
+standardised per layer, so the longer samples change no scale that matters. The WikiText-2 set remains only for
+scripts/check_flap_reference.py (`data.flap_reference_calib_name`).
 
 Adaptation to Qwen3's grouped-query attention: the reference removes single heads of 128 channels. Qwen3 shares
 each key/value head between 2 query heads, so the unit removed here is a key/value group: one key/value head and

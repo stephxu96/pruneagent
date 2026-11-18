@@ -46,7 +46,7 @@ def test_generated_tokens_match_generate_and_never_stop_early():
 
 def test_measure_on_pruned_model_with_dropped_layer():
     model = tiny(tied=False)
-    scores = pruner.compute_scores(model, torch.randint(0, 97, (4, 16)), torch.randint(0, 97, (2, 32)), "cpu")
+    scores = pruner.compute_scores(model, torch.randint(0, 97, (4, 16)), "cpu")
     pruned = pruner.prune(model, {1: {"dropped": True}, 2: {"groups_keep": 2, "mlp_keep": 64}}, scores)
     r = speed.measure(pruned, "cpu", PROMPT, prompt_len=16, gen=5, repeats=2, warmup=0)
     assert r["generated_tokens"] == 5

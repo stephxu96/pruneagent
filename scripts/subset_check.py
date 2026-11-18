@@ -110,9 +110,8 @@ def main() -> None:
         scores = pruner.load_scores(args.scores)
     else:
         meta = {"model": args.model, "revision": revision, "device": device, "dtype": args.dtype,
-                "flap_calib": d.flap_calib_name(args.model), "wanda_calib": d.calib_name(args.model)}
-        scores = pruner.compute_scores(net, d.load_tokens(d.flap_calib_name(args.model)),
-                                       d.load_tokens(d.calib_name(args.model)), device, meta=meta)
+                "calib": d.calib_name(args.model)}
+        scores = pruner.compute_scores(net, d.load_tokens(d.calib_name(args.model)), device, meta=meta)
         if args.scores:
             args.scores.parent.mkdir(parents=True, exist_ok=True)
             pruner.save_scores(scores, args.scores)

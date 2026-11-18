@@ -27,7 +27,7 @@ def tiny(tied=False, seed=0):
 def dense_and_scores():
     model = tiny()
     torch.manual_seed(1)
-    scores = pruner.compute_scores(model, torch.randint(0, 97, (8, 16)), torch.randint(0, 97, (4, 32)), "cpu")
+    scores = pruner.compute_scores(model, torch.randint(0, 97, (8, 16)), "cpu")
     return model, scores
 
 
@@ -183,7 +183,7 @@ def test_scores_roundtrip(dense_and_scores, tmp_path):
 @pytest.mark.parametrize("tied", [False, True])
 def test_save_load_identical_logits(tmp_path, tied):
     dense = tiny(tied=tied)
-    scores = pruner.compute_scores(dense, torch.randint(0, 97, (8, 16)), torch.randint(0, 97, (4, 32)), "cpu")
+    scores = pruner.compute_scores(dense, torch.randint(0, 97, (8, 16)), "cpu")
     plan = mixed(dense.config)
     out = pruner.prune(dense, plan, scores)
     loader.save(out, tmp_path / "m", model_id="tiny", revision="abc")

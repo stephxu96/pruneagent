@@ -16,6 +16,8 @@ Deviations from the reference, one line each:
 - Calibration loops over the 128 real samples; the reference loops over --nsamples (1,024 or 2,048) rows of which
   all but 128 are zeros. Zero rows give zero o_proj/down_proj inputs, so they only rescale scaler_row by a constant
   and cannot change which units are kept.
+- Calibration samples are the shared C4 set every method here uses (128 x 2,048 tokens, `data.wanda_sp_calib_name`),
+  not the reference's 128 x 128-token C4 windows; those remain only for scripts/check_wanda_sp_reference.py.
 """
 
 from __future__ import annotations

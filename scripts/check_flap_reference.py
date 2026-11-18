@@ -7,6 +7,10 @@ github.com/CASIA-IVA-Lab/FLAP commit 3bb57db (lib/layerwrapper.py, lib/prune.py;
 allocation is the reference code with its two LLaMA constants replaced (128 channels per head -> 256 per Qwen3
 key/value group; 512/3 neurons per head -> 256 per group). The calibration samples run through the unpruned model
 block by block as in the reference. Prints how many groups and neurons the two versions keep differently.
+
+Calibration: FLAP's published setting (1,024 x 128 tokens of WikiText-2 train, `d.flap_reference_calib_name`),
+so the check runs at the reference's own settings. Every compared or benchmarked FLAP result uses the shared C4
+set instead (`d.flap_calib_name`); this script is the only user of the WikiText-2 set.
 """
 
 import argparse
@@ -66,9 +70,9 @@ def main() -> None:
     args = ap.parse_args()
     device = args.device or ev.pick_device()
     manifest = d.read_manifest()
-    revision = manifest["entries"][d.flap_calib_name(args.model)]["tokenizer"]["revision"]
+    revision = manifest["entries"][d.flap_reference_calib_name(args.model)]["tokenizer"]["revision"]
     model = ev.load_model(args.model, revision, "float16", device)
-    calib = d.load_tokens(d.flap_calib_name(args.model))
+    calib = d.load_tokens(d.flap_reference_calib_name(args.model))
     _, per_group = flap.group_shape(model)
     layers = model.model.layers
 
