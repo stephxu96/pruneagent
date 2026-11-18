@@ -17,14 +17,15 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, NullLocator
 
 from pruneagent.plan import STRATEGIES
 
 ROOT = Path(__file__).resolve().parents[1]
 DIR = ROOT / "results/damage_table"
 SRC = DIR / "qwen3-0.6b-base__mps__float16.json"
-FLOOR = 0.01  # % rise drawn at this floor when the step did no measurable harm (log scale)
+FLOOR = 0.01  # % rise: smaller rises (and falls) are drawn as no bar (log scale)
+CAP = 1000  # % rise: larger rises are cut off here and labelled with their value
 BLUE, DARK, INK, MUTED, SURFACE = "#2a78d6", "#104281", "#0b0b0b", "#52514e", "#fcfcfb"
 
 
@@ -49,22 +50,26 @@ def main() -> None:
     plt.rcParams.update({"font.size": 9, "axes.edgecolor": MUTED, "axes.labelcolor": INK, "xtick.color": MUTED,
                          "ytick.color": MUTED, "text.color": INK})
     fig, axes = plt.subplots(1, 4, figsize=(13, 7.2), sharey=True, facecolor=SURFACE)
-    for ax, s in zip(axes, STRATEGIES, strict=True):
-        vals = [max(v, FLOOR) for v in rise[s]]
+    for ax, s in zip(axes, STRATEGIES, strict=True):  # one shared scale, so the panels compare directly
+        vals = [min(max(v, FLOOR), CAP) for v in rise[s]]
         lo, hi = min(range(n_layers), key=lambda i: rise[s][i]), max(range(n_layers), key=lambda i: rise[s][i])
-        colors = [DARK if i in (lo, hi) else BLUE for i in layers]
-        ax.barh(layers, vals, height=0.7, color=colors, left=FLOOR * 0.5)
+        ax.barh(layers, vals, height=0.7, color=[DARK if i in (lo, hi) else BLUE for i in layers])
         ax.set_xscale("log")
-        ax.set_xlim(FLOOR * 0.5, max(vals) * 30)
-        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: pct(x)))
+        ax.set_xlim(FLOOR, CAP * 20)
+        ax.set_xticks([0.01, 1, 100])
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:g}%"))
+        ax.xaxis.set_minor_locator(NullLocator())
         ax.set_facecolor(SURFACE)
         ax.grid(axis="x", color="#e4e3df", linewidth=0.6)
         ax.set_axisbelow(True)
         for side in ("top", "right"):
             ax.spines[side].set_visible(False)
         ax.set_title(s, fontsize=10, color=INK, loc="left", family="monospace")
-        for i in (lo, hi):
-            ax.text(vals[i] * 1.3, i, pct(rise[s][i]), va="center", fontsize=8, color=INK)
+        for i in layers:  # label the extremes, and every bar that is cut off or below the floor
+            if i in (lo, hi) or rise[s][i] > CAP or (rise[s][i] < FLOOR and i == lo):
+                label = pct(rise[s][i]) if rise[s][i] >= FLOOR else f"{pct(rise[s][i])} (fell)"
+                ax.text(FLOOR * 1.15 if rise[s][i] < FLOOR else vals[i] * 1.2, i, label, va="center",
+                        fontsize=8, color=INK)
     axes[0].set_yticks(layers)
     axes[0].set_ylim(n_layers - 0.5, -0.5)
     axes[0].set_ylabel("layer")
