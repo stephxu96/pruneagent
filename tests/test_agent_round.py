@@ -110,6 +110,6 @@ def test_prompt_is_neutral_and_complete():
     prompt = A.build_prompt(CFG, table(), limit)
     for s in P.STRATEGIES:
         assert f"- {s}:" in prompt
-    assert "all layers unpruned" in prompt and "to remove: 119.2 MB" in prompt
+    assert "all layers unpruned" in prompt and "to remove: 119.210 MB" in prompt
     assert "0 | 0.100 | 1/2/3 | 1/2/3 | 1 | 1/2/3" in prompt
     assert '"candidates"' in prompt

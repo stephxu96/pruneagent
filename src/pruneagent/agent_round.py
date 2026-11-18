@@ -39,8 +39,8 @@ OBJECTIVE = ("Fit the model within the memory limit while keeping the most quali
              "(lowest perplexity on held-out text).")
 
 
-def _mb(n_bytes: float) -> str:
-    return f"{n_bytes / MB:,.1f} MB"
+def _mb(n_bytes: float, digits: int = 1) -> str:
+    return f"{n_bytes / MB:,.{digits}f} MB"
 
 
 def step_savings(config) -> dict[str, int]:
@@ -59,15 +59,15 @@ def strategy_menu(config) -> dict[str, str]:
     save = step_savings(config)
     return {
         "narrow_mlp": f"delete {P.mlp_step(width)} of the layer's {width:,} MLP neurons (10% of the original width), "
-                      f"the lowest-scoring ones; frees {_mb(save['narrow_mlp'])}.",
+                      f"the lowest-scoring ones; frees {_mb(save['narrow_mlp'], 3)}.",
         "remove_attention_group": f"delete one of the layer's {groups} key/value groups (its key and value heads and "
                                   f"the {per_group} query heads that share them), the lowest-scoring one; frees "
-                                  f"{_mb(save['remove_attention_group'])}.",
+                                  f"{_mb(save['remove_attention_group'], 3)}.",
         "drop_layer": f"delete the whole layer (attention and MLP); its input passes straight to the next layer; "
-                      f"frees {_mb(save['drop_layer'])}.",
+                      f"frees {_mb(save['drop_layer'], 3)}.",
         "wanda_sparsity": f"set a further {P.WANDA_STEP:.0%} of the layer's remaining weights to zero, the lowest-"
                           f"scoring ones (|weight| x input size); matrices keep their shape, so it frees "
-                          f"{_mb(save['wanda_sparsity'])}.",
+                          f"{_mb(save['wanda_sparsity'], 3)}.",
     }
 
 
@@ -113,8 +113,8 @@ def build_prompt(config, table: dict, limit_bytes: int, plan: P.Plan | None = No
         "",
         f"Objective: {OBJECTIVE}",
         f"Model: {n_layers} layers, each with an MLP of {width:,} neurons and {groups} key/value attention groups.",
-        (f"Weight memory: current {_mb(current)}; limit {_mb(limit_bytes)}; "
-        f"to remove: {_mb(max(0, current - limit_bytes))}."),
+        (f"Weight memory: current {_mb(current, 3)}; limit {_mb(limit_bytes, 3)}; "
+        f"to remove: {_mb(max(0, current - limit_bytes), 3)}."),
         f"Current plan: {plan_text}.",
         "",
         "Strategies (one step each; code picks what is removed and the amount):",
