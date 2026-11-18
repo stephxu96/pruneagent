@@ -525,8 +525,8 @@
       ],
       "done_when": "Restores exact earlier perplexity",
       "gpu": "T4",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started, no compute"
     },
     {
       "id": "2.8",
@@ -539,8 +539,8 @@
       ],
       "done_when": "Log schema test",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started, no compute"
     },
     {
       "id": "2.9",
@@ -582,8 +582,8 @@
       ],
       "done_when": "Unit tests with an impossible, an already-met and a reachable target",
       "gpu": "",
-      "status": "todo",
-      "notes": "[2026-11-17] Steph: memory limit applies to weights only (model file size); attention cache reported separately in the device report."
+      "status": "doing",
+      "notes": "[2026-11-17] Steph: memory limit applies to weights only (model file size); attention cache reported separately in the device report.\n[2026-11-17] Agent started, no compute"
     },
     {
       "id": "2.12",
