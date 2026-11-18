@@ -175,7 +175,7 @@ def test_codex_command_is_trimmed_pinned_and_read_only(tmp_path):
     for flag in ["--sandbox", "read-only", "--ephemeral", "--ignore-user-config", "--json", "--skip-git-repo-check"]:
         assert flag in cmd
     assert cmd[cmd.index("--model") + 1] == C.CODEX_MODEL
-    assert 'model_reasoning_effort="low"' in cmd and "skills.include_instructions=false" in cmd
+    assert 'model_reasoning_effort="high"' in cmd and "skills.include_instructions=false" in cmd
     assert any(c.startswith("model_instructions_file=") for c in cmd)
     assert run.schema == SCHEMA
     workdir = kw["cwd"]
@@ -213,7 +213,7 @@ def test_client_with_fake_codex_end_to_end(tmp_path):
     assert cl.propose(C.AgentRequest("p", SCHEMA)).cached
     assert len(run.seen) == 1
     (sent, _) = C.Ledger(tmp_path / "usage.jsonl").entries()
-    assert sent["model"] == C.CODEX_MODEL and sent["reasoning_effort"] == "low" and sent["input_tokens"] == 3135
+    assert sent["model"] == C.CODEX_MODEL and sent["reasoning_effort"] == C.CODEX_REASONING_EFFORT and sent["input_tokens"] == 3135
 
 
 # ---------------------------------------------------------------------------------------------------- API
