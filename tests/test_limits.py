@@ -62,6 +62,18 @@ def reading(five_hour, weekly=1.0, at=None, reset=FIVE_HOUR_RESET, reached=None)
 BEFORE = FIVE_HOUR_RESET - timedelta(hours=1)  # a time inside the recorded 5-hour window
 
 
+@pytest.fixture(autouse=True)
+def frozen_clock(monkeypatch):
+    """The recorded readings reset at 2026-11-18 06:32 UTC; pin "now" before that so the tests do not expire."""
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return BEFORE if tz else BEFORE.replace(tzinfo=None)
+
+    monkeypatch.setattr(L, "datetime", Clock)
+
+
 # ----------------------------------------------------------------------------------------------- reading
 
 
