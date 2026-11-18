@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FixedLocator, NullLocator
 
 OUT = Path("results/flap_curve")
-AGENT_RUNS = {0.10: "runs/20261118-0046-qwen3-0.6b-codex", 0.30: "runs/20261118-1016-qwen3-0.6b-codex"}
+AGENT_RUNS = {0.10: "runs/20261118-0046-qwen3-0.6b-codex", 0.20: "runs/20261118-1718-qwen3-0.6b-codex", 0.30: "runs/20261118-1016-qwen3-0.6b-codex"}
 BLUE, ORANGE = "#2a78d6", "#eb6834"
 INK, INK2, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#8a8984", "#e6e5e0", "#fcfcfb"
 

@@ -6,6 +6,8 @@ On the small model (Qwen3-0.6B-Base), cut to 10% less weight memory, the agent's
 
 **Second run, at a 30% memory cut:** FLAP's model breaks down (test perplexity 427), while the agent's degrades but does not collapse (41.8, against 12.7 unpruned). Measuring FLAP at seven cuts shows it falls off a cliff between 15% and 20%. This run also undid 3 steps, which the midpoint checkpoint requires; with it, all four checkpoint conditions are met. See [The 30% run](#the-30-run-a-deeper-cut).
 
+**Third run, at a 20% cut** (just past FLAP's cliff): the agent scores **22.0 test perplexity, against 165 for FLAP**. See [The 20% run](#the-20-run-just-past-flaps-cliff).
+
 ## The question
 
 Can the per-layer agent keep more quality than FLAP, the existing method, when both are cut to the same memory limit, with the same calibration data and the same test text?
@@ -90,7 +92,7 @@ A step is undone when every proposal in a round would raise perplexity by more t
 
 ![Test perplexity by memory cut, Baseline: FLAP and the agent](../flap_curve/test_ppl_by_cut.png)
 
-*Test perplexity (log scale, lower is better) against the share of weight memory removed, for Qwen3-0.6B-Base. Blue: Baseline: FLAP at seven cuts. Orange: the agent's two runs. Dashed: the unpruned model. Data: `results/flap_curve/test_ppl_by_cut.csv`.*
+*Test perplexity (log scale, lower is better) against the share of weight memory removed, for Qwen3-0.6B-Base. Blue: Baseline: FLAP at seven cuts. Orange: the agent's three runs. Dashed: the unpruned model. Data: `results/flap_curve/test_ppl_by_cut.csv`.*
 
 | Memory cut | 10% | 15% | 20% | 22.5% | 25% | 27.5% | 30% |
 |---|---|---|---|---|---|---|---|
@@ -112,11 +114,24 @@ FLAP degrades gradually to 15% and then breaks down by 20%. Past that point its 
 
 The agent's model is still clearly above guessing on arc_easy and slightly on hellaswag; FLAP's is barely above guessing anywhere. On boolq the agent's 61.2% is about what always answering "yes" scores, while FLAP's 41.7% is worse than that. On the other four sets both are at or below guessing. In short, at 30% the agent's model degrades instead of collapsing; neither model is usable for these questions.
 
-## Cost
+## The 20% run: just past FLAP's cliff
+
+Same setup, weights limited to 953.7 MB (20% below unpruned), to put an agent point where FLAP has already broken down.
+
+| Model | Weight memory | Held-out validation (96 passages) | Test split |
+|---|---|---|---|
+| Unpruned | 1,192.1 MB | 13.30 | 12.66 |
+| **Agent** | **952.3 MB** | **23.22** | **21.99** |
+| Baseline: FLAP | 952.2 MB | 175.07 | 165.19 |
+
+20 rounds: 18 steps kept, 2 undone (rounds 15 and 19, where every proposal raised perplexity by more than 15%). It dropped layers 14, 13 and 12 (in rounds 1, 11 and 14), removed attention groups in layers 1, 5, 8 and 9, and narrowed the feed-forward block in most other layers. The last step (round 20) was the costliest: +14.6% to land under the limit. Accuracy was not measured for this run.
+
 
 13 Codex calls (about 114,000 tokens; about 8 minutes of agent time in total) and about 24 minutes of Mac GPU time for the search, plus about 15 minutes for the held-out check and 74 minutes for the accuracy check. No Colab.
 
 The 30% run: 32 Codex calls (about 397,000 tokens; 16% of the 5-hour allowance and 5% of the weekly), 93 minutes of Mac GPU for the search, plus about 15 minutes for the held-out check, 89 minutes for the accuracy check and 45 minutes for the FLAP curve. No Colab.
+
+The 20% run: 20 Codex calls (about 218,000 tokens; 5-hour allowance at 11% and weekly at 7% afterwards), 67 minutes of Mac GPU for the search, plus about 19 minutes for the held-out check. No Colab.
 
 ## Limits
 
@@ -124,4 +139,4 @@ The 30% run: 32 Codex calls (about 397,000 tokens; 16% of the 5-hour allowance a
 - The accuracy lead is smaller than the perplexity lead: clear on 2 of 7 question sets, too close to call on the rest.
 - The small model only; the production comparison on 1.7B is phase 4.
 
-Files: `decisions.jsonl` (every round, candidates and reasons), `plans/` (every kept plan), `heldout.json` (held-out numbers), `accuracy.json` (accuracy per question set); the 30% run's files end in `_30pct`; the FLAP curve is in `results/flap_curve/`. Reproduce with `scripts/heldout_check.py runs/<run-id>` and `scripts/accuracy_check.py runs/<run-id>`; the curve with `scripts/flap_curve.py` and `scripts/flap_curve_chart.py`.
+Files: `decisions.jsonl` (every round, candidates and reasons), `plans/` (every kept plan), `heldout.json` (held-out numbers), `accuracy.json` (accuracy per question set); the 30% and 20% runs' files end in `_30pct` and `_20pct`; the FLAP curve is in `results/flap_curve/`. Reproduce with `scripts/heldout_check.py runs/<run-id>` and `scripts/accuracy_check.py runs/<run-id>`; the curve with `scripts/flap_curve.py` and `scripts/flap_curve_chart.py`.

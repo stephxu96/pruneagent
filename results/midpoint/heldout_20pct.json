@@ -1,0 +1,25 @@
+{
+  "run": "20261118-1718-qwen3-0.6b-codex",
+  "memory_limit_bytes": 953679872,
+  "unseen_val_windows": 96,
+  "results": {
+    "unpruned": {
+      "weight_bytes": 1192099840,
+      "val_unseen_ppl": 13.301937103271484,
+      "test_ppl": 12.660114288330078,
+      "seconds": 433.6
+    },
+    "agent": {
+      "weight_bytes": 952283648,
+      "val_unseen_ppl": 23.223251342773438,
+      "test_ppl": 21.986980438232422,
+      "seconds": 354.5
+    },
+    "Baseline: FLAP": {
+      "weight_bytes": 952162304,
+      "val_unseen_ppl": 175.07142639160156,
+      "test_ppl": 165.1884002685547,
+      "seconds": 359.1
+    }
+  }
+}
