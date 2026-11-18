@@ -440,8 +440,8 @@
       ],
       "done_when": "Type-checked",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started, no compute"
     },
     {
       "id": "2.2",
@@ -454,8 +454,8 @@
       ],
       "done_when": "Unit tests for every rule",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started, no compute"
     },
     {
       "id": "2.3",
@@ -468,8 +468,8 @@
       ],
       "done_when": "Same contract tests pass for a fake and both real backends; cached rerun makes no calls",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started, no compute"
     },
     {
       "id": "2.4",
@@ -567,8 +567,8 @@
       ],
       "done_when": "Pinned in config; tokens per call recorded",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": "[2026-11-17] Agent started, no compute"
     },
     {
       "id": "2.11",
