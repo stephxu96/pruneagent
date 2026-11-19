@@ -1169,6 +1169,8 @@ def run_cmd(
     = None,
     root: Annotated[Path, typer.Option(help="Directory holding the runs.")] = Path("runs"),
     run_id: Annotated[str | None, typer.Option(help="Run id (default: <date>-<time>-<model>-<backend>).")] = None,
+    instructions: Annotated[str, typer.Option(
+        help="Agent instructions version: v1, v2, ... (src/pruneagent/prompts/instructions_<version>.txt).")] = "v1",
     json_result: Annotated[bool, typer.Option(
         "--json-result", help="With --dry-run: end with one JSON line (feasible, stop_reason, warnings, usage).")]
     = False,
@@ -1184,12 +1186,17 @@ def run_cmd(
         typer.echo("--backend must be codex or api", err=True)
         raise typer.Exit(1)
     try:
-        setup = RR.make_setup(model, device, dtype, data_dir, scores, probes, damage)
+        from pruneagent import instructions as I
+
+        if not (I.TEMPLATE_PATH.parent / f"instructions_{instructions}.txt").exists():
+            raise RR.SetupError(f"no instructions version {instructions}")
+        builder = RR.PROMPT_BUILDER if instructions == "v1" else f"pruneagent.instructions:build_prompt_{instructions}"
+        setup = RR.make_setup(model, device, dtype, data_dir, scores, probes, damage, prompt_builder=builder)
         config = AutoConfig.from_pretrained(model, revision=setup.revision)
         run_cfg = RR.make_run_config(model, config, device, memory_limit_mb=memory_limit_mb, memory_cut=memory_cut,
                                      backend=backend, max_rounds=max_rounds, dtype=dtype, target=target)
         typer.echo(f"{model} on {device}: memory limit {run_cfg.limit_bytes / 1e6:,.1f} MB of weights; "
-                   f"agent {backend}; up to {run_cfg.rules.max_rounds} rounds, {run_cfg.max_agent_calls} calls")
+                   f"agent {backend}, instructions {instructions}; up to {run_cfg.rules.max_rounds} rounds, {run_cfg.max_agent_calls} calls")
         if dry_run:
             out = RR.dry_run(run_cfg, setup, notify=lambda m: typer.echo(m, err=True))
             if json_result:

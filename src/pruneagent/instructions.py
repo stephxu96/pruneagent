@@ -29,8 +29,9 @@ WIDTH = 78  # the template's line width
 PLACEHOLDER = re.compile(r"\{([a-z_]+)(?::[^{}]*)?\}")
 
 
-def template() -> str:
-    return TEMPLATE_PATH.read_text(encoding="utf-8")
+def template(version: str = VERSION) -> str:
+    """The instructions text of a version (`prompts/instructions_<version>.txt`; task 3.1 adds v2, v3, ...)."""
+    return (TEMPLATE_PATH.parent / f"instructions_{version}.txt").read_text(encoding="utf-8")
 
 
 def placeholders(text: str) -> list[str]:
@@ -251,18 +252,33 @@ def _reflow(text: str, width: int = WIDTH) -> str:
     return "\n\n".join(out)
 
 
-def render(req: AgentRequest, text: str | None = None) -> str:
+def render(req: AgentRequest, text: str | None = None, version: str = VERSION) -> str:
     """The instructions with every placeholder filled. Raises KeyError on a placeholder the code cannot fill."""
     vals = values(req)
-    out = _reflow(PLACEHOLDER.sub(lambda m: vals[m.group(1)], template() if text is None else text))
+    out = _reflow(PLACEHOLDER.sub(lambda m: vals[m.group(1)], template(version) if text is None else text))
     return "\n".join(line.rstrip() for line in out.splitlines())
 
 
-def build_prompt(req: AgentRequest, feedback: str | None = None) -> str:
+def build_prompt(req: AgentRequest, feedback: str | None = None, version: str = VERSION) -> str:
     """`graph.Deps.build_prompt`: the rendered instructions, the data for this round, and the reasons an
     unusable last reply was rejected."""
-    parts = [render(req).rstrip(), "", f"Data for round {req.round}.", "", *model_now(req), "",
+    parts = [render(req, version=version).rstrip(), "", f"Data for round {req.round}.", "", *model_now(req), "",
              *quick_test_lines(req), "", *measured_lines(req)]
     if feedback:
         parts += ["", "About your previous reply.", feedback]
     return "\n".join(parts) + "\n"
+
+
+def __getattr__(name: str):
+    """`build_prompt_v2`, `build_prompt_v3`, ...: the prompt builder for that instructions version, so a run's
+    `setup.json` can name it ("pruneagent.instructions:build_prompt_v2") and a resume uses the same version."""
+    m = re.fullmatch(r"build_prompt_(v\d+)", name)
+    if m and (TEMPLATE_PATH.parent / f"instructions_{m.group(1)}.txt").exists():
+        version = m.group(1)
+
+        def build(req: AgentRequest, feedback: str | None = None) -> str:
+            return build_prompt(req, feedback, version=version)
+
+        build.__name__ = name
+        return build
+    raise AttributeError(name)
