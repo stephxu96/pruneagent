@@ -108,7 +108,7 @@ Everything runs on Qwen3-0.6B except task 1.10.
 | 3.3 | Kill-and-resume test (stop the Colab runtime mid-run) | Coding agent | Resumed run matches an uninterrupted run |
 | 3.4 | ~~ShortGPT cut to the same memory limit~~ Dropped 2026-11-17 (v0.8): one primary baseline, FLAP | — | — |
 | 3.5 | Report writer: quality, memory, speed, strategy counts, rationale log, charts | Coding agent | Report builds from a tuning run |
-| 3.6 | Demo notebook on 0.6B (Q2) with a pre-run report as backup | Coding agent | Runs top to bottom on T4 |
+| 3.6 | Web application on top of the tools (ADR-008, FR16): FastAPI server with job runner, React interface (new run, runs, live run, results, tools); also the demo (Q2), replaying a finished 0.6B run. Replaces the demo notebook | Coding agent | A 0.6B run started, watched, paused and resumed in the browser matches the same run from the command line; API and interface tests pass |
 | 3.7 | 1.7B evidence: C4 scores, quick tests and the measured per-layer damage table for Qwen3-1.7B, then a round-1 dry run (no agent call) | Coding agent | Mac GPU, ~6 h; evidence saved; dry run renders round 1 |
 
 **G3:** instructions frozen at a tagged commit by end of D6, whatever the tuning results. No changes after this point. A tuning result below FLAP is reported, not chased (S4).
@@ -173,4 +173,4 @@ Applied in this order when a gate slips by more than half a day:
 | 1 | Speed settings (Q3); accept or apply each G1 fallback |
 | 2 | Default agent backend and model; instructions v1; device targets for the two phase-4 runs (one reachable, one not), set from phase-1 results |
 | 3 | When to freeze instructions (no later than end of D6) |
-| 4 | Demo format (Q2) |
+| 4 | ~~Demo format (Q2)~~ Decided 2026-11-19: the web application (ADR-008) |

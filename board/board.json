@@ -694,15 +694,17 @@
       "id": "3.6",
       "type": "task",
       "phase": 3,
-      "title": "Demo notebook on 0.6B with pre-run report (Q2)",
+      "title": "Web application on top of the tools (ADR-008): FastAPI server + job runner, React interface; also the demo (Q2)",
       "owner": "Coding agent",
       "deps": [
-        "3.5"
+        "G2"
       ],
-      "done_when": "Runs top to bottom on T4",
-      "gpu": "T4",
+      "done_when": "A 0.6B run started, watched, paused and resumed in the browser matches the same run from the command line; API and interface tests pass",
+      "gpu": "M4",
       "status": "todo",
-      "notes": ""
+      "notes": [
+        "[2026-11-19] Replaces the demo notebook. Architecture v0.9 approved by Steph (React + FastAPI). ~2 days of build; no Codex or GPU needed except the final live-run check."
+      ]
     },
     {
       "id": "3.7",
