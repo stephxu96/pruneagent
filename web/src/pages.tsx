@@ -436,7 +436,7 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
                 </div>
               );
             })}
-            <div className="f-sub">about {calls} Codex calls{r.usage.fits === false ? " · over the limit ✕" : ""}</div>
+            {r.usage.fits === false && <div className="f-sub warn">Over the limit ✕</div>}
           </div>
         )}
         {t && r.time && (
