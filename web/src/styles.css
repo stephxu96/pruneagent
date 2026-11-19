@@ -217,3 +217,10 @@ details p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
 .dot-live { width: 8px; height: 8px; border-radius: 99px; background: var(--good); display: inline-block; animation: blink 2s infinite; }
 @keyframes blink { 50% { opacity: .3; } }
 .primary:disabled, .secondary:disabled { opacity: .4; cursor: not-allowed; }
+.feasible { border-radius: 10px; padding: 12px 14px; border: 1px solid var(--line); display: grid; gap: 4px; }
+.feasible.yes { border-color: var(--good); }
+.feasible.no { border-color: var(--warn); }
+.feasible .f-head { font-weight: 700; }
+.feasible.yes .f-head { color: var(--good); }
+.feasible.no .f-head { color: var(--warn); }
+.feasible .f-line { font-size: 14px; color: var(--ink-2); }

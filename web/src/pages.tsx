@@ -127,7 +127,14 @@ function CurveChart({ data }: { data: Compare }) {
 
 // ---------------------------------------------------------------- new run
 
-type Job = { id: number; kind: string; run_id: string | null; status: string; created: string; output: string };
+type Feasibility = {
+  feasible: boolean;
+  stop_reason: string | null;
+  warnings: string[];
+  usage: { calls: number; calls_fit: number | null; fits: boolean | null } | null;
+  limit_mb: number;
+};
+type Job = { id: number; kind: string; run_id: string | null; status: string; created: string; output: string; result: Feasibility | null };
 
 const ORIGINAL_MB: Record<string, number> = { "Qwen/Qwen3-0.6B-Base": 1192.1, "Qwen/Qwen3-1.7B-Base": 3441.1 };
 
@@ -137,6 +144,12 @@ export function NewRunPage() {
   const [cut, setCut] = useState(Math.round(Number(q.get("cut") ?? 0.1) * 100));
   const [jobs, setJobs] = useState<Job[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [check, setCheck] = useState<Job | null>(null);
+  useEffect(() => {
+    if (!check || !["queued", "running"].includes(check.status)) return;
+    const t = setTimeout(() => api<Job>(`/api/jobs/${check.id}`).then(setCheck).catch(() => undefined), 1500);
+    return () => clearTimeout(t);
+  }, [check]);
   const [prepared, setPrepared] = useState<Record<string, boolean>>({});
   const refresh = () => api<Job[]>("/api/jobs").then(setJobs).catch(() => undefined);
   useEffect(() => {
@@ -172,7 +185,11 @@ export function NewRunPage() {
           {orig && <span className="muted">{mb(orig)} → under {mb(orig * (1 - cut / 100))}</span>}
         </label>
         <div className="actions">
-          <button className="secondary" onClick={() => post("/api/precheck")} title="Checks that this size can be reached, without starting anything" disabled={!ready}>Feasibility check</button>
+          <button className="secondary" onClick={() => {
+            setMsg(null);
+            api<Job>("/api/precheck", { method: "POST", headers: { "Content-Type": "application/json" }, body })
+              .then(setCheck).catch((e) => setMsg(String(e)));
+          }} title="Checks that this size can be reached, without starting anything" disabled={!ready}>Feasibility check</button>
           <button className="primary" disabled={!ready} onClick={() => {
             if (confirm(`Start a real run? It uses the Mac's GPU and AI calls for about an hour.`)) post("/api/runs");
           }}>Start the run</button>
@@ -183,6 +200,7 @@ export function NewRunPage() {
             how much each part matters. That takes about 6 hours on this Mac and is planned (task 3.7).
           </p>
         )}
+        {check && <FeasibilityResult job={check} model={model} />}
         {msg && <p className="note">{msg}</p>}
       </div>
       <h2>Jobs</h2>
@@ -355,5 +373,25 @@ function NumberField({ value, min, max, step, disabled, onCommit }: {
       }}
       onBlur={settle}
       onKeyDown={(e) => { if (e.key === "Enter") settle(); }} />
+  );
+}
+
+function FeasibilityResult({ job, model }: { job: Job; model: string }) {
+  if (job.status === "queued" || job.status === "running") return <p className="note">Checking… (about half a minute)</p>;
+  const r = job.result;
+  if (!r) return <p className="warn">The check could not finish. See the job's output below.</p>;
+  return (
+    <div className={`feasible ${r.feasible ? "yes" : "no"}`}>
+      <div className="f-head">
+        {r.feasible ? `✓ Feasible: ${modelName(model)} can be cut to under ${mb(r.limit_mb)}.` : `✕ Not feasible: ${r.stop_reason ?? "the target can't be reached"}.`}
+      </div>
+      {r.warnings.map((w) => <div key={w} className="f-line">{w}</div>)}
+      {r.usage && (
+        <div className="f-line">
+          {r.usage.fits === false ? "✕" : "✓"} AI calls: up to {r.usage.calls}
+          {r.usage.calls_fit != null && `, about ${r.usage.calls_fit} left in your allowance`}
+        </div>
+      )}
+    </div>
   );
 }
