@@ -196,7 +196,7 @@ details p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
 .m-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .m-grid label { display: grid; gap: 6px; }
 .m-label { font-size: 13px; color: var(--ink-3); }
-.m-grid select { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.m-grid input[type="number"], .m-grid select { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 .m-grid input[type="range"] { accent-color: var(--agent); }
 .m-bars { display: grid; gap: 8px; }
 .bar-fill.ok { background: var(--good); }
@@ -204,3 +204,11 @@ details p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
 .m-verdict { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-weight: 700; font-size: 18px; }
 .ok-text { color: var(--good); }
 .m-verdict .primary { font-size: 15px; }
+
+.stack { display: flex; height: 22px; border-radius: 6px; overflow: hidden; gap: 2px; margin: 6px 0; background: var(--panel); }
+.seg.others, .sw.others { background: var(--gone); }
+.seg.working, .sw.working { background: var(--ink-3); }
+.seg.room, .sw.room { background: var(--good); }
+.adjust summary { font-size: 14px; }
+.adjust label { display: grid; gap: 6px; max-width: 360px; margin-top: 8px; font-size: 14px; }
+.adjust input[type="range"] { accent-color: var(--agent); }

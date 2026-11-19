@@ -14,6 +14,9 @@ import subprocess
 
 from pruneagent.web.jobs import MODELS
 
+WORKING_CONTEXT = 2048  # tokens of conversation the suggested setup leaves room for
+FREE_SHARE = 0.5  # share of the device's memory left for the system and other apps
+
 
 @functools.cache
 def machine() -> dict:
@@ -44,7 +47,11 @@ def model_sizes() -> list[dict]:
     for m in MODELS:
         try:
             cfg = AutoConfig.from_pretrained(m)
-            out.append({"id": m, "size_mb": E.weight_bytes(cfg, P.dense_plan(cfg)) / 1e6})
+            dense = P.dense_plan(cfg)
+            # working memory while answering: the model's notes on the conversation so far (key/value cache),
+            # for a conversation of WORKING_CONTEXT tokens, unpruned (an upper bound for any cut)
+            out.append({"id": m, "size_mb": E.weight_bytes(cfg, dense) / 1e6,
+                        "working_mb": E.kv_cache_bytes(cfg, dense, context=WORKING_CONTEXT) / 1e6})
         except OSError:  # offline and not cached
             continue
     return out
