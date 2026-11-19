@@ -1318,6 +1318,31 @@ def web_cmd(
     serve(port)
 
 
+@app.command("best-of")
+def best_of_cmd(
+    run_ids: Annotated[list[str], typer.Argument(help="Two or more finished runs at the same limit.")],
+    name: Annotated[str, typer.Option(help="Name for the record under runs/best_of/.")],
+    root: Annotated[Path, typer.Option(help="Directory holding the runs.")] = Path("runs"),
+) -> None:
+    """Keep the best of several runs at the same limit, chosen by each run's own final sample-text error (the
+    unseen and test text are not used, so the winner's later scores stay fair). Run the held-out check on the
+    winner afterwards."""
+    import json
+
+    from pruneagent import bestof
+
+    try:
+        path = bestof.write(root, run_ids, name)
+    except bestof.PickError as e:
+        typer.echo(f"Cannot pick: {e}", err=True)
+        raise typer.Exit(1) from None
+    rec = json.loads(path.read_text())
+    for r in rec["runs"]:
+        mark = "  <- kept" if r["run"] == rec["winner"] else ""
+        typer.echo(f"{r['run']}: sample-text error {r['sample_error']:.2f}, {r['size_mb']:,.1f} MB, {r['rounds']} rounds{mark}")
+    typer.echo(f"Saved {path}")
+
+
 @app.command("report")
 def report_cmd(
     run_id: Annotated[str, typer.Argument(help="The run to report on.")],
