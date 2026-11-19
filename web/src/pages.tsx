@@ -270,7 +270,7 @@ function MachinePanel() {
         </label>
         <label>
           <span className="m-label">Keep free for other apps (%)</span>
-          <NumberField min={10} max={90} step={5} value={free} onCommit={setFree} />
+          <NumberField min={0} max={95} step={1} value={free} onCommit={setFree} />
         </label>
       </div>
 
