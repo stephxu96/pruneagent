@@ -720,7 +720,8 @@
       "gpu": "M4",
       "status": "todo",
       "notes": [
-        "[2026-11-18 08:45] Added: the agent's evidence is per model and none exists for 1.7B. ~6 h Mac GPU (damage table ~5-6 h), no Codex, no Colab. Run after the midpoint report, e.g. overnight."
+        "[2026-11-18 08:45] Added: the agent's evidence is per model and none exists for 1.7B. ~6 h Mac GPU (damage table ~5-6 h), no Codex, no Colab. Run after the midpoint report, e.g. overnight.",
+        "[2026-11-19] Steph: run tonight (Mac GPU ~6 h, no Codex). The web app blocks 1.7B runs until it is done."
       ]
     },
     {
