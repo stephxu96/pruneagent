@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 MODELS = ("Qwen/Qwen3-0.6B-Base", "Qwen/Qwen3-1.7B-Base")
+MAX_CUT = 0.6  # largest size cut the app offers; the run's own early warning says if it is reachable
 RUN_ID = re.compile(r"^[A-Za-z0-9._-]{1,120}$")
 GPU = ["scripts/mac_gpu.sh"]
 UV = ["uv", "run"]
@@ -47,8 +48,8 @@ def command(kind: str, params: dict) -> list[str]:
             cut = float(params["cut"])
         except (KeyError, TypeError, ValueError):
             raise JobError("cut must be a number, e.g. 0.10") from None
-        if not 0.01 <= cut <= 0.6:
-            raise JobError("cut must be between 1% and 60%")
+        if not 0.01 <= cut <= MAX_CUT:
+            raise JobError(f"cut must be between 1% and {MAX_CUT:.0%}")
         backend = params.get("backend", "codex")
         if backend not in ("codex", "api"):
             raise JobError("backend must be codex or api")

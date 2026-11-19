@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from pruneagent import runstore as R
 from pruneagent.web import jobs as J
+from pruneagent.web import machine as M
 from pruneagent.web import views as V
 
 REPO = Path(__file__).resolve().parents[3]
@@ -79,6 +80,11 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunne
     @app.get("/api/compare")
     def compare() -> dict:
         return V.compare(root, curve)
+
+    @app.get("/api/machine")
+    def this_machine() -> dict:
+        """This computer's chip and memory, and each model's original size."""
+        return {"machine": M.machine(), "models": M.model_sizes(), "max_cut": J.MAX_CUT}
 
     @app.get("/api/runs/{run_id}/events")
     async def events(run_id: str) -> StreamingResponse:

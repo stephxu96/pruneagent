@@ -191,3 +191,16 @@ details p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
 .view-toggle button { font: inherit; font-size: 13px; padding: 4px 12px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
 .view-toggle button.on { background: var(--ink); color: var(--bg); }
 @media (max-width: 640px) { .neurons3d .canvas-wrap { height: 300px; } }
+
+.machine { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin: 8px 0 12px; display: grid; gap: 18px; }
+.m-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.m-grid label { display: grid; gap: 6px; }
+.m-label { font-size: 13px; color: var(--ink-3); }
+.m-grid select { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.m-grid input[type="range"] { accent-color: var(--agent); }
+.m-bars { display: grid; gap: 8px; }
+.bar-fill.ok { background: var(--good); }
+.bar-fill.room { background: var(--ink-3); }
+.m-verdict { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-weight: 700; font-size: 18px; }
+.ok-text { color: var(--good); }
+.m-verdict .primary { font-size: 15px; }
