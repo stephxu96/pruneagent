@@ -1,6 +1,6 @@
-# PruneAgent v0.8: More Quality than FLAP at the Same Memory Limit
+# PruneAgent v0.9: More Quality than FLAP at the Same Memory Limit
 
-1.125 Agentic Engineering & Architecture, term project. Four build phases of 1–2 days each (about 9 days from 2026-11-16), one builder. Author: Steph Xu. Status: proposed, v0.8 (2026-11-17).
+1.125 Agentic Engineering & Architecture, term project. Four build phases of 1–2 days each (about 9 days from 2026-11-16), one builder. Author: Steph Xu. Status: proposed, v0.9 (2026-11-19).
 
 **Value statement.** PruneAgent produces a pruned model that fits a memory limit you set for your device while keeping more quality than FLAP, a standard method for shrinking a model without retraining, cut to the same limit; the result is actually smaller and faster, with a warning when pruning alone cannot reach the limit.
 
@@ -11,6 +11,8 @@
 **Agent backend (2026-11-16):** the agent's decisions come from a swappable backend, chosen per run: Codex CLI (`codex exec` on the ChatGPT plan, read-only, no tools; no per-call charge, bounded by the plan's usage limits) or an LLM API (per-token cost, $5 per run cap). Both use the same prompt, JSON schema, validator, cache and log, with the model pinned (ADR-005).
 
 **Calibration (2026-11-17):** every method learns which weights to remove from the same example text: 128 passages of 2,048 tokens from C4, a large collection of web pages (the set Wanda uses). This covers the agent's scores, Baseline: FLAP, and the backups (Wanda-50%, uniform Wanda-sp). Two reasons: every compared method sees the same data, and the example text comes from a different source than the WikiText-2 text used to measure quality, so no method is tuned on text like the test. FLAP's authors used WikiText-2 training text; that setting is kept only for the check of our FLAP code against theirs. FLAP numbers measured before 2026-11-17 (task 1.9's 15.2% of weight memory removed, and the 11.1% run with no allowance quoted in A7) used FLAP's own WikiText-2 calibration text, and are not directly comparable with later numbers; uniform Wanda-sp numbers from before that date used shorter C4 passages (128 tokens).
+
+**Changes from v0.8 (2026-11-19):** a web application is added as the client: a browser interface and an application server that call the existing tools and read their files, with no logic of their own (ADR-008, FR16, §3, §8b). It is also the live demo (Q2 closed).
 
 **Changes from v0.7 (2026-11-17):** the primary baseline is now FLAP cut to the same memory limit (Baseline: FLAP), replacing Baseline: Wanda-50%. Wanda-50% and uniform Wanda-sp become optional backups, reported only if useful; ShortGPT is dropped as a compared method (still cited, and its Block Influence score is still used). No allowance or quality threshold: results are reported against Baseline: FLAP. Reason: FLAP actually shrinks the model and, at moderate cuts, matches Wanda-50% quality (Qwen3-0.6B with 11.1% of weight memory removed: perplexity 16.63 vs. Wanda-50%'s 23.68; mean accuracy 43.95% vs. 43.80%).
 
@@ -29,7 +31,7 @@
 | `ARCHITECTURE.md` | This document |
 | `WORKPLAN.md` | Phased work plan with gates, owners and budget by phase |
 | `board/` | Local project board for the work plan (`python3 board/server.py`) |
-| `adr/ADR-001…007` | Architecture decision records |
+| `adr/ADR-001…008` | Architecture decision records |
 | `presentation/proposal.pdf` | PS06 proposal (6 slides + speaker-notes appendix + references); submitted copy at `ps06/stephxu96/proposal.pdf` |
 | `presentation/PS06_Proposal.pptx` | Editable source of `proposal.pdf` |
 | `presentation/PruneAgent_Proposal.pptx` | Earlier 9-slide draft (v0.1) |
@@ -110,6 +112,7 @@
 | FR11 | Checkpoint each step to Google Drive or local drive under the run's id; `pruneagent resume <run-id>` (or no id when exactly one run is paused) continues after a disconnect | Kill-and-resume test; two paused runs: resume without an id refuses and lists them |
 | FR12 | Save the pruned model as safetensors + plan JSON; loader rebuilds it with per-layer widths | Round-trip test: same perplexity after reload |
 | FR15 | Agent usage limits: before a run, estimate whether its calls fit the remaining Codex limits and warn if not; after every call, read the limit status; on a limit (or API cap) reached, checkpoint and pause with the reset time; `resume` continues from the last checkpoint after the reset or on the other backend | Tests with recorded limit readings: fits, warns, pauses, resumes without repeating a call |
+| FR16 | Web application on top of the tools: start a run (with the early warning and usage-limit estimate shown first), list runs, watch a run round by round (proposals, reasons, candidates, outcome, memory against perplexity), pause and resume, start the follow-up checks, compare with Baseline: FLAP and the unpruned model, download the pruned model; every number read from tool outputs | API tests against recorded runs; a run started in the browser matches the same run from the command line; interface tests |
 | FR13 | Early warning before the search: target below the smallest model the structure rules allow, or already met by the unpruned model | Unit tests with an impossible, an already-met and a reachable target |
 | FR14 | Final warning when the memory limit cannot be reached or the result keeps less quality than Baseline: FLAP: closest plan, GB over the limit, quality gap, tokens/s short of any speed target | Device-target runs in phase 4 (one reachable, one not) |
 
@@ -173,7 +176,7 @@ flowchart LR
     C["<b>Colab Pro (T4 / A100) · Mac</b><br/>[Compute]"]
     D["<b>Google Drive or local drive</b><br/>[Storage]<br/>Checkpoints, logs, outputs"]
 
-    U -- "model, memory limit, device" --> S
+    U -- "model, memory limit, device (browser or command line)" --> S
     S -- "pruned model, device report, warnings, rationale log" --> U
     S -- "sensitivity table, history → next experiment" --> L
     H -- "weights, datasets" --> S
@@ -192,7 +195,13 @@ flowchart TB
     U["Researcher [Person]"]
 
     subgraph CLIENT["CLIENT"]
+        WEB["<b>Web interface</b><br/>[React + TypeScript, Vite]<br/>new run | runs | live run | results | tools"]
         CLI["<b>pruneagent CLI / Colab notebook</b><br/>[Python, Typer]<br/>data | ppl | run | runs | resume &lt;run-id&gt; | compare | report"]
+    end
+
+    subgraph APP["APPLICATION (local, 127.0.0.1)"]
+        API["<b>Application server</b><br/>[FastAPI]<br/>one endpoint per tool; read-only run views;<br/>live updates (server-sent events)"]
+        JR["<b>Job runner</b><br/>[Python subprocess + Mac GPU lock]<br/>runs the same commands as the CLI,<br/>one GPU job at a time; pause = Ctrl-C"]
     end
 
     subgraph SERVER["SERVER (one Python process on the GPU machine)"]
@@ -214,9 +223,13 @@ flowchart TB
         CK[("<b>Checkpoints</b><br/>[SQLite + plan JSON]")]
         LOG[("<b>Decision log</b><br/>[JSONL]")]
         OUT[("<b>Outputs</b><br/>[safetensors + plan, report]")]
+        JQ[("<b>Job queue</b><br/>[SQLite]")]
     end
 
+    U --> WEB -- "HTTP / JSON" --> API --> JR --> CLI
     U --> CLI --> LG
+    API -. "reads" .-> CK & LOG & OUT
+    JR <--> JQ
     LG --> PB & AG & VA & PN & EV & DE
     SC --> PB & PN
     CLI --> BL --> EV
@@ -240,6 +253,8 @@ flowchart TB
 | Google Drive or local drive | Checkpoints, logs, outputs |
 | Mac (M4) | Development on Qwen3-0.6B (PyTorch fp16); speed measurement on the Mac GPU |
 | pytest + GitHub Actions | Validator, loader, graph and report tests |
+| FastAPI + Uvicorn | Application server (ADR-008) |
+| React + TypeScript + Vite; Vitest | Web interface and its tests (ADR-008) |
 | Codex CLI (`codex exec`) | Agent decisions: read-only sandbox, empty working directory, no saved sessions, JSON-schema output, pinned model and reasoning effort |
 | LLM API (optional backend) | Same prompt and JSON schema through the provider's structured-output mode; key from `.env` or Colab Secrets |
 | LLM cache + usage ledger | No repeated calls; calls, tokens, seconds and (API backend) dollars per run |
@@ -380,6 +395,9 @@ Code turns each choice into a plan change (e.g., `narrow_mlp` on layer 21: 3,072
 | Speed Meter | File size, peak memory, prefill and decode tokens/s on the M4 laptop (Mac GPU) and the T4 | `measure(model, machine) -> MemoryReport` |
 | Comparisons | Baseline: FLAP cut to the agent's memory limit; unpruned model (no-pruning reference); optional backups: uniform Wanda-sp cut to the same limit, Wanda-50% (saves no memory) | `make(name, model, memory_limit) -> dict[int, LayerPlan]` |
 | Report Writer | Quality, memory, speed, strategy counts, rationale log, charts | `write(state, scores, baseline_scores, out_dir) -> Report` |
+| Application server | HTTP API over the tools; read-only views of runs and results; live updates; no pruning, evaluation or decision logic (ADR-008) | `POST /runs` (start), `GET /runs`, `GET /runs/{id}` (status, rounds, kept plans), `GET /runs/{id}/events` (live), `POST /runs/{id}/pause`, `POST /runs/{id}/resume`, `POST /runs/{id}/checks/{heldout\|accuracy\|flap-curve}`, `GET /runs/{id}/results`, `GET /runs/{id}/model`, `POST /estimate` (early warning), `GET /limits` |
+| Job runner | Run each tool call as a separate process with the same command as the CLI, under the Mac GPU lock; queue; pause by Ctrl-C | `submit(command) -> Job`; `status(job_id)`; `interrupt(job_id)` |
+| Web interface | Five screens: new run, runs, live run, results, tools | Calls the application server only |
 | Agent Graph | LangGraph graph | `build_graph(deps) -> CompiledGraph`; `run(cfg, resume=False)` |
 
 ---
@@ -469,6 +487,33 @@ sequenceDiagram
     G->>K: save plan, history, rationale
 ```
 
+## 8b. Sequence: Starting and Watching a Run in the Browser
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Researcher
+    participant W as Web interface
+    participant S as Application server
+    participant J as Job runner
+    participant R as pruneagent run
+    participant K as Run store
+
+    U->>W: model, memory limit, device
+    W->>S: POST /estimate
+    S-->>W: early warning or OK; usage-limit estimate
+    U->>W: Start
+    W->>S: POST /runs
+    S->>J: submit `pruneagent run …` (waits for the Mac GPU lock)
+    J->>R: start process
+    R->>K: each round: record, kept plan, checkpoint
+    S->>K: watch for new rounds
+    S-->>W: live update per round (server-sent events)
+    U->>W: Pause
+    W->>S: POST /runs/{id}/pause
+    S->>J: interrupt → Ctrl-C; run checkpoints and stops
+```
+
 ---
 
 ## 9. Project Plan
@@ -477,7 +522,7 @@ sequenceDiagram
 |---|---|---|
 | **1: Feasibility (D1–D2)** | Wanda at 50% on Qwen3-0.6B and 1.7B (the reference until v0.7, now a backup); FLAP and Wanda-sp adapted to Qwen3 (grouped-query attention); loader from plan JSON; device estimator; speed meter on M4 and T4; FLAP and uniform Wanda-sp compared with Wanda-50% on 0.6B; probes and speed estimate checked against full evaluation and measured speed on both machines; one agent round end to end | References reproduce; save-and-reload exact; FLAP's quality against Wanda-50% known (A7); probe and estimate rankings validated (A1, A6, A8) |
 | **2: Agent Graph (D3–D4)** | Parallel probes; planner and action space; validator; parallel candidate evaluation; gate; device target with early and final warnings; rollback; checkpoints; fake-LLM tests | Midpoint: end-to-end run on Qwen3-0.6B with at least one ACCEPT and one ROLLBACK |
-| **3: Tuning (D5–D6)** | Tune agent instructions on 0.6B against Baseline: FLAP at the same memory limit; kill-and-resume; report writer | Instructions frozen |
+| **3: Tuning (D5–D6)** | Tune agent instructions on 0.6B against Baseline: FLAP at the same memory limit; kill-and-resume; report writer; web application (ADR-008) | Instructions frozen; a 0.6B run started, watched and paused in the browser |
 | **4: Evaluation (D7–D8, buffer D9)** | Baseline: FLAP cut to the production run's memory limit on Qwen3-1.7B (uniform Wanda-sp optional); production run on Qwen3-1.7B (A100) at that memory limit; one run at a limit pruning cannot reach; final evaluation vs. Baseline: FLAP and the unpruned model; memory and tokens/s on M4 and T4; report; demo; 1 day buffer | Report with quality, memory, speed, device reports and strategy counts; README reproduces it |
 
 **Descoping order:** backup baselines (uniform Wanda-sp, Wanda-50%) → device-target runs on 0.6B instead of 1.7B → one candidate per round instead of three → MMLU → Qwen3-0.6B only.
@@ -527,6 +572,7 @@ sequenceDiagram
 | [ADR-005](adr/ADR-005-logging-cost.md) | Decision log with rationale and strategy choices; swappable agent backend (Codex CLI or LLM API) with shared schema, cache and usage ledger; pinned versions |
 | [ADR-006](adr/ADR-006-measured-memory.md) | Memory limit required, with early and final warnings; compare with Baseline: FLAP at the same memory limit; speed estimated for the target device during search, measured on the M4 and T4 at the end |
 | [ADR-007](adr/ADR-007-structured-pruning.md) | Per-layer strategy menu (MLP neurons, attention groups, whole layers, unstructured Wanda), described neutrally; quantization deferred |
+| [ADR-008](adr/ADR-008-web-application.md) | Web application (React interface + FastAPI server) on top of the existing tools; no logic of its own; local, single user; also the live demo |
 
 ---
 
@@ -534,7 +580,7 @@ sequenceDiagram
 
 | # | Question | Default |
 |---|---|---|
-| Q2 | Live demo? | Colab notebook on Qwen3-0.6B, pre-run report as backup |
+| Q2 | Live demo? | Closed (v0.9): the web application, replaying a finished 0.6B run, with a live run if time allows (ADR-008) |
 | Q3 | Speed measurement settings? | Prompt 512 tokens, batch 1, 128 generated tokens; fixed in phase 1 |
 
 ## 14. References
