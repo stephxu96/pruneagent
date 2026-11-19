@@ -223,7 +223,7 @@ export function NewRunPage() {
           <div className="job-details">
             {j.kind === "precheck" && j.result && <FeasibilityResult job={j} model={j.params?.model ?? model} />}
             <details className="raw">
-              <summary>What the computer printed</summary>
+              <summary>System logs</summary>
               <pre>{j.output || "(nothing yet)"}</pre>
             </details>
           </div>
