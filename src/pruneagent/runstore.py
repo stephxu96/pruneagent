@@ -353,3 +353,26 @@ def pick_run(root: Path | str = DEFAULT_ROOT, run_id: str | None = None) -> RunS
         listing = "\n".join(f"  {r.run_id}  ({r.describe()}, round {r.round})" for r in paused)
         raise ResumeError(f"{len(paused)} runs are paused; give the id of the one to resume:\n{listing}")
     return RunStore.open(paused[0].run_id, root)
+
+
+def past_rates(root: Path | str, model_id: str) -> list[dict]:
+    """Active time and rounds per MB cut in this model's finished runs (agent time + candidate checks, from the
+    decision logs; pauses not counted). Used to say how long a new run will take."""
+    out = []
+    for info in list_runs(root):
+        if info.state != "finished":
+            continue
+        store = RunStore.open(info.run_id, root)
+        try:
+            if store.run_config().model_id != model_id:
+                continue
+            kept = store.accepted()
+            log = store.log()
+        except (OSError, ValueError):
+            continue
+        mb = (kept[0].weight_bytes - kept[-1].weight_bytes) / 1e6 if len(kept) > 1 else 0
+        if mb <= 0 or not log:
+            continue
+        seconds = sum(r.llm_seconds + r.gpu_seconds for r in log)
+        out.append({"run": info.run_id, "minutes_per_mb": seconds / 60 / mb, "rounds_per_mb": len(log) / mb})
+    return out
