@@ -131,7 +131,10 @@ type Feasibility = {
   feasible: boolean;
   stop_reason: string | null;
   warnings: string[];
-  usage: { calls: number; calls_fit: number | null; fits: boolean | null } | null;
+  usage: {
+    calls: number; calls_fit: number | null; fits: boolean | null;
+    windows?: { name: string; used_pct: number; pct_per_call: number; resets_at: string | null }[];
+  } | null;
   limit_mb: number;
   original_mb?: number;
   smallest_mb?: number;
@@ -422,16 +425,25 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
         )}
         {r.usage && (
           <div className="f-tile">
-            <div className="f-label">AI calls</div>
-            <div className="f-big">about {calls}</div>
-            <div className="f-sub">{r.usage.calls_fit != null ? `${r.usage.calls_fit} left in your allowance` : `at most ${r.usage.calls}`}{r.usage.fits === false ? " ✕" : ""}</div>
+            <div className="f-label">Usage limits</div>
+            {(r.usage.windows ?? []).map((w) => {
+              const after = Math.min(100, w.used_pct + w.pct_per_call * (calls ?? r.usage!.calls));
+              return (
+                <div key={w.name} className="f-limit">
+                  <span>{w.name === "weekly" ? "Weekly" : w.name} limit</span>
+                  <span className="f-limit-bar"><span className="now" style={{ width: `${w.used_pct}%` }} /><span className="add" style={{ width: `${after - w.used_pct}%` }} /></span>
+                  <b>{Math.round(w.used_pct)}% → ~{Math.ceil(after)}%</b>
+                </div>
+              );
+            })}
+            <div className="f-sub">about {calls} Codex calls{r.usage.fits === false ? " · over the limit ✕" : ""}</div>
           </div>
         )}
-        {t && (
+        {t && r.time && (
           <div className="f-tile">
-            <div className="f-label">Mac time</div>
-            <div className="f-big">{t}</div>
-            <div className="f-sub">+ about 20 min final check</div>
+            <div className="f-label">Time</div>
+            <div className="f-big">about {duration(r.time.minutes[1] + 20)}</div>
+            <div className="f-sub">{t} pruning + about 20 min final check</div>
           </div>
         )}
       </div>
