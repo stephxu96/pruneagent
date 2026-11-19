@@ -167,7 +167,7 @@ export function NewRunPage() {
           {orig && <span className="muted">{mb(orig)} → under {mb(orig * (1 - cut / 100))}</span>}
         </label>
         <div className="actions">
-          <button className="secondary" onClick={() => post("/api/precheck")}>Check first (free, nothing runs)</button>
+          <button className="secondary" onClick={() => post("/api/precheck")} title="Checks that this size can be reached, without starting anything">Check the target</button>
           <button className="primary" onClick={() => {
             if (confirm(`Start a real run? It uses the Mac's GPU and AI calls for about an hour.`)) post("/api/runs");
           }}>Start the run</button>
