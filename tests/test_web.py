@@ -136,3 +136,11 @@ def test_feasibility_result_is_read_from_the_last_json_line():
     assert J._last_json(out) == {"feasible": False, "stop_reason": "limit below the smallest model allowed"}
     assert J._last_json("no json here") is None
     assert J.command("precheck", {"cut": 0.2})[-2:] == ["--dry-run", "--json-result"]
+
+
+def test_past_rates_give_time_per_mb_from_finished_runs(finished_run):
+    from pruneagent import runstore as R
+
+    rates = R.past_rates(finished_run, R.RunStore.open("r1", finished_run).run_config().model_id)
+    assert len(rates) == 1 and rates[0]["rounds_per_mb"] > 0 and rates[0]["minutes_per_mb"] >= 0
+    assert R.past_rates(finished_run, "some/other-model") == []

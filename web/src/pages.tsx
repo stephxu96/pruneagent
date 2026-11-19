@@ -133,6 +133,9 @@ type Feasibility = {
   warnings: string[];
   usage: { calls: number; calls_fit: number | null; fits: boolean | null } | null;
   limit_mb: number;
+  original_mb?: number;
+  smallest_mb?: number;
+  time?: { minutes: [number, number]; rounds: [number, number]; based_on_runs: number } | null;
 };
 type Job = { id: number; kind: string; params: { model?: string; cut?: number; run_id?: string }; run_id: string | null; status: string; created: string; output: string; result: Feasibility | null };
 
@@ -381,22 +384,42 @@ function NumberField({ value, min, max, step, disabled, onCommit }: {
   );
 }
 
+function duration(min: number): string {
+  if (min < 55) return `${Math.max(5, Math.round(min / 5) * 5)} minutes`;
+  const h = Math.floor(min / 60), m = Math.round((min % 60) / 5) * 5;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
 function FeasibilityResult({ job, model }: { job: Job; model: string }) {
   if (job.status === "queued" || job.status === "running") return <p className="note">Checking… (about half a minute)</p>;
   const r = job.result;
-  if (!r) return <p className="warn">The check could not finish. See the job's output below.</p>;
+  if (!r) return <p className="warn">The check could not finish. See its details below.</p>;
+  const sizeOk = r.smallest_mb != null && r.original_mb != null && r.limit_mb >= r.smallest_mb && r.limit_mb < r.original_mb;
+  const calls = r.time ? Math.ceil(r.time.rounds[1]) : null;
   return (
     <div className={`feasible ${r.feasible ? "yes" : "no"}`}>
       <div className="f-head">
         {r.feasible ? `✓ Feasible: ${modelName(model)} can be cut to under ${mb(r.limit_mb)}.` : `✕ Not feasible: ${r.stop_reason ?? "the target can't be reached"}.`}
       </div>
-      {r.warnings.map((w) => <div key={w} className="f-line">{w}</div>)}
-      {r.usage && (
+      {r.smallest_mb != null && r.original_mb != null && (
         <div className="f-line">
-          {r.usage.fits === false ? "✕" : "✓"} AI calls: up to {r.usage.calls}
-          {r.usage.calls_fit != null && `, about ${r.usage.calls_fit} left in your allowance`}
+          {sizeOk ? "✓" : "✕"} Size: the target ({mb(r.limit_mb)}) has to be smaller than the original ({mb(r.original_mb)})
+          {" "}and no smaller than the most the rules allow cutting to ({mb(r.smallest_mb)}).
         </div>
       )}
+      {r.usage && (
+        <div className="f-line">
+          {r.usage.fits === false ? "✕" : "✓"} AI allowance: about {calls ?? r.usage.calls} AI calls needed (at most {r.usage.calls})
+          {r.usage.calls_fit != null && `; about ${r.usage.calls_fit} left`}.
+        </div>
+      )}
+      {r.time && (
+        <div className="f-line">
+          ⏱ Time: about {duration(r.time.minutes[0])}{duration(r.time.minutes[1]) !== duration(r.time.minutes[0]) && ` to ${duration(r.time.minutes[1])}`} on this Mac,
+          {" "}plus about 20 minutes for the final check. Based on {r.time.based_on_runs} earlier runs.
+        </div>
+      )}
+      {r.warnings.map((w) => <div key={w} className="f-line">{w}</div>)}
     </div>
   );
 }
