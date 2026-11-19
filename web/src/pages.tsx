@@ -290,9 +290,6 @@ function MachinePanel() {
           {now.memory_used_pct != null && <span>memory <b>{now.memory_used_pct}%</b> in use</span>}
           {now.gpu_busy_pct != null && <span>GPU <b>{now.gpu_busy_pct}%</b> busy</span>}
           {now.gpu_memory_mb != null && <span>GPU using <b>{mb(now.gpu_memory_mb)}</b></span>}
-          {now.memory_used_pct != null && now.memory_used_pct !== free && (
-            <button className="small" onClick={() => setFree(now.memory_used_pct!)}>Keep free what's in use now ({now.memory_used_pct}%)</button>
-          )}
         </div>
       )}
 
