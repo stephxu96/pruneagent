@@ -436,6 +436,7 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
                 </div>
               );
             })}
+            {!r.usage.windows?.length && <div className="f-sub">Not recorded for this older check.</div>}
             {r.usage.fits === false && <div className="f-sub warn">Over the limit ✕</div>}
           </div>
         )}
