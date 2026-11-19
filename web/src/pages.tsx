@@ -391,34 +391,49 @@ function duration(min: number): string {
 }
 
 function FeasibilityResult({ job, model }: { job: Job; model: string }) {
-  if (job.status === "queued" || job.status === "running") return <p className="note">Checking… (about half a minute)</p>;
+  if (job.status === "queued" || job.status === "running") return <div className="feasible checking">Checking… about half a minute</div>;
   const r = job.result;
   if (!r) return <p className="warn">The check could not finish. See its details below.</p>;
-  const sizeOk = r.smallest_mb != null && r.original_mb != null && r.limit_mb >= r.smallest_mb && r.limit_mb < r.original_mb;
-  const calls = r.time ? Math.ceil(r.time.rounds[1]) : null;
+  const lo = r.smallest_mb, hi = r.original_mb;
+  const sizeOk = lo != null && hi != null && r.limit_mb >= lo && r.limit_mb < hi;
+  const calls = r.time ? Math.ceil(r.time.rounds[1]) : r.usage?.calls;
+  const t = r.time ? (duration(r.time.minutes[0]) === duration(r.time.minutes[1]) ? duration(r.time.minutes[0])
+    : `${duration(r.time.minutes[0])}–${duration(r.time.minutes[1])}`) : null;
   return (
     <div className={`feasible ${r.feasible ? "yes" : "no"}`}>
-      <div className="f-head">
-        {r.feasible ? `✓ Feasible: ${modelName(model)} can be cut to under ${mb(r.limit_mb)}.` : `✕ Not feasible: ${r.stop_reason ?? "the target can't be reached"}.`}
+      <div className="f-top">
+        <span className="f-badge">{r.feasible ? "✓ Feasible" : "✕ Not feasible"}</span>
+        <span className="f-title">{modelName(model)} → under {mb(r.limit_mb)}</span>
       </div>
-      {r.smallest_mb != null && r.original_mb != null && (
-        <div className="f-line">
-          {sizeOk ? "✓" : "✕"} Size: {mb(r.limit_mb)} is {sizeOk ? "within reach" : "out of reach"}. The original is {mb(r.original_mb)}; the smallest this model can go is {mb(r.smallest_mb)}.
-        </div>
-      )}
-      {r.usage && (
-        <div className="f-line">
-          {r.usage.fits === false ? "✕" : "✓"} AI allowance: about {calls ?? r.usage.calls} AI calls needed (at most {r.usage.calls})
-          {r.usage.calls_fit != null && `; about ${r.usage.calls_fit} left`}.
-        </div>
-      )}
-      {r.time && (
-        <div className="f-line">
-          ⏱ Time: about {duration(r.time.minutes[0])}{duration(r.time.minutes[1]) !== duration(r.time.minutes[0]) && ` to ${duration(r.time.minutes[1])}`} on this Mac,
-          {" "}plus about 20 minutes for the final check. Based on {r.time.based_on_runs} earlier runs.
-        </div>
-      )}
-      {r.warnings.map((w) => <div key={w} className="f-line">{w}</div>)}
+      {!r.feasible && r.stop_reason && <div className="f-reason">{r.stop_reason}</div>}
+      <div className="f-tiles">
+        {lo != null && hi != null && (
+          <div className="f-tile">
+            <div className="f-label">Size</div>
+            <div className="f-big">{sizeOk ? "Within reach" : "Out of reach"}</div>
+            <div className="f-range">
+              <span className="f-track"><span className="f-mark" style={{ left: `${Math.min(100, Math.max(0, ((r.limit_mb - lo) / (hi - lo)) * 100))}%` }} /></span>
+              <span className="f-ends"><span>{mb(lo)} smallest</span><span>{mb(hi)} now</span></span>
+            </div>
+          </div>
+        )}
+        {r.usage && (
+          <div className="f-tile">
+            <div className="f-label">AI calls</div>
+            <div className="f-big">about {calls}</div>
+            <div className="f-sub">{r.usage.calls_fit != null ? `${r.usage.calls_fit} left in your allowance` : `at most ${r.usage.calls}`}{r.usage.fits === false ? " ✕" : ""}</div>
+          </div>
+        )}
+        {t && (
+          <div className="f-tile">
+            <div className="f-label">Time on this Mac</div>
+            <div className="f-big">{t}</div>
+            <div className="f-sub">+ about 20 min final check</div>
+          </div>
+        )}
+      </div>
+      {r.time && <div className="f-foot">Estimates from {r.time.based_on_runs} earlier runs.</div>}
+      {r.warnings.map((w) => <div key={w} className="f-reason">{w}</div>)}
     </div>
   );
 }
