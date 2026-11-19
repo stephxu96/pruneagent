@@ -32,7 +32,7 @@ export function HomePage() {
               <dt>Rounds</dt>
               <dd>{r.round}</dd>
             </dl>
-            <span className="go">Watch it →</span>
+            <span className="go">Replay →</span>
           </a>
         ))}
       </div>
@@ -53,7 +53,7 @@ export function ComparePage() {
   return (
     <div>
       <a href="#/" className="back">← All runs</a>
-      <h1>Same size, who keeps more quality?</h1>
+      <h1>Quality at the same size</h1>
       <p className="lede">
         Each pair was cut to exactly the same size, then tested on text neither had seen. The standard method (FLAP)
         applies one fixed rule; PruneAgent's AI tries ideas and keeps what works.
@@ -65,7 +65,7 @@ export function ComparePage() {
               {modelName(r.model)}, {pct(r.cut)} smaller <span className="muted">({mb(r.agent.size_mb)})</span>
             </div>
             <ResultBars held={{ unpruned: r.original, agent: r.agent, "Baseline: FLAP": r.flap }} />
-            <a href={`#/run/${r.id}`}>Watch how PruneAgent did it →</a>
+            <a href={`#/run/${r.id}`}>Replay →</a>
           </div>
         ))}
       </div>
@@ -86,7 +86,7 @@ function CurveChart({ data }: { data: Compare }) {
   const yTicks = [1, 2, 5, 10, 20, 50].filter((t) => t <= yMax);
   return (
     <section>
-      <h2>As the model gets smaller</h2>
+      <h2>Quality by size cut</h2>
       <p className="muted">How many times worse than the original model, at each size cut (lower is better).</p>
       <figure className="chart">
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Quality lost by size cut, both methods">
@@ -101,7 +101,7 @@ function CurveChart({ data }: { data: Compare }) {
           ))}
           <line x1={M.l} x2={W - M.r} y1={H - M.b} y2={H - M.b} className="axis" />
           <line x1={M.l} x2={M.l} y1={M.t} y2={H - M.b} className="axis" />
-          <text x={(M.l + W - M.r) / 2} y={H - 6} textAnchor="middle" className="axis-title">How much smaller →</text>
+          <text x={(M.l + W - M.r) / 2} y={H - 6} textAnchor="middle" className="axis-title">Size cut →</text>
           <polyline className="flap-line" points={[{ cut: 0, test_error: base }, ...data.flap_curve].map((p) => `${sx(p.cut)},${sy(times(p.test_error))}`).join(" ")} />
           {data.flap_curve.map((p) => (
             <circle key={p.cut} cx={sx(p.cut)} cy={sy(times(p.test_error))} r={4} className="flap-dot">
@@ -173,7 +173,7 @@ export function NewRunPage() {
   return (
     <div>
       <a href="#/" className="back">← All runs</a>
-      <h1>Start a new run</h1>
+      <h1>New run</h1>
       <div className="form">
         <label>
           Model
@@ -195,7 +195,7 @@ export function NewRunPage() {
           }} title="Checks that this size can be reached, without starting anything" disabled={!ready}>Feasibility check</button>
           <button className="primary" disabled={!ready} onClick={() => {
             if (confirm(`Start a real run? It uses the Mac's GPU and AI calls for about an hour.`)) post("/api/runs");
-          }}>Start the run</button>
+          }}>Start run</button>
         </div>
         {!ready && (
           <p className="warn">
@@ -206,7 +206,7 @@ export function NewRunPage() {
         {check && <FeasibilityResult job={check} model={model} />}
         {msg && <p className="note">{msg}</p>}
       </div>
-      <h2>What's been started here</h2>
+      <h2>History</h2>
       {jobs.length === 0 && <p className="muted">Nothing yet.</p>}
       {jobs.map((j) => (
         <details key={j.id} className="job">
@@ -277,7 +277,7 @@ function MachinePanel() {
       setModel(x.models[x.models.length - 1]?.id ?? null);
     }).catch(() => undefined);
   }, []);
-  if (!m || free == null || memGb == null) return <div className="machine muted">Reading your computer…</div>;
+  if (!m || free == null || memGb == null) return <div className="machine muted">Loading…</div>;
   const sel = m.models.find((x) => x.id === model) ?? m.models[0];
   if (!sel) return null;
   const pick = (id: string) => {
@@ -293,9 +293,9 @@ function MachinePanel() {
   const cut = 1 - room / sel.size_mb;
   const reachable = room > 0 && cut <= m.max_cut;
   const parts = [
-    { cls: "others", label: "Kept free for other apps", mb: others },
-    { cls: "working", label: "Room it needs while answering", mb: working },
-    { cls: "room", label: "Room for the model", mb: room },
+    { cls: "others", label: "Other apps", mb: others },
+    { cls: "working", label: "Working memory", mb: working },
+    { cls: "room", label: "Model space", mb: room },
   ];
   return (
     <section className="machine">
@@ -319,7 +319,7 @@ function MachinePanel() {
           <NumberField min={1} max={512} step={1} value={memGb} disabled={device !== "custom"} onCommit={setMemGb} />
         </label>
         <label>
-          <span className="m-label">Keep free for other apps (%)</span>
+          <span className="m-label">Reserved for other apps (%)</span>
           <NumberField min={0} max={95} step={1} value={free} onCommit={setFree} />
         </label>
       </div>
@@ -334,7 +334,7 @@ function MachinePanel() {
       )}
 
       <div>
-        <div className="m-label">How the {memGb} GB is shared</div>
+        <div className="m-label">Memory breakdown ({memGb} GB)</div>
         <div className="stack" role="img" aria-label="How the memory is shared">
           {parts.map((p) => <span key={p.cls} className={`seg ${p.cls}`} style={{ width: `${(p.mb / total) * 100}%` }} title={`${p.label}: ${mb(p.mb)}`} />)}
         </div>
@@ -396,7 +396,7 @@ function duration(min: number): string {
 function FeasibilityResult({ job, model }: { job: Job; model: string }) {
   if (job.status === "queued" || job.status === "running") return <div className="feasible checking">Checking… about half a minute</div>;
   const r = job.result;
-  if (!r) return <p className="warn">The check could not finish. See its details below.</p>;
+  if (!r) return <p className="warn">Check failed. See the system logs.</p>;
   const lo = r.smallest_mb, hi = r.original_mb;
   const sizeOk = lo != null && hi != null && r.limit_mb >= lo && r.limit_mb < hi;
   const calls = r.time ? Math.ceil(r.time.rounds[1]) : r.usage?.calls;
@@ -429,7 +429,7 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
         )}
         {t && (
           <div className="f-tile">
-            <div className="f-label">Time on this Mac</div>
+            <div className="f-label">Mac time</div>
             <div className="f-big">{t}</div>
             <div className="f-sub">+ about 20 min final check</div>
           </div>
@@ -444,8 +444,8 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
 const JOB_KIND: Record<string, string> = {
   precheck: "Feasibility check",
   start: "Run",
-  resume: "Continue a run",
-  heldout: "Final check on new text",
+  resume: "Run resume",
+  heldout: "Unseen-text test",
   accuracy: "Quiz check",
 };
 

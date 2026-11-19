@@ -79,9 +79,9 @@ export function ModelMap({
 export function MapLegend() {
   return (
     <div className="legend">
-      <span><i className="sw part" /> part of the model still there</span>
-      <span><i className="sw gone" /> cut away</span>
-      <span><i className="sw hot" /> changed in this step</span>
+      <span><i className="sw part" /> Remaining parts</span>
+      <span><i className="sw gone" /> Removed parts</span>
+      <span><i className="sw hot" /> Latest change</span>
       <span className="muted">Squares: attention units. Bar: the layer's knowledge part. Numbers: layers.</span>
     </div>
   );

@@ -55,7 +55,7 @@ export function PathChart({ run, upTo }: { run: RunDetail; upTo: number }) {
         <line x1={M.l} x2={W - M.r} y1={H - M.b} y2={H - M.b} className="axis" />
         <line x1={M.l} x2={M.l} y1={M.t} y2={H - M.b} className="axis" />
         <line x1={sx(goal)} x2={sx(goal)} y1={M.t} y2={H - M.b} className="goal" />
-        <text x={sx(goal) - 6} y={M.t + 12} textAnchor="end" className="goal-label">goal: fits</text>
+        <text x={sx(goal) - 6} y={M.t + 12} textAnchor="end" className="goal-label">Goal</text>
         <text x={(M.l + W - M.r) / 2} y={H - 6} textAnchor="middle" className="axis-title">Memory saved →</text>
         <text transform={`translate(14 ${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle" className="axis-title">
           Quality lost ↑
@@ -75,7 +75,7 @@ export function PathChart({ run, upTo }: { run: RunDetail; upTo: number }) {
         {flap && flap.y <= yTop * 1.0001 && (
           <g>
             <rect x={sx(flap.x) - 6} y={sy(flap.y) - 6} width={12} height={12} className="flap" transform={`rotate(45 ${sx(flap.x)} ${sy(flap.y)})`} />
-            <text x={sx(flap.x) - 12} y={sy(flap.y) + 4} textAnchor="end" className="flap-label">standard method</text>
+            <text x={sx(flap.x) - 12} y={sy(flap.y) + 4} textAnchor="end" className="flap-label">FLAP</text>
           </g>
         )}
       </svg>
@@ -83,11 +83,11 @@ export function PathChart({ run, upTo }: { run: RunDetail; upTo: number }) {
         <p className="note">The standard method (FLAP) at this size is off the top of the chart: {lossText(flap.y)}.</p>
       )}
       <div className="legend">
-        <span><i className="sw kept" /> ideas kept (the path)</span>
-        <span><i className="sw idea" /> ideas tested, not kept</span>
-        <span><i className="sw flap" /> standard method (FLAP), same size</span>
+        <span><i className="sw kept" /> Kept ideas</span>
+        <span><i className="sw idea" /> Rejected ideas</span>
+        <span><i className="sw flap" /> FLAP, same size</span>
       </div>
-      <p className="tooltip" aria-live="polite">{hover ? hover.label : "Point at a dot to see the idea."}</p>
+      <p className="tooltip" aria-live="polite">{hover ? hover.label : "Hover a dot for details."}</p>
     </figure>
   );
 }
