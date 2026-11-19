@@ -211,6 +211,8 @@ const DEVICES: { id: string; label: string; memory_gb: number }[] = [
   { id: "pi2", label: "Small board · 2 GB", memory_gb: 2 },
 ];
 
+type Live = { memory_used_pct: number | null; gpu_busy_pct: number | null; gpu_memory_mb: number | null };
+
 const GB = 1073.741824; // MB in one GB of memory
 
 function MachinePanel() {
@@ -219,6 +221,14 @@ function MachinePanel() {
   const [memGb, setMemGb] = useState<number | null>(null);
   const [free, setFree] = useState<number | null>(null);
   const [model, setModel] = useState<string | null>(null);
+  const [now, setNow] = useState<Live | null>(null);
+  useEffect(() => {
+    if (device !== "this") return;
+    const read = () => api<Live>("/api/machine/live").then(setNow).catch(() => undefined);
+    read();
+    const t = setInterval(read, 3000);
+    return () => clearInterval(t);
+  }, [device]);
   useEffect(() => {
     api<Machine>("/api/machine").then((x) => {
       setM(x);
@@ -273,6 +283,18 @@ function MachinePanel() {
           <NumberField min={0} max={95} step={1} value={free} onCommit={setFree} />
         </label>
       </div>
+
+      {device === "this" && now && (
+        <div className="live">
+          <span className="dot-live" /> Right now:
+          {now.memory_used_pct != null && <span>memory <b>{now.memory_used_pct}%</b> in use</span>}
+          {now.gpu_busy_pct != null && <span>GPU <b>{now.gpu_busy_pct}%</b> busy</span>}
+          {now.gpu_memory_mb != null && <span>GPU using <b>{mb(now.gpu_memory_mb)}</b></span>}
+          {now.memory_used_pct != null && now.memory_used_pct !== free && (
+            <button className="small" onClick={() => setFree(now.memory_used_pct!)}>Keep free what's in use now ({now.memory_used_pct}%)</button>
+          )}
+        </div>
+      )}
 
       <div>
         <div className="m-label">How the {memGb} GB is shared</div>

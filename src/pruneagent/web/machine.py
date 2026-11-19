@@ -55,3 +55,31 @@ def model_sizes() -> list[dict]:
         except OSError:  # offline and not cached
             continue
     return out
+
+
+def _run(cmd: list[str]) -> str:
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=True).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def live() -> dict:
+    """What the machine is doing right now (macOS; no admin rights needed): memory in use, GPU busy and the memory
+    the GPU is using. Fields are None where a reading is not available."""
+    import re
+
+    out: dict = {"memory_used_pct": None, "gpu_busy_pct": None, "gpu_memory_mb": None}
+    if platform.system() != "Darwin":
+        return out
+    free = re.search(r"free percentage:\s*(\d+)%", _run(["memory_pressure"]))
+    if free:
+        out["memory_used_pct"] = 100 - int(free.group(1))
+    gpu = _run(["ioreg", "-r", "-c", "IOAccelerator", "-d", "1", "-w0"])
+    busy = re.search(r'"Device Utilization %"=(\d+)', gpu)
+    used = re.search(r'"In use system memory"=(\d+)', gpu)
+    if busy:
+        out["gpu_busy_pct"] = int(busy.group(1))
+    if used:
+        out["gpu_memory_mb"] = int(used.group(1)) / 1e6
+    return out

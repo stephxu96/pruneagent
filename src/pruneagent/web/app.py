@@ -86,6 +86,11 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunne
         """This computer's chip and memory, and each model's original size."""
         return {"machine": M.machine(), "models": M.model_sizes(), "max_cut": J.MAX_CUT, "free_share": M.FREE_SHARE}
 
+    @app.get("/api/machine/live")
+    def machine_live() -> dict:
+        """Memory in use, GPU busy and GPU memory right now."""
+        return M.live()
+
     @app.get("/api/runs/{run_id}/events")
     async def events(run_id: str) -> StreamingResponse:
         """Live updates: one message whenever the run records something new (server-sent events)."""
