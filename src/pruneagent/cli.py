@@ -1169,6 +1169,9 @@ def run_cmd(
     = None,
     root: Annotated[Path, typer.Option(help="Directory holding the runs.")] = Path("runs"),
     run_id: Annotated[str | None, typer.Option(help="Run id (default: <date>-<time>-<model>-<backend>).")] = None,
+    json_result: Annotated[bool, typer.Option(
+        "--json-result", help="With --dry-run: end with one JSON line (feasible, stop_reason, warnings, usage).")]
+    = False,
 ) -> None:
     """Start an agent run: prune MODEL to the memory limit, comparing with Baseline: FLAP at the same limit.
     On the Mac, run it through the GPU lock:
@@ -1189,6 +1192,13 @@ def run_cmd(
                    f"agent {backend}; up to {run_cfg.rules.max_rounds} rounds, {run_cfg.max_agent_calls} calls")
         if dry_run:
             out = RR.dry_run(run_cfg, setup, notify=lambda m: typer.echo(m, err=True))
+            if json_result:
+                import json
+
+                typer.echo(json.dumps({"feasible": out["prompt"] is not None, "stop_reason": out["stop_reason"],
+                                       "warnings": out["warnings"], "usage": out["usage"], "usage_text": out["estimate"],
+                                       "limit_mb": run_cfg.limit_bytes / 1e6}))
+                return
             for note in out["notes"]:
                 typer.echo(f"  {note}")
             if out["estimate"]:

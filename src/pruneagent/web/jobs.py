@@ -56,7 +56,7 @@ def command(kind: str, params: dict) -> list[str]:
         args = ["pruneagent", "run", "--model", model, "--memory-cut", f"{cut:.4f}", "--device", "mps",
                 "--backend", backend]
         if kind == "precheck":
-            return [*UV, *args, "--dry-run"]
+            return [*UV, *args, "--dry-run", "--json-result"]
         return [*GPU, "caffeinate", "-i", *UV, *args]
     if kind == "resume":
         return [*GPU, "caffeinate", "-i", *UV, "pruneagent", "resume", _run_id(params.get("run_id", ""))]
@@ -84,9 +84,25 @@ class Job:
             text = Path(self.log).read_text(errors="replace")[-tail:]
         except FileNotFoundError:
             text = ""
-        return {"id": self.id, "kind": self.kind, "run_id": self.run_id, "status": self.status,
-                "created": self.created, "started": self.started, "ended": self.ended,
-                "exit_code": self.exit_code, "output": text}
+        out = {"id": self.id, "kind": self.kind, "run_id": self.run_id, "status": self.status,
+               "created": self.created, "started": self.started, "ended": self.ended,
+               "exit_code": self.exit_code, "output": text, "result": None}
+        if self.kind == "precheck" and self.status in ("done", "failed"):
+            out["result"] = _last_json(text)
+        return out
+
+
+def _last_json(text: str) -> dict | None:
+    """The last line of the output that is a JSON object (`--json-result`)."""
+    import json
+
+    for line in reversed(text.strip().splitlines()):
+        if line.startswith("{"):
+            try:
+                return json.loads(line)
+            except ValueError:
+                return None
+    return None
 
 
 def _now() -> str:

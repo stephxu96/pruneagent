@@ -129,3 +129,10 @@ def test_live_usage_is_read_on_this_mac():
     assert set(got) == {"memory_used_pct", "gpu_busy_pct", "gpu_memory_mb"}
     if platform.system() == "Darwin":
         assert 0 <= got["memory_used_pct"] <= 100
+
+
+def test_feasibility_result_is_read_from_the_last_json_line():
+    out = 'Loading ...\nnotes\n{"feasible": false, "stop_reason": "limit below the smallest model allowed"}\n'
+    assert J._last_json(out) == {"feasible": False, "stop_reason": "limit below the smallest model allowed"}
+    assert J._last_json("no json here") is None
+    assert J.command("precheck", {"cut": 0.2})[-2:] == ["--dry-run", "--json-result"]
