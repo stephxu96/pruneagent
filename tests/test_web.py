@@ -118,3 +118,14 @@ def test_this_machine_is_read_for_real():
 
     m = M.machine()
     assert m["memory_gb"] and m["memory_gb"] > 1
+
+
+def test_live_usage_is_read_on_this_mac():
+    import platform
+
+    from pruneagent.web import machine as M
+
+    got = M.live()
+    assert set(got) == {"memory_used_pct", "gpu_busy_pct", "gpu_memory_mb"}
+    if platform.system() == "Darwin":
+        assert 0 <= got["memory_used_pct"] <= 100
