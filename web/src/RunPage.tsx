@@ -119,6 +119,15 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
             <div className="g-value">{lossText(qualityLoss(step.error, base))}</div>
             <div className="g-note">than the original, at predicting text</div>
           </div>
+          {step.mac_mb != null && (
+            <div className="gauge">
+              <div className="g-label">Memory requirement</div>
+              <div className="g-value">{mb(step.mac_mb)}</div>
+              <div className="g-note" title={`The model plus its notes on a ${run.mac_context}-token conversation. It is also the memory access cost (MAC): all of it is read once for every token written.`}>
+                model + its notes while answering (MAC)
+              </div>
+            </div>
+          )}
           {run.flap?.error && (
             <div className="gauge flap-g">
               <div className="g-label">Standard method (FLAP), cut to the goal</div>

@@ -238,18 +238,26 @@ def weight_bytes(config, plan: dict, dtype_bytes: int = 2) -> int:
     return values * dtype_bytes
 
 
-def kv_cache_bytes(config, plan: dict, context: int = DEFAULT_CONTEXT, dtype_bytes: int = 2) -> int:
+def _full(plan: dict, config, strict: bool) -> P.Plan:
+    # strict=False accepts any MLP width (FLAP's plans), not only the agent's 64-neuron steps
+    return P.validate(plan, config) if strict else P.normalize(plan, config)
+
+
+def kv_cache_bytes(config, plan: dict, context: int = DEFAULT_CONTEXT, dtype_bytes: int = 2,
+                   strict: bool = True) -> int:
     """Key/value cache for `context` tokens at batch 1: keys and values of the kept groups in every kept layer."""
-    d, full = _dims(config), P.validate(plan, config)
+    d, full = _dims(config), _full(plan, config, strict)
     return sum(2 * p["groups_keep"] * d.head_dim * context for p in _kept(full)) * dtype_bytes
 
 
-def decode_bytes_per_token(config, plan: dict, context: int = DEFAULT_CONTEXT, dtype_bytes: int = 2) -> int:
-    """Bytes read from memory to generate one token at `context` tokens of history (batch 1)."""
-    d, full = _dims(config), P.validate(plan, config)
+def decode_bytes_per_token(config, plan: dict, context: int = DEFAULT_CONTEXT, dtype_bytes: int = 2,
+                           strict: bool = True) -> int:
+    """Bytes read from memory to generate one token at `context` tokens of history (batch 1): the memory access
+    cost (MAC) per token. `strict=False` accepts any MLP width (for FLAP's plans)."""
+    d, full = _dims(config), _full(plan, config, strict)
     values = sum(_layer_counts(d, p)[0] for p in _kept(full))
     values += d.hidden + d.vocab * d.hidden + d.hidden  # final norm, lm_head (or tied embeddings), one embedding row
-    return values * dtype_bytes + kv_cache_bytes(config, full, context, dtype_bytes)
+    return values * dtype_bytes + kv_cache_bytes(config, full, context, dtype_bytes, strict=False)
 
 
 def _matmul_params(d: _Dims, full: P.Plan) -> int:
