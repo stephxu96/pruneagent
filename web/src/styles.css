@@ -256,7 +256,7 @@ details > summary::-webkit-details-marker { display: none; }
   border-radius: 999px; font-size: 13px; color: var(--ink-2); background: var(--panel); user-select: none;
 }
 .raw > summary:hover, .story details > summary:hover { border-color: var(--ink-3); color: var(--ink); }
-.raw > summary::before, .story details > summary::before, .job > summary::before {
+details > summary::before {
   content: "›"; display: inline-block; font-size: 16px; line-height: 1; transition: transform .15s ease;
 }
 details[open] > summary::before { transform: rotate(90deg); }
