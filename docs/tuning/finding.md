@@ -11,12 +11,13 @@ never saw (lower is better). Each run asked the AI afresh: no saved answers reus
 | Instructions | Run | Score on unseen text |
 |---|---|---|
 | v1 | 20261118-1718 | 23.22 |
-| v1 | 20261119-tune-v1-c | (running) |
+| v1 | 20261119-tune-v1-c | 23.23 |
 | v2 | 20261119-tune-v2-a | 22.98 |
 | v2 | 20261119-tune-v2-b | 25.20 |
 | FLAP, same size | | 175.07 |
 
-The same instructions gave scores 2.2 apart. That chance spread is bigger than the gap between versions, so a small
+The two v1 runs took different paths (20 and 27 rounds, different cuts in each layer) and landed 0.01 apart; the
+two v2 runs landed 2.2 apart. That chance spread is bigger than any gap between versions (v1 average 23.23, v2 average 24.09), so a small
 rewording can't be shown to help: telling a 1-point gain from chance would take about 30 runs per version. Every
 run, lucky or not, beats FLAP by about 7×.
 
