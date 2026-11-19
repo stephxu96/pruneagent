@@ -27,8 +27,8 @@
     "30%, round 30: 'candidate 1 gives a plan already evaluated in an earlier round'",
     "30%, round 31: same"
    ],
-   "cause": "The rule exists in the code (validator) but is not stated in the instructions.",
-   "cause_in_instructions": true
+   "cause": "The rules section the code fills in already says 'none may repeat a model already measured'; the agent did not follow it. Not an instructions gap.",
+   "cause_in_instructions": false
   },
   {
    "behaviour": "The agent picks layers to drop from the quick tests rather than the measured damage.",
@@ -47,23 +47,17 @@
    "fixes": "rushing to the limit with large bundles",
    "expected_signal": "fewer candidates that free all remaining memory at once; fewer ROLLBACK rounds near the limit; a smaller final step (< +10%); lower unseen-validation perplexity at the same limit",
    "single_model_evidence": true
-  },
-  {
-   "replace": "Rules. {limits: at most N layers dropped, minimum widths, etc.} A candidate\nthat breaks a rule is discarded.",
-   "with": "Rules. {limits: at most N layers dropped, minimum widths, etc.} A candidate\nthat breaks a rule is discarded, and so is one that gives a plan already\nmeasured in an earlier round.",
-   "fixes": "repeated plans",
-   "expected_signal": "no INVALID rounds for repeated plans",
-   "single_model_evidence": true
   }
  ],
  "not_instruction_issues": [
-  "Quick tests are misleading for layer drops on this model (known since task 2.x); the instructions already rank measured damage above them for choosing layers."
+  "Quick tests are misleading for layer drops on this model (known since task 2.x); the instructions already rank measured damage above them for choosing layers.",
+  "Repeated plans (30% run, rounds 30-31) despite the rule being stated; the code already refuses them, costing one round each. If it recurs, the code could list the already-measured plans next to the rule."
  ],
  "neutrality_check": "Neither edit names, ranks or discourages a method or a layer; both state facts true of the system (the validator refuses repeated plans; the score is perplexity at the limit; interaction is observed in the round results the agent sees).",
  "change_log_entry": {
   "version": "v2",
   "model": "Qwen3-0.6B-Base",
-  "edit": "E1 interaction + no reward for finishing sooner; E2 repeated plans are refused",
+  "edit": "E1 only: choices in one candidate interact; reaching the limit in fewer rounds earns nothing",
   "effect": "to be measured: 2 runs at 20%, unseen validation perplexity vs v1 (23.22 and run A)"
  }
 }

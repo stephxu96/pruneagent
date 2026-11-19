@@ -51,8 +51,7 @@ Where you are.
 - Previous rounds: {history}
 
 Rules. {limits: at most N layers dropped, minimum widths, etc.} A candidate
-that breaks a rule is discarded, and so is one that gives a plan already
-measured in an earlier round.
+that breaks a rule is discarded.
 
 Answer format. JSON only:
 {"candidates": [{"choices": [{"layer": "<layer name>", "method": "narrow_mlp"}],
