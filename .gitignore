@@ -34,3 +34,7 @@ sparse_logs/
 
 # agent worktrees (Claude Code)
 .claude/worktrees/
+
+# web app (task 3.6)
+web/node_modules/
+web/*.tsbuildinfo

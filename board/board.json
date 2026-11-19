@@ -701,9 +701,10 @@
       ],
       "done_when": "A 0.6B run started, watched, paused and resumed in the browser matches the same run from the command line; API and interface tests pass",
       "gpu": "M4",
-      "status": "todo",
+      "status": "doing",
       "notes": [
-        "[2026-11-19] Replaces the demo notebook. Architecture v0.9 approved by Steph (React + FastAPI). ~2 days of build; no Codex or GPU needed except the final live-run check."
+        "[2026-11-19] Replaces the demo notebook. Architecture v0.9 approved by Steph (React + FastAPI). ~2 days of build; no Codex or GPU needed except the final live-run check.",
+        "[2026-11-19 10:10] Built: FastAPI server + job runner, React app (home, run replay with model map and 'every idea tested' chart, comparison, new run). Tested against the 3 finished runs. Live run left for Steph to trigger."
       ]
     },
     {

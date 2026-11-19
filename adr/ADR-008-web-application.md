@@ -34,7 +34,7 @@ The run store keeps the status, every round's record and every kept plan.
   - **New run:** model, memory limit, optional device target and agent backend. It shows the early warning and the usage-limit estimate before anything starts.
   - **Runs:** every run with its state (running, paused, finished, failed).
   - **Live run:** a timeline of rounds: the agent's proposals and reasons, each candidate's memory and perplexity, the outcome (kept, undone, refused), and a memory-against-perplexity trace moving toward the limit. Pause and resume buttons.
-  - **Results:** the agent against Baseline: FLAP and the unpruned model, on held-out perplexity and accuracy (weighted over all questions, then per set). It shows the final warning if there is one, and a download of the pruned model and plan.
+  - **Results:** the agent against Baseline: FLAP and the unpruned model, on held-out perplexity and accuracy (weighted over all questions, then per set). It shows the final warning if there is one, and a download of the kept plan (the pruned model is rebuilt from it).
   - **Tools:** the follow-up checks (held-out, accuracy, FLAP curve) started on a finished run.
 - **Application server** (FastAPI, Python): an HTTP API with one endpoint per tool, plus read-only views of the run store.
   - **Job runner.** Each tool call becomes a job. The job runner starts the same command a user would type, as a separate process, under the Mac GPU lock (`scripts/mac_gpu.sh`), so one GPU job runs at a time and others wait in a queue.
