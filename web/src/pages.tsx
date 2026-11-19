@@ -233,7 +233,7 @@ function MachinePanel() {
   const pick = (id: string) => {
     setDevice(id);
     if (id === "this") setMemGb(Math.round(m.machine.memory_gb ?? 8));
-    else if (id !== "custom") setMemGb(DEVICES.find((d) => d.id === id)!.memory_gb);
+    else setMemGb(DEVICES.find((d) => d.id === id)!.memory_gb);
   };
   const total = memGb * GB;
   const others = total * (free / 100);
@@ -255,7 +255,6 @@ function MachinePanel() {
           <select value={device} onChange={(e) => pick(e.target.value)}>
             <option value="this">This computer: {m.machine.name} · {m.machine.chip.replace("Apple ", "")}</option>
             {DEVICES.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-            <option value="custom">Custom</option>
           </select>
         </label>
         <label>
@@ -267,7 +266,7 @@ function MachinePanel() {
         <label>
           <span className="m-label">Memory (GB)</span>
           <input type="number" min={1} max={512} step={1} value={memGb}
-            onChange={(e) => { setMemGb(Math.max(1, Number(e.target.value) || 1)); setDevice("custom"); }} />
+            onChange={(e) => setMemGb(Math.max(1, Number(e.target.value) || 1))} />
         </label>
         <label>
           <span className="m-label">Keep free for other apps (%)</span>
