@@ -1294,3 +1294,16 @@ def web_cmd(
 
     typer.echo(f"PruneAgent web app on http://127.0.0.1:{port}  (Ctrl-C to stop)")
     serve(port)
+
+
+@app.command("report")
+def report_cmd(
+    run_id: Annotated[str, typer.Argument(help="The run to report on.")],
+    root: Annotated[Path, typer.Option(help="Directory holding the runs.")] = Path("runs"),
+    out: Annotated[Path | None, typer.Option(help="Output folder (default: runs/<run-id>/report).")] = None,
+) -> None:
+    """Write a plain-language report of a run: report.md with charts, and report.json with every number
+    (needs `uv sync --extra report`)."""
+    from pruneagent import report
+
+    typer.echo(f"Report: {report.write(root, run_id, out)}")
