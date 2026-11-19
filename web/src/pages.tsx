@@ -134,7 +134,7 @@ type Feasibility = {
   usage: { calls: number; calls_fit: number | null; fits: boolean | null } | null;
   limit_mb: number;
 };
-type Job = { id: number; kind: string; run_id: string | null; status: string; created: string; output: string; result: Feasibility | null };
+type Job = { id: number; kind: string; params: { model?: string; cut?: number; run_id?: string }; run_id: string | null; status: string; created: string; output: string; result: Feasibility | null };
 
 const ORIGINAL_MB: Record<string, number> = { "Qwen/Qwen3-0.6B-Base": 1192.1, "Qwen/Qwen3-1.7B-Base": 3441.1 };
 
@@ -203,19 +203,24 @@ export function NewRunPage() {
         {check && <FeasibilityResult job={check} model={model} />}
         {msg && <p className="note">{msg}</p>}
       </div>
-      <h2>Jobs</h2>
-      {jobs.length === 0 && <p className="muted">Nothing started from the web app yet.</p>}
+      <h2>What's been started here</h2>
+      {jobs.length === 0 && <p className="muted">Nothing yet.</p>}
       {jobs.map((j) => (
         <details key={j.id} className="job">
           <summary>
-            <span className={`badge ${j.status}`}>{j.status}</span> {j.kind} {j.run_id ?? ""} <span className="muted">{j.created.slice(0, 16).replace("T", " ")} UTC</span>
+            <span className="job-what">{jobTitle(j)}</span>
+            <span className={`badge ${j.status}`}>{jobOutcome(j)}</span>
+            <span className="muted">{new Date(j.created).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
             {(j.status === "running" || j.status === "queued") && (
               <button className="small" onClick={(e) => { e.preventDefault(); api(`/api/jobs/${j.id}/stop`, { method: "POST" }).then(refresh); }}>
                 {j.status === "running" ? "Pause" : "Cancel"}
               </button>
             )}
           </summary>
-          <pre>{j.output || "(no output yet)"}</pre>
+          <div className="job-details">
+            <div className="m-label">Details (what the computer printed)</div>
+            <pre>{j.output || "(nothing yet)"}</pre>
+          </div>
         </details>
       ))}
     </div>
@@ -394,4 +399,26 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
       )}
     </div>
   );
+}
+
+const JOB_KIND: Record<string, string> = {
+  precheck: "Feasibility check",
+  start: "Run",
+  resume: "Continue a run",
+  heldout: "Final check on new text",
+  accuracy: "Quiz check",
+};
+
+function jobTitle(j: Job): string {
+  const what = JOB_KIND[j.kind] ?? j.kind;
+  const p = j.params ?? {};
+  if (p.model && p.cut != null) return `${what}: ${modelName(p.model)}, ${pct(p.cut)} smaller`;
+  if (j.run_id) return `${what}: run ${j.run_id}`;
+  return what;
+}
+
+function jobOutcome(j: Job): string {
+  if (j.kind === "precheck" && j.result) return j.result.feasible ? "Feasible ✓" : "Not feasible";
+  return { queued: "Waiting", running: "Running", done: "Finished", failed: "Didn't finish", stopped: "Paused",
+           lost: "Interrupted" }[j.status] ?? j.status;
 }
