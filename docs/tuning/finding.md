@@ -21,5 +21,4 @@ rewording can't be shown to help: telling a 1-point gain from chance would take 
 run, lucky or not, beats FLAP by about 7×.
 
 **What we'll do.** Keep the v1 instructions. No more rewording. Report agent results with their run-to-run spread
-where we have repeats. Best of 2 (`pruneagent best-of`, docs/tuning/round2-best-of.md) stays available but is not
-the default.
+where we have repeats.
