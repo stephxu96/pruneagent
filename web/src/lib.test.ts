@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedLayers, changesText, lossText, qualityLoss } from "./lib";
+import { changedLayers, changesText, duration, durationRange, lossText, qualityLoss, timeLeftText } from "./lib";
 
 describe("plain-language wording", () => {
   it("groups changes by kind and counts layers from 1", () => {
@@ -23,5 +23,19 @@ describe("changedLayers", () => {
     const b = [{ mlp: 3072, groups: 8, dropped: false }, { mlp: 3072, groups: 8, dropped: true }];
     expect([...changedLayers(a, b)]).toEqual([1]);
     expect(changedLayers(undefined, b).size).toBe(0);
+  });
+});
+
+describe("time wording", () => {
+  it("gives a range, and warns when the round limit comes first", () => {
+    expect(durationRange(57, 76)).toBe("55 minutes–1 h 15 min");
+    expect(duration(119)).toBe("2 h");
+    expect(duration(57)).toBe("55 minutes");
+    expect(timeLeftText({ minutes: [14, 14], worst_minutes: 14, rounds_left: 5, mb_left: 62 })).toBe(
+      "Likely to stop at the round limit before the goal (5 rounds, about 15 minutes left)",
+    );
+    expect(timeLeftText({ minutes: [20, 30], worst_minutes: 60, rounds_left: 20, mb_left: 40 })).toBe(
+      "About 20–30 minutes left, at most 1 h (20 rounds left)",
+    );
   });
 });

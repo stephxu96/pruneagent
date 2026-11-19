@@ -167,6 +167,7 @@ def run_detail(root: Path, run_id: str) -> dict:
             for a in kept
         ],
         "rounds": rounds,
+        "time_left": R.time_left(store, R.past_rates(root, run_cfg.model_id)) if store.info().state == "running" else None,
     }
 
 

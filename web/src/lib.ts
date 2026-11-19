@@ -65,6 +65,7 @@ export type RunDetail = RunSummary & {
   bandwidth_mb_s: number | null;
   steps: Step[];
   rounds: Round[];
+  time_left: { minutes: [number, number] | null; worst_minutes: number; rounds_left: number; mb_left: number } | null;
 };
 
 export type Score = { size_mb: number; test_error: number; unseen_error: number };
@@ -114,6 +115,33 @@ export function changesText(changes: Change[]): string {
     else parts.push(`${kind} on layers ${ls.join(", ")}`);
   }
   return parts.join("; ");
+}
+
+/** Minutes in plain words, rounded to 5 minutes: "40 minutes", "1 h 20 min". */
+export function duration(min: number): string {
+  const r = Math.max(5, Math.round(min / 5) * 5);
+  if (r < 60) return `${r} minutes`;
+  const h = Math.floor(r / 60), m = r % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+/** "40 minutes–1 h 10 min" or "20–30 minutes", or one value when both ends round the same. */
+export function durationRange(lo: number, hi: number): string {
+  const [a, b] = [duration(lo), duration(hi)];
+  if (a === b) return a;
+  if (a.endsWith(" minutes") && b.endsWith(" minutes")) return `${a.replace(" minutes", "")}–${b}`;
+  return `${a}–${b}`;
+}
+
+/** The check on unseen text after a run (a measured ~20 minutes on this Mac). */
+export const FINAL_CHECK_MIN = 20;
+
+/** Time left for a running run, in words; says so when the round limit comes before the goal. */
+export function timeLeftText(t: { minutes: [number, number] | null; worst_minutes: number; rounds_left: number; mb_left: number }): string {
+  if (t.mb_left <= 0) return "Goal met; final check next";
+  if (!t.minutes || t.minutes[0] >= t.worst_minutes)
+    return `Likely to stop at the round limit before the goal (${t.rounds_left} rounds, about ${duration(t.worst_minutes)} left)`;
+  return `About ${durationRange(t.minutes[0], t.minutes[1])} left, at most ${duration(t.worst_minutes)} (${t.rounds_left} rounds left)`;
 }
 
 export const outcomeText: Record<string, string> = {

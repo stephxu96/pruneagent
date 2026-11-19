@@ -1214,12 +1214,7 @@ def run_cmd(
                 original = E.weight_bytes(config, P.dense_plan(config)) / 1e6
                 to_free = max(0.0, original - run_cfg.limit_bytes / 1e6)
                 rates = runstore.past_rates(root, model)
-                time_est = None if not rates else {
-                    "minutes": [min(r["minutes_per_mb"] for r in rates) * to_free,
-                                max(r["minutes_per_mb"] for r in rates) * to_free],
-                    "rounds": [min(r["rounds_per_mb"] for r in rates) * to_free,
-                               max(r["rounds_per_mb"] for r in rates) * to_free],
-                    "based_on_runs": len(rates)}
+                time_est = runstore.time_estimate(rates, to_free, run_cfg.rules.max_rounds)
                 typer.echo(json.dumps({"feasible": out["prompt"] is not None, "stop_reason": out["stop_reason"],
                                        "warnings": out["warnings"], "usage": out["usage"], "usage_text": out["estimate"],
                                        "limit_mb": run_cfg.limit_bytes / 1e6, "original_mb": original,

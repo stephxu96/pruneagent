@@ -374,5 +374,48 @@ def past_rates(root: Path | str, model_id: str) -> list[dict]:
         if mb <= 0 or not log:
             continue
         seconds = sum(r.llm_seconds + r.gpu_seconds for r in log)
-        out.append({"run": info.run_id, "minutes_per_mb": seconds / 60 / mb, "rounds_per_mb": len(log) / mb})
+        out.append({"run": info.run_id, "minutes_per_mb": seconds / 60 / mb, "rounds_per_mb": len(log) / mb,
+                    "minutes_per_round": seconds / 60 / len(log)})
     return out
+
+
+def time_estimate(rates: list[dict], to_free_mb: float, max_rounds: int) -> dict | None:
+    """How long a new run will take. `minutes` is the usual range (fastest and slowest past pace per MB cut);
+    `worst_minutes` is the round cap at the slowest past pace per round, which a run reaches when it undoes its own
+    work or stalls near the limit. Both are capped by the round cap."""
+    if not rates:
+        return None
+    per_round = max(r["minutes_per_round"] for r in rates)
+    worst = max_rounds * per_round
+    return {"minutes": [min(min(r["minutes_per_mb"] for r in rates) * to_free_mb, worst),
+                        min(max(r["minutes_per_mb"] for r in rates) * to_free_mb, worst)],
+            "rounds": [min(min(r["rounds_per_mb"] for r in rates) * to_free_mb, max_rounds),
+                       min(max(r["rounds_per_mb"] for r in rates) * to_free_mb, max_rounds)],
+            "worst_minutes": worst, "max_rounds": max_rounds, "based_on_runs": len(rates)}
+
+
+RECENT_ROUNDS = 10
+
+
+def time_left(store: "RunStore", rates: list[dict]) -> dict | None:
+    """How long a running run still needs, from its own progress: MB still to cut times its own pace so far, and
+    the slowest past pace for the upper end. Pace per round is the last RECENT_ROUNDS rounds (the agent slows as
+    its history grows). Capped by the rounds left."""
+    cfg = store.run_config()
+    kept, log = store.accepted(), store.log()
+    if len(kept) < 1 or not log:
+        return None
+    limit_mb = cfg.device.memory_limit_gb * 1e9 / 1e6
+    left_mb = max(0.0, kept[-1].weight_bytes / 1e6 - limit_mb)
+    recent = log[-RECENT_ROUNDS:]
+    per_round = sum(r.llm_seconds + r.gpu_seconds for r in recent) / 60 / len(recent)
+    rounds_left = max(0, cfg.rules.max_rounds - len(log))
+    cap = rounds_left * per_round
+    cut_mb = (kept[0].weight_bytes - kept[-1].weight_bytes) / 1e6
+    paces = [r["minutes_per_mb"] for r in rates]
+    if cut_mb > 0:
+        paces.append(sum(r.llm_seconds + r.gpu_seconds for r in log) / 60 / cut_mb)
+    if not paces:
+        return {"minutes": None, "worst_minutes": cap, "rounds_left": rounds_left, "mb_left": left_mb}
+    return {"minutes": [min(min(paces) * left_mb, cap), min(max(paces) * left_mb, cap)],
+            "worst_minutes": cap, "rounds_left": rounds_left, "mb_left": left_mb}

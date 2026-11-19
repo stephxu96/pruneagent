@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ResultBars } from "./RunPage";
-import { api, lossText, mb, modelName, pct, qualityLoss, runLabel, stateText, type Compare, type RunSummary } from "./lib";
+import { api, duration, durationRange, FINAL_CHECK_MIN, lossText, mb, modelName, pct, qualityLoss, runLabel, stateText, type Compare, type RunSummary } from "./lib";
 
 // ---------------------------------------------------------------- home: every run
 
@@ -138,7 +138,7 @@ type Feasibility = {
   limit_mb: number;
   original_mb?: number;
   smallest_mb?: number;
-  time?: { minutes: [number, number]; rounds: [number, number]; based_on_runs: number } | null;
+  time?: { minutes: [number, number]; rounds: [number, number]; based_on_runs: number; worst_minutes?: number; max_rounds?: number } | null;
 };
 type Job = { id: number; kind: string; params: { model?: string; cut?: number; run_id?: string }; run_id: string | null; status: string; created: string; output: string; result: Feasibility | null };
 
@@ -390,12 +390,6 @@ function NumberField({ value, min, max, step, disabled, onCommit }: {
   );
 }
 
-function duration(min: number): string {
-  if (min < 55) return `${Math.max(5, Math.round(min / 5) * 5)} minutes`;
-  const h = Math.floor(min / 60), m = Math.round((min % 60) / 5) * 5;
-  return m ? `${h} h ${m} min` : `${h} h`;
-}
-
 function FeasibilityResult({ job, model }: { job: Job; model: string }) {
   if (job.status === "queued" || job.status === "running") return <div className="feasible checking">Checking… about half a minute</div>;
   const r = job.result;
@@ -403,8 +397,7 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
   const lo = r.smallest_mb, hi = r.original_mb;
   const sizeOk = lo != null && hi != null && r.limit_mb >= lo && r.limit_mb < hi;
   const calls = r.time ? Math.ceil(r.time.rounds[1]) : r.usage?.calls;
-  const t = r.time ? (duration(r.time.minutes[0]) === duration(r.time.minutes[1]) ? duration(r.time.minutes[0])
-    : `${duration(r.time.minutes[0])}–${duration(r.time.minutes[1])}`) : null;
+  const t = r.time ? durationRange(r.time.minutes[0], r.time.minutes[1]) : null;
   return (
     <div className={`feasible ${r.feasible ? "yes" : "no"}`}>
       <div className="f-top">
@@ -444,8 +437,11 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
         {t && r.time && (
           <div className="f-tile">
             <div className="f-label">Time</div>
-            <div className="f-big">about {duration(r.time.minutes[1] + 20)}</div>
-            <div className="f-sub">{t} pruning + about 20 min final check</div>
+            <div className="f-big">{durationRange(r.time.minutes[0] + FINAL_CHECK_MIN, r.time.minutes[1] + FINAL_CHECK_MIN)}</div>
+            <div className="f-sub">Pruning {t} + about {FINAL_CHECK_MIN} min final check</div>
+            {r.time.worst_minutes != null && (
+              <div className="f-sub">Up to {duration(r.time.worst_minutes + FINAL_CHECK_MIN)} if it uses all {r.time.max_rounds} rounds</div>
+            )}
           </div>
         )}
       </div>

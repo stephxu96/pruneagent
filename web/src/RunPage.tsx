@@ -3,7 +3,7 @@ import { MapLegend, ModelMap } from "./ModelMap";
 import { Neurons3D } from "./Neurons3D";
 import { PathChart } from "./PathChart";
 import {
-  api, changedLayers, changesText, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText,
+  api, changedLayers, changesText, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText, timeLeftText,
   type Results, type RunDetail,
 } from "./lib";
 
@@ -81,6 +81,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         <p className="status">
           <span className={`badge ${run.state}`}>{stateText[run.state] ?? run.state}</span>
           {run.rounds.length} rounds · {run.kept_steps} steps kept
+          {run.state === "running" && run.time_left && <> · {timeLeftText(run.time_left)}</>}
           {run.state === "running" && (
             <label className="follow">
               <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> follow live

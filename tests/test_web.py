@@ -144,3 +144,21 @@ def test_past_rates_give_time_per_mb_from_finished_runs(finished_run):
     rates = R.past_rates(finished_run, R.RunStore.open("r1", finished_run).run_config().model_id)
     assert len(rates) == 1 and rates[0]["rounds_per_mb"] > 0 and rates[0]["minutes_per_mb"] >= 0
     assert R.past_rates(finished_run, "some/other-model") == []
+
+
+def test_time_estimate_gives_a_range_and_the_round_cap():
+    from pruneagent import runstore as R
+
+    rates = [{"minutes_per_mb": 0.25, "rounds_per_mb": 0.08, "minutes_per_round": 2.5},
+             {"minutes_per_mb": 0.32, "rounds_per_mb": 0.12, "minutes_per_round": 3.0}]
+    t = R.time_estimate(rates, 200, 40)
+    assert t["minutes"] == [50, 64] and t["worst_minutes"] == 120 and t["max_rounds"] == 40
+    assert R.time_estimate(rates, 1000, 40)["minutes"] == [120, 120]  # capped by the rounds
+    assert R.time_estimate([], 200, 40) is None
+
+
+def test_time_left_reads_a_runs_own_progress(finished_run):
+    from pruneagent import runstore as R
+
+    t = R.time_left(R.RunStore.open("r1", finished_run), [])
+    assert t is not None and t["mb_left"] >= 0 and t["rounds_left"] >= 0 and t["worst_minutes"] >= 0
