@@ -86,7 +86,7 @@ export const qualityLoss = (error: number, original: number) => error / original
 export const lossText = (loss: number) => (loss < 0.005 ? "no loss" : loss >= 2 ? `${(loss + 1).toFixed(0)}× worse` : `${pct(loss)} worse`);
 
 export function changeText(c: Change): string {
-  const n = c.layer + 1; // people count from 1
+  const n = c.layer; // layers are numbered from 0, as in the code and the midpoint report
   switch (c.strategy) {
     case "narrow_mlp":
       return `slim layer ${n}`;
@@ -102,12 +102,12 @@ export function changeText(c: Change): string {
 /** Group "slim layer 3, slim layer 4, slim layer 5" into "slim layers 3, 4, 5". */
 export function changesText(changes: Change[]): string {
   const byKind = new Map<string, number[]>();
-  for (const c of changes) byKind.set(c.strategy, [...(byKind.get(c.strategy) ?? []), c.layer + 1]);
+  for (const c of changes) byKind.set(c.strategy, [...(byKind.get(c.strategy) ?? []), c.layer]);
   const parts: string[] = [];
   for (const [kind, layers] of byKind) {
     const ls = [...new Set(layers)].sort((a, b) => a - b);
     const times = layers.length > ls.length ? " (twice)" : "";
-    if (ls.length === 1) parts.push(changeText({ layer: ls[0] - 1, strategy: kind }) + times);
+    if (ls.length === 1) parts.push(changeText({ layer: ls[0], strategy: kind }) + times);
     else if (kind === "narrow_mlp") parts.push(`slim layers ${ls.join(", ")}${times}`);
     else if (kind === "remove_attention_group") parts.push(`remove attention units from layers ${ls.join(", ")}`);
     else if (kind === "drop_layer") parts.push(`remove layers ${ls.join(", ")} entirely`);

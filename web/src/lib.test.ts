@@ -3,10 +3,10 @@ import { changedLayers, changesText, lossText, qualityLoss } from "./lib";
 
 describe("plain-language wording", () => {
   it("groups changes by kind and counts layers from 1", () => {
-    expect(changesText([{ layer: 2, strategy: "narrow_mlp" }, { layer: 3, strategy: "narrow_mlp" }])).toBe("slim layers 3, 4");
-    expect(changesText([{ layer: 13, strategy: "drop_layer" }])).toBe("remove layer 14 entirely");
+    expect(changesText([{ layer: 2, strategy: "narrow_mlp" }, { layer: 3, strategy: "narrow_mlp" }])).toBe("slim layers 2, 3");
+    expect(changesText([{ layer: 13, strategy: "drop_layer" }])).toBe("remove layer 13 entirely");
     expect(changesText([{ layer: 4, strategy: "remove_attention_group" }, { layer: 22, strategy: "narrow_mlp" }])).toBe(
-      "remove an attention unit from layer 5; slim layer 23",
+      "remove an attention unit from layer 4; slim layer 22",
     );
   });
 
