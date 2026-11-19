@@ -427,15 +427,16 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
           <div className="f-tile">
             <div className="f-label">Usage limits</div>
             {(r.usage.windows ?? []).map((w) => {
-              const after = Math.min(100, w.used_pct + w.pct_per_call * (calls ?? r.usage!.calls));
+              const cost = w.pct_per_call * (calls ?? r.usage!.calls);
               return (
                 <div key={w.name} className="f-limit">
                   <span>{w.name === "weekly" ? "Weekly" : w.name} limit</span>
-                  <span className="f-limit-bar"><span className="now" style={{ width: `${w.used_pct}%` }} /><span className="add" style={{ width: `${after - w.used_pct}%` }} /></span>
-                  <b>{Math.round(w.used_pct)}% → ~{Math.ceil(after)}%</b>
+                  <span className="f-limit-bar"><span className="add" style={{ width: `${Math.min(100, cost)}%` }} /></span>
+                  <b>~{cost < 1 ? cost.toFixed(1) : Math.ceil(cost)}%</b>
                 </div>
               );
             })}
+            {!!r.usage.windows?.length && <div className="f-sub">How much of each limit this run uses</div>}
             {!r.usage.windows?.length && <div className="f-sub">Not recorded for this older check.</div>}
             {r.usage.fits === false && <div className="f-sub warn">Over the limit ✕</div>}
           </div>
