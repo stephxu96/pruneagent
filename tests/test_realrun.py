@@ -197,3 +197,16 @@ def test_a_missing_prompt_builder_falls_back_to_the_placeholder():
     assert RR.prompt_builder("pruneagent.nothing_here:build_prompt", notes.append) is None
     assert "placeholder" in notes[0]
     assert RR.prompt_builder("pruneagent.instructions:build_prompt") is not None
+
+
+def test_fresh_answers_keep_the_answer_cache_per_run():
+    """Task 3.1 repeats: with agent_cache_scope="run" a repeat run cannot replay another run's saved answers."""
+    from pruneagent import agent_client as AC
+    from pruneagent.schema import DeviceTarget, RunConfig
+
+    dev = DeviceTarget(name="m4", memory_limit_gb=1.0, bandwidth_gb_s=94.8, compute_tflops=3.48, backend="gpu")
+    shared = RR.make_agent(RunConfig(model_id="m", device=dev), "a")
+    fresh_a = RR.make_agent(RunConfig(model_id="m", device=dev, agent_cache_scope="run"), "a")
+    fresh_b = RR.make_agent(RunConfig(model_id="m", device=dev, agent_cache_scope="run"), "b")
+    assert shared.cache.root == AC.DEFAULT_CACHE_DIR
+    assert fresh_a.cache.root != fresh_b.cache.root != AC.DEFAULT_CACHE_DIR
