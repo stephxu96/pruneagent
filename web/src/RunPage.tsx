@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { MapLegend, ModelMap } from "./ModelMap";
+import { Neurons3D } from "./Neurons3D";
 import { PathChart } from "./PathChart";
 import {
   api, changedLayers, changesText, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText,
@@ -14,6 +15,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   const [playing, setPlaying] = useState(false);
   const [showFlap, setShowFlap] = useState(false);
   const [follow, setFollow] = useState(true);
+  const [threeD, setThreeD] = useState(true);
 
   const load = () =>
     api<RunDetail>(`/api/runs/${id}`).then((r) => {
@@ -54,7 +56,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
     const prev = steps[steps.length - 2];
     const round = at > 0 ? run.rounds[at - 1] : null;
     const changed = round?.outcome === "ACCEPT" ? changedLayers(prev?.layers, step.layers) : new Set<number>();
-    return { step, round, changed };
+    return { step, prev: round?.outcome === "ACCEPT" ? prev : undefined, round, changed };
   }, [run, at]);
 
   if (err) return <p className="error">Could not load this run: {err}</p>;
@@ -62,7 +64,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
 
   const base = run.original_error ?? 1;
   const orig = run.original_mb ?? 0;
-  const { step, round, changed } = view;
+  const { step, prev, round, changed } = view;
   const needed = orig - run.limit_mb;
   const savedNow = orig - step.size_mb;
   const progress = Math.min(1, savedNow / needed);
@@ -128,14 +130,29 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
           )}
         </div>
 
-        <ModelMap
-          layers={showFlap && run.flap ? run.flap.layers : step.layers}
-          full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
-          changed={showFlap ? undefined : changed}
-          caption={showFlap ? "What the standard method (FLAP) cuts to reach the same size: a bit from almost everywhere."
-            : `${at === 0 ? "The original model" : `The model after round ${at}`}: ${run.shape.layers} layers, left to right.`}
-        />
-        <MapLegend />
+        <div className="view-toggle" role="group" aria-label="View">
+          <button className={threeD ? "on" : ""} onClick={() => setThreeD(true)}>3D neurons</button>
+          <button className={threeD ? "" : "on"} onClick={() => setThreeD(false)}>Flat</button>
+        </div>
+        {threeD ? (
+          <Neurons3D
+            layers={showFlap && run.flap ? run.flap.layers : step.layers}
+            prev={showFlap ? undefined : prev?.layers}
+            full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
+            caption={showFlap ? "What the standard method (FLAP) cuts to reach the same size." : undefined}
+          />
+        ) : (
+          <>
+            <ModelMap
+              layers={showFlap && run.flap ? run.flap.layers : step.layers}
+              full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
+              changed={showFlap ? undefined : changed}
+              caption={showFlap ? "What the standard method (FLAP) cuts to reach the same size: a bit from almost everywhere."
+                : `${at === 0 ? "The original model" : `The model after round ${at}`}: ${run.shape.layers} layers, left to right.`}
+            />
+            <MapLegend />
+          </>
+        )}
       </section>
 
       <section className="story">

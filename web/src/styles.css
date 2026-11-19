@@ -181,3 +181,13 @@ details p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
 .settings > div { background: var(--panel); padding: 10px 14px; }
 .settings dt { font-size: 12px; color: var(--ink-3); }
 .settings dd { margin: 2px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.neurons3d { margin: 0; }
+.neurons3d .canvas-wrap { height: 380px; border-radius: 10px; overflow: hidden; cursor: grab; }
+.neurons3d figcaption { font-size: 14px; color: var(--ink-2); margin-top: 6px; }
+.sw.dot { border-radius: 99px; }
+.sw.attn { background: var(--ink-2); }
+.view-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; margin-bottom: 10px; }
+.view-toggle button { font: inherit; font-size: 13px; padding: 4px 12px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+.view-toggle button.on { background: var(--ink); color: var(--bg); }
+@media (max-width: 640px) { .neurons3d .canvas-wrap { height: 300px; } }
