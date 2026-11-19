@@ -241,3 +241,5 @@ details p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
 .f-mark { position: absolute; top: -4px; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px; background: var(--agent); }
 .f-ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); }
 .f-foot { font-size: 12px; color: var(--ink-3); }
+.job-details { display: grid; gap: 10px; }
+.raw summary { font-size: 13px; color: var(--ink-3); }
