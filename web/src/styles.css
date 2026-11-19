@@ -216,3 +216,4 @@ details p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
 .live { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; color: var(--ink-2); }
 .dot-live { width: 8px; height: 8px; border-radius: 99px; background: var(--good); display: inline-block; animation: blink 2s infinite; }
 @keyframes blink { 50% { opacity: .3; } }
+.primary:disabled, .secondary:disabled { opacity: .4; cursor: not-allowed; }

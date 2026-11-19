@@ -50,7 +50,7 @@ def model_sizes() -> list[dict]:
             dense = P.dense_plan(cfg)
             # working memory while answering: the model's notes on the conversation so far (key/value cache),
             # for a conversation of WORKING_CONTEXT tokens, unpruned (an upper bound for any cut)
-            out.append({"id": m, "size_mb": E.weight_bytes(cfg, dense) / 1e6,
+            out.append({"id": m, "ready": ready(m), "size_mb": E.weight_bytes(cfg, dense) / 1e6,
                         "working_mb": E.kv_cache_bytes(cfg, dense, context=WORKING_CONTEXT) / 1e6})
         except OSError:  # offline and not cached
             continue
@@ -83,3 +83,16 @@ def live() -> dict:
     if used:
         out["gpu_memory_mb"] = int(used.group(1)) / 1e6
     return out
+
+
+def ready(model_id: str, device: str = "mps", dtype: str = "float16") -> bool:
+    """Whether the model has been prepared for a run on this machine: its quick tests exist (a run stops without
+    them; see `realrun.make_setup`). Preparing a model is task 3.7 for Qwen3-1.7B."""
+    from pathlib import Path
+
+    from pruneagent import realrun as RR
+
+    try:
+        return Path(RR.make_setup(model_id, device, dtype).probes).exists()
+    except (OSError, KeyError, ValueError):
+        return False

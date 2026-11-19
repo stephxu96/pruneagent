@@ -137,7 +137,12 @@ export function NewRunPage() {
   const [cut, setCut] = useState(Math.round(Number(q.get("cut") ?? 0.1) * 100));
   const [jobs, setJobs] = useState<Job[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [prepared, setPrepared] = useState<Record<string, boolean>>({});
   const refresh = () => api<Job[]>("/api/jobs").then(setJobs).catch(() => undefined);
+  useEffect(() => {
+    api<Machine>("/api/machine").then((x) => setPrepared(Object.fromEntries(x.models.map((m) => [m.id, m.ready])))).catch(() => undefined);
+  }, []);
+  const ready = prepared[model] ?? true;
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 3000);
@@ -167,11 +172,17 @@ export function NewRunPage() {
           {orig && <span className="muted">{mb(orig)} → under {mb(orig * (1 - cut / 100))}</span>}
         </label>
         <div className="actions">
-          <button className="secondary" onClick={() => post("/api/precheck")} title="Checks that this size can be reached, without starting anything">Check the target</button>
-          <button className="primary" onClick={() => {
+          <button className="secondary" onClick={() => post("/api/precheck")} title="Checks that this size can be reached, without starting anything" disabled={!ready}>Feasibility check</button>
+          <button className="primary" disabled={!ready} onClick={() => {
             if (confirm(`Start a real run? It uses the Mac's GPU and AI calls for about an hour.`)) post("/api/runs");
           }}>Start the run</button>
         </div>
+        {!ready && (
+          <p className="warn">
+            {modelName(model)} isn't prepared yet. Before the AI can work on a model, the model is measured once to see
+            how much each part matters. That takes about 6 hours on this Mac and is planned (task 3.7).
+          </p>
+        )}
         {msg && <p className="note">{msg}</p>}
       </div>
       <h2>Jobs</h2>
@@ -197,7 +208,7 @@ export function NewRunPage() {
 
 type Machine = {
   machine: { name: string; chip: string; memory_gb: number | null };
-  models: { id: string; size_mb: number; working_mb: number }[];
+  models: { id: string; ready: boolean; size_mb: number; working_mb: number }[];
   max_cut: number;
   free_share: number;
 };
