@@ -90,6 +90,10 @@ class RunConfig(_Model):
     # v1 (task 2.9): the agent proposes candidates or rolls back. True also allows probe, start_from_flap and stop
     # (the code is kept; the v1 instructions do not offer them).
     agent_extra_actions: bool = False
+    # "shared": an identical prompt reuses a saved answer from any earlier run (cheap reruns). "run": answers are saved
+    # per run only, so a repeat run with the same instructions asks the agent afresh (task 3.1 repeats); a resume of
+    # the same run still reuses its own answers.
+    agent_cache_scope: Literal["shared", "run"] = "shared"
     max_agent_calls: PositiveInt = 60
     max_cost_usd: NonNegativeFloat | None = None  # API backend only; defaults to $5 there
     seed: int = 0

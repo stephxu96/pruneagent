@@ -1171,6 +1171,9 @@ def run_cmd(
     run_id: Annotated[str | None, typer.Option(help="Run id (default: <date>-<time>-<model>-<backend>).")] = None,
     instructions: Annotated[str, typer.Option(
         help="Agent instructions version: v1, v2, ... (src/pruneagent/prompts/instructions_<version>.txt).")] = "v1",
+    fresh_answers: Annotated[bool, typer.Option(
+        "--fresh-answers", help="Ask the agent afresh instead of reusing answers saved by earlier runs (repeats).")]
+    = False,
     json_result: Annotated[bool, typer.Option(
         "--json-result", help="With --dry-run: end with one JSON line (feasible, stop_reason, warnings, usage).")]
     = False,
@@ -1194,7 +1197,8 @@ def run_cmd(
         setup = RR.make_setup(model, device, dtype, data_dir, scores, probes, damage, prompt_builder=builder)
         config = AutoConfig.from_pretrained(model, revision=setup.revision)
         run_cfg = RR.make_run_config(model, config, device, memory_limit_mb=memory_limit_mb, memory_cut=memory_cut,
-                                     backend=backend, max_rounds=max_rounds, dtype=dtype, target=target)
+                                     backend=backend, max_rounds=max_rounds, dtype=dtype, target=target,
+                                     agent_cache_scope="run" if fresh_answers else "shared")
         typer.echo(f"{model} on {device}: memory limit {run_cfg.limit_bytes / 1e6:,.1f} MB of weights; "
                    f"agent {backend}, instructions {instructions}; up to {run_cfg.rules.max_rounds} rounds, {run_cfg.max_agent_calls} calls")
         if dry_run:

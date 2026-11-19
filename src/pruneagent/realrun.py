@@ -199,7 +199,9 @@ def make_agent(run_cfg: RunConfig, run_id: str | None) -> AC.AgentClient:
         backend = AC.CodexBackend(model=model, reasoning_effort=effort)
     else:
         backend = AC.ApiBackend(model=model, reasoning_effort=effort, provider=run_cfg.agent_provider or "openai")
-    return AC.AgentClient(backend, run_id=run_id, max_calls=run_cfg.max_agent_calls,
+    cache = AC.Cache(AC.DEFAULT_CACHE_DIR / "per_run" / run_id) if run_cfg.agent_cache_scope == "run" and run_id \
+        else AC.Cache()
+    return AC.AgentClient(backend, cache=cache, run_id=run_id, max_calls=run_cfg.max_agent_calls,
                           max_cost_usd=run_cfg.max_cost_usd)
 
 
