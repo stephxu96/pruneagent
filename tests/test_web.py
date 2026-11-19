@@ -101,3 +101,20 @@ def test_a_job_running_when_the_server_stopped_is_marked_lost(tmp_path):
     runner._set(job.id, status="running")
     again = J.JobRunner(tmp_path / "jobs.sqlite", tmp_path, tmp_path / "logs", build=lambda k, p: ["true"])
     assert again.get(job.id).status == "lost"
+
+
+def test_machine_reports_memory_and_model_sizes(finished_run, tmp_path, monkeypatch):
+    from pruneagent.web import machine as M
+
+    monkeypatch.setattr(M, "machine", lambda: {"name": "MacBook Pro", "chip": "Apple M4", "memory_gb": 24.0})
+    monkeypatch.setattr(M, "model_sizes", lambda: [{"id": J.MODELS[0], "size_mb": 1192.1}])
+    api, _ = client(finished_run, tmp_path)
+    got = api.get("/api/machine").json()
+    assert got["machine"]["memory_gb"] == 24.0 and got["models"][0]["size_mb"] == 1192.1 and got["max_cut"] == 0.6
+
+
+def test_this_machine_is_read_for_real():
+    from pruneagent.web import machine as M
+
+    m = M.machine()
+    assert m["memory_gb"] and m["memory_gb"] > 1

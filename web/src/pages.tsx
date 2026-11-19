@@ -13,16 +13,9 @@ export function HomePage() {
   return (
     <div>
       <section className="hero">
-        <h1>AI that trims an AI model so it fits on your computer</h1>
-        <p className="lede">
-          You choose how small the model must be. PruneAgent's AI decides which parts to cut, tests every idea, and keeps
-          only what hurts quality least. We compare it with the standard method at exactly the same size.
-        </p>
-        <div className="actions">
-          <a className="primary" href="#/compare">See the comparison</a>
-          <a className="secondary" href="#/new">Start a new run</a>
-        </div>
+        <h1>Shrink an AI model to fit your computer.</h1>
       </section>
+      <MachinePanel />
       <h2>Runs</h2>
       {err && <p className="error">{err}</p>}
       {runs && runs.length === 0 && <p className="muted">No runs yet.</p>}
@@ -136,11 +129,12 @@ function CurveChart({ data }: { data: Compare }) {
 
 type Job = { id: number; kind: string; run_id: string | null; status: string; created: string; output: string };
 
-const ORIGINAL_MB: Record<string, number> = { "Qwen/Qwen3-0.6B-Base": 1192.1 };
+const ORIGINAL_MB: Record<string, number> = { "Qwen/Qwen3-0.6B-Base": 1192.1, "Qwen/Qwen3-1.7B-Base": 3441.1 };
 
 export function NewRunPage() {
-  const [model, setModel] = useState("Qwen/Qwen3-0.6B-Base");
-  const [cut, setCut] = useState(10);
+  const q = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  const [model, setModel] = useState(q.get("model") ?? "Qwen/Qwen3-0.6B-Base");
+  const [cut, setCut] = useState(Math.round(Number(q.get("cut") ?? 0.1) * 100));
   const [jobs, setJobs] = useState<Job[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const refresh = () => api<Job[]>("/api/jobs").then(setJobs).catch(() => undefined);
@@ -169,7 +163,7 @@ export function NewRunPage() {
         </label>
         <label>
           How much smaller? <b>{cut}%</b>
-          <input type="range" min={5} max={40} step={1} value={cut} onChange={(e) => setCut(Number(e.target.value))} />
+          <input type="range" min={1} max={60} step={1} value={cut} onChange={(e) => setCut(Number(e.target.value))} />
           {orig && <span className="muted">{mb(orig)} → under {mb(orig * (1 - cut / 100))}</span>}
         </label>
         <div className="actions">
@@ -196,5 +190,91 @@ export function NewRunPage() {
         </details>
       ))}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------- "Your computer" panel
+
+type Machine = {
+  machine: { name: string; chip: string; memory_gb: number | null };
+  models: { id: string; size_mb: number }[];
+  max_cut: number;
+};
+
+// other devices are rough examples: memory only, as sold
+const DEVICES: { id: string; label: string; memory_gb: number }[] = [
+  { id: "mac-mini", label: "Mac mini · 16 GB", memory_gb: 16 },
+  { id: "laptop-8", label: "Laptop · 8 GB", memory_gb: 8 },
+  { id: "phone", label: "Phone · 8 GB", memory_gb: 8 },
+  { id: "pi", label: "Raspberry Pi · 4 GB", memory_gb: 4 },
+  { id: "pi2", label: "Small board · 2 GB", memory_gb: 2 },
+];
+
+function MachinePanel() {
+  const [m, setM] = useState<Machine | null>(null);
+  const [device, setDevice] = useState("this");
+  const [share, setShare] = useState(50);
+  const [model, setModel] = useState<string | null>(null);
+  useEffect(() => {
+    api<Machine>("/api/machine").then((x) => {
+      setM(x);
+      setModel(x.models[x.models.length - 1]?.id ?? null);
+    }).catch(() => undefined);
+  }, []);
+  if (!m) return <div className="machine muted">Reading your computer…</div>;
+  const mem = device === "this" ? m.machine.memory_gb ?? 0 : DEVICES.find((d) => d.id === device)!.memory_gb;
+  const budget = mem * 1024 * (share / 100) * 1.048576; // GiB share -> MB
+  const sel = m.models.find((x) => x.id === model) ?? m.models[0];
+  if (!sel) return null;
+  const fits = sel.size_mb <= budget;
+  const cut = 1 - budget / sel.size_mb;
+  const reachable = cut <= m.max_cut;
+  const maxBar = Math.max(sel.size_mb, budget) * 1.05;
+  return (
+    <section className="machine">
+      <div className="m-grid">
+        <label>
+          <span className="m-label">Device</span>
+          <select value={device} onChange={(e) => setDevice(e.target.value)}>
+            <option value="this">This computer: {m.machine.name} · {m.machine.chip.replace("Apple ", "")} · {Math.round(m.machine.memory_gb ?? 0)} GB</option>
+            {DEVICES.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+          </select>
+        </label>
+        <label>
+          <span className="m-label">Model</span>
+          <select value={sel.id} onChange={(e) => setModel(e.target.value)}>
+            {m.models.map((x) => <option key={x.id} value={x.id}>{modelName(x.id)} · {mb(x.size_mb)}</option>)}
+          </select>
+        </label>
+        <label>
+          <span className="m-label">Memory the model may use: <b>{share}%</b> ({mb(budget)})</span>
+          <input type="range" min={10} max={90} step={5} value={share} onChange={(e) => setShare(Number(e.target.value))} />
+        </label>
+      </div>
+      <div className="m-bars">
+        <div className="bar-row">
+          <span className="bar-name">Model</span>
+          <span className="bar-track"><span className={`bar-fill ${fits ? "ok" : "agent"}`} style={{ width: `${(sel.size_mb / maxBar) * 100}%` }} /></span>
+          <span className="bar-val">{mb(sel.size_mb)}</span>
+        </div>
+        <div className="bar-row">
+          <span className="bar-name">Room for it</span>
+          <span className="bar-track"><span className="bar-fill room" style={{ width: `${(budget / maxBar) * 100}%` }} /></span>
+          <span className="bar-val">{mb(budget)}</span>
+        </div>
+      </div>
+      <div className="m-verdict">
+        {fits ? (
+          <span className="ok-text">Fits already ✓</span>
+        ) : reachable ? (
+          <>
+            <span className="warn">Too big: needs to be {pct(cut)} smaller</span>
+            <a className="primary" href={`#/new?model=${encodeURIComponent(sel.id)}&cut=${Math.ceil(cut * 100) / 100}`}>Make it fit →</a>
+          </>
+        ) : (
+          <span className="warn">Too big: would need {pct(cut)} smaller. Cutting alone can't do that; pick a smaller model.</span>
+        )}
+      </div>
+    </section>
   );
 }
