@@ -286,7 +286,7 @@ function MachinePanel() {
 
       {device === "this" && now && (
         <div className="live">
-          <span className="dot-live" /> Right now:
+          <span className="dot-live" /> Current state:
           {now.memory_used_pct != null && <span>memory <b>{now.memory_used_pct}%</b> in use</span>}
           {now.gpu_busy_pct != null && <span>GPU <b>{now.gpu_busy_pct}%</b> busy</span>}
           {now.gpu_memory_mb != null && <span>GPU using <b>{mb(now.gpu_memory_mb)}</b></span>}
