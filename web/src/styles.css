@@ -224,3 +224,7 @@ details p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
 .feasible.yes .f-head { color: var(--good); }
 .feasible.no .f-head { color: var(--warn); }
 .feasible .f-line { font-size: 14px; color: var(--ink-2); }
+.job summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.job-what { font-weight: 600; }
+.job-details { margin-top: 8px; }
+.badge.done { }

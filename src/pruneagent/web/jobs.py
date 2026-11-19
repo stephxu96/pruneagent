@@ -8,6 +8,7 @@ server stopped is marked `lost`; the run itself can be resumed as usual).
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import signal
@@ -78,6 +79,7 @@ class Job:
     ended: str | None
     exit_code: int | None
     log: str
+    params: str | None = None  # the request's fields, as JSON
 
     def public(self, tail: int = 4000) -> dict:
         try:
@@ -85,6 +87,7 @@ class Job:
         except FileNotFoundError:
             text = ""
         out = {"id": self.id, "kind": self.kind, "run_id": self.run_id, "status": self.status,
+               "params": json.loads(self.params) if self.params else {},
                "created": self.created, "started": self.started, "ended": self.ended,
                "exit_code": self.exit_code, "output": text, "result": None}
         if self.kind == "precheck" and self.status in ("done", "failed"):
@@ -123,6 +126,8 @@ class JobRunner:
             con.execute("""CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT,
                 run_id TEXT, argv TEXT, status TEXT, created TEXT, started TEXT, ended TEXT, exit_code INTEGER,
                 log TEXT)""")
+            if "params" not in {r[1] for r in con.execute("PRAGMA table_info(jobs)")}:
+                con.execute("ALTER TABLE jobs ADD COLUMN params TEXT")
             con.execute("UPDATE jobs SET status='lost', ended=? WHERE status='running'", (_now(),))
 
     def _con(self) -> sqlite3.Connection:
@@ -135,8 +140,9 @@ class JobRunner:
     def submit(self, kind: str, params: dict) -> Job:
         argv = self.build(kind, params)
         with closing(self._con()) as con, con:
-            cur = con.execute("INSERT INTO jobs (kind, run_id, argv, status, created, log) VALUES (?,?,?,?,?,?)",
-                              (kind, params.get("run_id"), " ".join(argv), "queued", _now(), ""))
+            cur = con.execute(
+                "INSERT INTO jobs (kind, run_id, argv, status, created, log, params) VALUES (?,?,?,?,?,?,?)",
+                (kind, params.get("run_id"), " ".join(argv), "queued", _now(), "", json.dumps(params)))
             job_id = cur.lastrowid
             con.execute("UPDATE jobs SET log=? WHERE id=?", (str(self.log_dir / f"job-{job_id}.log"), job_id))
         return self.get(job_id)
