@@ -20,6 +20,18 @@ export type RunSummary = {
   now_error: number | null;
   has_heldout: boolean;
   has_accuracy: boolean;
+  settings: {
+    device: string;
+    agent: string;
+    ideas_per_round: number;
+    max_drop_per_step: number;
+    max_rounds: number;
+    max_ai_calls: number;
+    max_layers_removed: number;
+    min_layer_width: number;
+    sample_text: string;
+    test_passages: number;
+  };
 };
 
 export type Candidate = {
