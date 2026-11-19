@@ -5,6 +5,18 @@ The Wanda paper reports plain accuracy (`acc`); length-normalised accuracy (`acc
 """
 
 TASKS = ("boolq", "rte", "hellaswag", "winogrande", "arc_easy", "arc_challenge", "openbookqa")
+# questions per set (the splits lm-eval scores), for the question-weighted average
+TASK_SIZES = {"boolq": 3270, "rte": 277, "hellaswag": 10042, "winogrande": 1267, "arc_easy": 2376,
+              "arc_challenge": 1172, "openbookqa": 500}
+
+
+def weighted_accuracy(per_task: dict) -> dict:
+    """Share of all questions answered correctly, each question counted once (not a plain mean of the sets),
+    with its standard error. `per_task` maps set -> {"acc", "acc_stderr"}, as in `summarize(...)["tasks"]`."""
+    n = sum(TASK_SIZES[t] for t in per_task)
+    acc = sum(TASK_SIZES[t] * r["acc"] for t, r in per_task.items()) / n
+    se = sum((TASK_SIZES[t] * (r.get("acc_stderr") or 0.0)) ** 2 for t, r in per_task.items()) ** 0.5 / n
+    return {"acc": acc, "stderr": se, "questions": n}
 
 
 def summarize(results: dict, tasks: tuple[str, ...] = TASKS) -> dict:

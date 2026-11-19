@@ -21,6 +21,18 @@ python3 board/server.py   # http://127.0.0.1:8765
 
 See [`board/README.md`](board/README.md).
 
+## Web app
+
+Watch the AI cut a model down, round by round, and compare it with the standard method (FLAP).
+
+```bash
+uv sync --extra web
+(cd web && npm install && npm run build)   # once, and after changing the interface
+uv run --extra web pruneagent web          # http://127.0.0.1:8125
+```
+
+Open a round directly with `#/run/<run-id>/<round>`, e.g. `http://127.0.0.1:8125/#/run/20261118-1016-qwen3-0.6b-codex/14`. The app only calls the same commands as the CLI and reads their files (ADR-008); it runs on this computer only. For interface work, `cd web && npm run dev` serves it on :5173 with the API forwarded.
+
 ## Agent backend
 
 The agent's decisions come from `pruneagent.agent_client`. By default it calls Codex on your ChatGPT plan; an API backend is also built in, but it has not yet made a real call.

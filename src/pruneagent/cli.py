@@ -1272,3 +1272,15 @@ def limits_cmd(
     if reading is not None:
         typer.echo(f"Latest reading ({reading.time.astimezone():%Y-%m-%d %H:%M}): {reading.summary()}")
     typer.echo(client.estimate_run(calls).message())
+
+
+@app.command("web")
+def web_cmd(
+    port: Annotated[int, typer.Option(help="Port on this computer (the app listens on 127.0.0.1 only).")] = 8125,
+) -> None:
+    """Open the PruneAgent web app: watch, replay and compare runs in the browser (needs `uv sync --extra web`
+    and a built interface: `cd web && npm run build`)."""
+    from pruneagent.web.app import serve
+
+    typer.echo(f"PruneAgent web app on http://127.0.0.1:{port}  (Ctrl-C to stop)")
+    serve(port)
