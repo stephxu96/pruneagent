@@ -217,14 +217,27 @@ details p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
 .dot-live { width: 8px; height: 8px; border-radius: 99px; background: var(--good); display: inline-block; animation: blink 2s infinite; }
 @keyframes blink { 50% { opacity: .3; } }
 .primary:disabled, .secondary:disabled { opacity: .4; cursor: not-allowed; }
-.feasible { border-radius: 10px; padding: 12px 14px; border: 1px solid var(--line); display: grid; gap: 4px; }
-.feasible.yes { border-color: var(--good); }
-.feasible.no { border-color: var(--warn); }
-.feasible .f-head { font-weight: 700; }
-.feasible.yes .f-head { color: var(--good); }
-.feasible.no .f-head { color: var(--warn); }
-.feasible .f-line { font-size: 14px; color: var(--ink-2); }
 .job summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .job-what { font-weight: 600; }
 .job-details { margin-top: 8px; }
 .badge.done { }
+.feasible { border-radius: 14px; padding: 16px; border: 1px solid var(--line); background: var(--bg); display: grid; gap: 14px; }
+.feasible.checking { color: var(--ink-2); font-size: 14px; }
+.feasible.yes { border-color: color-mix(in srgb, var(--good) 60%, var(--line)); }
+.feasible.no { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); }
+.f-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.f-badge { font-weight: 700; font-size: 14px; padding: 4px 12px; border-radius: 999px; }
+.feasible.yes .f-badge { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.feasible.no .f-badge { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.f-title { font-weight: 600; }
+.f-reason { font-size: 14px; color: var(--ink-2); }
+.f-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.f-tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 4px; align-content: start; }
+.f-label { font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.f-big { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.f-sub { font-size: 13px; color: var(--ink-2); }
+.f-range { display: grid; gap: 4px; margin-top: 4px; }
+.f-track { position: relative; height: 6px; border-radius: 99px; background: linear-gradient(90deg, var(--gone), color-mix(in srgb, var(--good) 45%, var(--gone))); }
+.f-mark { position: absolute; top: -4px; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px; background: var(--agent); }
+.f-ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); }
+.f-foot { font-size: 12px; color: var(--ink-3); }
