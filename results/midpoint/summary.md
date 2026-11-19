@@ -2,7 +2,7 @@
 
 ## Headline
 
-On the small model (Qwen3-0.6B-Base), cut to 10% less weight memory, the agent's model scores **15.55 perplexity on held-out test text, against 17.90 for Baseline: FLAP**: 13% lower (better) at the same memory limit. It got there in 13 rounds, with every round's step kept. On seven multiple-choice question sets it is clearly more accurate on 2 (by 6.7 and 2.4 points), and FLAP is clearly ahead on none; the other 5 are too close to call. This is one run on one model.
+On the small model (Qwen3-0.6B-Base), cut to 10% less weight memory, the agent's model scores **15.55 perplexity on held-out test text, against 17.90 for Baseline: FLAP**: 13% lower (better) at the same memory limit. It got there in 13 rounds, with every round's step kept. Across 18,904 multiple-choice questions it answers **45.2% correctly, against 43.8% for FLAP**: +1.4 points, about 3 times the random variation, so a clear lead. By set, it is clearly ahead on 2 of 7 and behind on none. This is one run on one model.
 
 **Second run, at a 30% memory cut:** FLAP's model breaks down (test perplexity 427), while the agent's degrades but does not collapse (41.8, against 12.7 unpruned). Measuring FLAP at seven cuts shows it falls off a cliff between 15% and 20%. This run also undid 3 steps, which the midpoint checkpoint requires; with it, all four checkpoint conditions are met. See [The 30% run](#the-30-run-a-deeper-cut).
 
@@ -36,7 +36,9 @@ The agent's lead holds on held-out text (11% on unseen validation, 13% on test),
 
 Perplexity measures how well a model predicts text; accuracy measures whether it picks the right answer to a question. We scored both pruned models on seven standard question sets used in earlier pruning research (percent correct, higher is better), on the Mac GPU.
 
-The sets differ a lot in size, from 277 to 10,042 questions, so we compare them one at a time rather than averaging them. A gap counts as clear only when it is about twice the random variation expected for a set of that size.
+**Over all 18,904 questions, each counted once: agent 45.2%, Baseline: FLAP 43.8%, a gap of +1.4 points.** The random variation in that gap is about 0.5 points, so the gap is about 3 times it: a clear lead. A plain average of the seven set scores would give a 277-question set the same say as a 10,042-question one, so we do not use it. Hellaswag is 53% of the questions, so it weighs most in this figure.
+
+By set, a gap counts as clear only when it is about twice the random variation expected for a set of that size.
 
 | Question set | What it tests | Questions | Unpruned (Colab GPU) | **Agent** | Baseline: FLAP | Agent minus FLAP | Clear difference? |
 |---|---|---:|---:|---:|---:|---:|---|
@@ -100,7 +102,7 @@ A step is undone when every proposal in a round would raise perplexity by more t
 
 FLAP degrades gradually to 15% and then breaks down by 20%. Past that point its scores jump around (25% scores better than 22.5%), as expected once a model has stopped working. FLAP cannot prune the word table (about a quarter of the model's memory), so a 30% cut of total memory means removing about 40% of everything else; the agent reaches the same memory partly by dropping whole layers.
 
-**Accuracy.** At this cut both models have lost most of their question-answering ability, so the table also shows the score from guessing.
+**Accuracy.** Over all 18,904 questions: agent 36.8%, Baseline: FLAP 31.2%, +5.6 points, about 12 times the random variation, so a clear lead. At this cut, though, both models have lost most of their question-answering ability, so the table also shows the score from guessing.
 
 | Question set | Score from guessing | **Agent** | Baseline: FLAP | Agent minus FLAP | Clear difference? |
 |---|---|---|---|---|---|
@@ -136,7 +138,7 @@ The 20% run: 20 Codex calls (about 218,000 tokens; 5-hour allowance at 11% and w
 ## Limits
 
 - One run per memory limit, one model. Codex's answers vary from run to run; repeats come in tuning (3.1).
-- The accuracy lead is smaller than the perplexity lead: clear on 2 of 7 question sets, too close to call on the rest.
+- The accuracy lead is smaller than the perplexity lead: +1.4 points over all questions (clear), and by set clear on 2 of 7, too close to call on the rest.
 - The small model only; the production comparison on 1.7B is phase 4.
 
 Files: `decisions.jsonl` (every round, candidates and reasons), `plans/` (every kept plan), `heldout.json` (held-out numbers), `accuracy.json` (accuracy per question set); the 30% and 20% runs' files end in `_30pct` and `_20pct`; the FLAP curve is in `results/flap_curve/`. Reproduce with `scripts/heldout_check.py runs/<run-id>` and `scripts/accuracy_check.py runs/<run-id>`; the curve with `scripts/flap_curve.py` and `scripts/flap_curve_chart.py`.
