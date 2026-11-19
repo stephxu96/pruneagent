@@ -75,10 +75,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         <h1>
           Making {modelName(run.model)} {run.cut != null ? pct(run.cut) : ""} smaller
         </h1>
-        <p className="lede">
-          Goal: shrink the model from {mb(orig)} to under {mb(run.limit_mb)} while losing as little quality as possible.
-          Each round, the AI suggests up to three ways to cut, the computer tests each one, and keeps the best.
-        </p>
+        <Settings run={run} orig={orig} />
         <p className="status">
           <span className={`badge ${run.state}`}>{stateText[run.state] ?? run.state}</span>
           {run.rounds.length} rounds · {run.kept_steps} steps kept
@@ -189,6 +186,34 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         </section>
       )}
     </div>
+  );
+}
+
+function Settings({ run, orig }: { run: RunDetail; orig: number }) {
+  const s = run.settings;
+  const rows: [string, string][] = [
+    ["Model", modelName(run.model)],
+    ["Original size", mb(orig)],
+    ["Target size", `under ${mb(run.limit_mb)}${run.cut != null ? ` (${pct(run.cut)} smaller)` : ""}`],
+    ["Device", s.device.toUpperCase()],
+    ["AI", s.agent],
+    ["Ideas per round", String(s.ideas_per_round)],
+    ["Max quality drop per step", pct(s.max_drop_per_step)],
+    ["Max rounds", String(s.max_rounds)],
+    ["Max AI calls", String(s.max_ai_calls)],
+    ["Max layers removed", String(s.max_layers_removed)],
+    ["Min layer width kept", pct(s.min_layer_width)],
+    ["Sample text", s.sample_text],
+  ];
+  return (
+    <dl className="settings">
+      {rows.map(([k, v]) => (
+        <div key={k}>
+          <dt>{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

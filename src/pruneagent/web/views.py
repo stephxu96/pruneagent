@@ -56,6 +56,18 @@ def _summary(store: R.RunStore) -> dict:
         "original_error": dense.val_ppl if dense else None,
         "now_error": last.val_ppl if last else None,
         "has_heldout": (store.dir / "heldout.json").exists(),
+        "settings": {
+            "device": cfg.device.name,
+            "agent": " ".join(x for x in (cfg.agent_backend.capitalize(), cfg.agent_model, cfg.agent_reasoning_effort) if x),
+            "ideas_per_round": cfg.rules.max_candidates,
+            "max_drop_per_step": cfg.rules.step_limit,
+            "max_rounds": cfg.rules.max_rounds,
+            "max_ai_calls": cfg.max_agent_calls,
+            "max_layers_removed": cfg.rules.max_drops_per_run,
+            "min_layer_width": cfg.rules.min_mlp_fraction,
+            "sample_text": f"{cfg.calibration.dataset.upper()}, {cfg.calibration.n_samples} passages",
+            "test_passages": cfg.gate_windows,
+        },
         "has_accuracy": (store.dir / "accuracy.json").exists(),
     }
 
