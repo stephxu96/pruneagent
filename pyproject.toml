@@ -25,6 +25,9 @@ web = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
 ]
+report = [
+    "matplotlib>=3.8",
+]
 
 [dependency-groups]
 dev = [

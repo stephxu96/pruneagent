@@ -687,8 +687,8 @@
       ],
       "done_when": "Report builds from a tuning run",
       "gpu": "",
-      "status": "todo",
-      "notes": ""
+      "status": "done",
+      "notes": " [2026-11-19] `pruneagent report <run-id>` writes runs/<id>/report/: report.md (plain words), path/layers/rounds charts, report.json. Built for the 10/20/30% runs; a tuning run will build the same way."
     },
     {
       "id": "3.6",
