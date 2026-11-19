@@ -161,8 +161,8 @@ export function Neurons3D({ layers, prev, full, caption }: {
       <div className="legend">
         <span><i className="sw part dot" /> {NEURONS_PER_DOT} neurons</span>
         <span><i className="sw attn" /> attention unit</span>
-        <span><i className="sw hot dot" /> cut in this step</span>
-        <span><i className="sw gone dot" /> cut earlier</span>
+        <span><i className="sw hot dot" /> Latest cut</span>
+        <span><i className="sw gone dot" /> Earlier cuts</span>
         <span className="muted">Drag to turn. Layers 0 to {layers.length - 1}, left to right.</span>
       </div>
       {caption && <figcaption>{caption}</figcaption>}

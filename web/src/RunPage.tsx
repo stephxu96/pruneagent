@@ -95,7 +95,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         </button>
         <input type="range" min={0} max={last} value={at} aria-label="Round"
           onChange={(e) => { setPlaying(false); setAt(Number(e.target.value)); }} />
-        <span className="where">{at === 0 ? "Start: the original model" : `Round ${at} of ${last}`}</span>
+        <span className="where">{at === 0 ? "Original model" : `Round ${at} of ${last}`}</span>
       </section>
 
       <div className="timeline" aria-label="Rounds">
@@ -112,12 +112,12 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
             <div className="g-label">Size</div>
             <div className="g-value">{mb(step.size_mb)}</div>
             <div className="bar"><div className="fill" style={{ width: `${progress * 100}%` }} /></div>
-            <div className="g-note">{progress >= 1 ? "Fits the goal ✓" : `${mb(Math.max(0, step.size_mb - run.limit_mb))} still to cut`}</div>
+            <div className="g-note">{progress >= 1 ? "Goal met ✓" : `${mb(Math.max(0, step.size_mb - run.limit_mb))} still to cut`}</div>
           </div>
           <div className="gauge">
-            <div className="g-label">Quality lost so far</div>
+            <div className="g-label">Quality loss</div>
             <div className="g-value">{lossText(qualityLoss(step.error, base))}</div>
-            <div className="g-note">than the original, at predicting text</div>
+            <div className="g-note">vs. the original</div>
           </div>
           {step.mac_mb != null && (
             <div className="gauge">
@@ -130,10 +130,10 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
           )}
           {run.flap?.error && (
             <div className="gauge flap-g">
-              <div className="g-label">Standard method (FLAP), cut to the goal</div>
+              <div className="g-label">FLAP at the same size</div>
               <div className="g-value">{lossText(qualityLoss(run.flap.error, base))}</div>
               <div className="g-note">
-                <label><input type="checkbox" checked={showFlap} onChange={(e) => setShowFlap(e.target.checked)} /> show its cut</label>
+                <label><input type="checkbox" checked={showFlap} onChange={(e) => setShowFlap(e.target.checked)} /> FLAP's cut</label>
               </div>
             </div>
           )}
@@ -183,7 +183,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
                       {c.rise != null && c.rise > 0.15 && <span className="warn"> · too much, over the 15% limit</span>}
                     </div>
                     <details>
-                      <summary>The AI's reason</summary>
+                      <summary>AI reasoning</summary>
                       <p>{c.why}</p>
                     </details>
                   </li>
@@ -194,19 +194,19 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
             )}
           </>
         ) : (
-          <p className="muted">Press Play to watch the AI cut the model down, round by round.</p>
+          <p className="muted">Press Play for the round-by-round replay.</p>
         )}
       </section>
 
       <section>
-        <h2>Every idea tested</h2>
+        <h2>All tested ideas</h2>
         <PathChart run={run} upTo={at} />
       </section>
 
       {held && (
         <section>
-          <h2>Final check on new text</h2>
-          <p className="muted">After the run, both cut models were tested on text neither had seen.</p>
+          <h2>Unseen-text test</h2>
+          <p className="muted">Both models, same size, on text neither saw during the run.</p>
           <ResultBars held={held} />
           {results?.accuracy && <QuizLine acc={results.accuracy} />}
         </section>

@@ -118,8 +118,8 @@ export function changesText(changes: Change[]): string {
 
 export const outcomeText: Record<string, string> = {
   ACCEPT: "Kept",
-  ROLLBACK: "Nothing kept: every idea hurt quality too much",
-  INVALID: "Ideas refused: repeated something already tried",
+  ROLLBACK: "Nothing kept (too much quality loss)",
+  INVALID: "Refused (repeated ideas)",
 };
 
 /** Which layers changed between two kept steps (for highlighting). */
@@ -137,9 +137,9 @@ export const runLabel = (r: { model: string; cut: number | null }) =>
   `${modelName(r.model)}, ${r.cut == null ? "?" : pct(r.cut)} smaller`;
 
 export const stateText: Record<string, string> = {
-  running: "Running now",
+  running: "Running",
   paused: "Paused",
-  interrupted: "Stopped unexpectedly (can continue)",
+  interrupted: "Interrupted (resumable)",
   finished: "Finished",
 };
 
