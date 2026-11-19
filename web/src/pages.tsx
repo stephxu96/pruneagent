@@ -266,13 +266,11 @@ function MachinePanel() {
         </label>
         <label>
           <span className="m-label">Memory (GB)</span>
-          <input type="number" min={1} max={512} step={1} value={memGb} disabled={device !== "custom"}
-            onChange={(e) => setMemGb(Math.max(1, Number(e.target.value) || 1))} />
+          <NumberField min={1} max={512} step={1} value={memGb} disabled={device !== "custom"} onCommit={setMemGb} />
         </label>
         <label>
           <span className="m-label">Keep free for other apps (%)</span>
-          <input type="number" min={10} max={90} step={5} value={free}
-            onChange={(e) => setFree(Math.min(90, Math.max(10, Number(e.target.value) || 50)))} />
+          <NumberField min={10} max={90} step={5} value={free} onCommit={setFree} />
         </label>
       </div>
 
@@ -302,5 +300,30 @@ function MachinePanel() {
       </div>
 
     </section>
+  );
+}
+
+/** A number box that lets people type freely: in-range values apply as typed; anything else is fixed on leaving
+ * the box (or Enter), instead of being overwritten on every key. */
+function NumberField({ value, min, max, step, disabled, onCommit }: {
+  value: number; min: number; max: number; step: number; disabled?: boolean; onCommit: (v: number) => void;
+}) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  const settle = () => {
+    const n = Number(text);
+    const v = text.trim() === "" || Number.isNaN(n) ? value : Math.min(max, Math.max(min, n));
+    setText(String(v));
+    onCommit(v);
+  };
+  return (
+    <input type="number" inputMode="numeric" min={min} max={max} step={step} value={text} disabled={disabled}
+      onChange={(e) => {
+        setText(e.target.value);
+        const n = Number(e.target.value);
+        if (e.target.value.trim() !== "" && !Number.isNaN(n) && n >= min && n <= max) onCommit(n);
+      }}
+      onBlur={settle}
+      onKeyDown={(e) => { if (e.key === "Enter") settle(); }} />
   );
 }
