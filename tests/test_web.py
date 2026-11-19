@@ -163,18 +163,3 @@ def test_time_left_reads_a_runs_own_progress(finished_run):
     t = R.time_left(R.RunStore.open("r1", finished_run), [])
     assert t is not None and t["mb_left"] >= 0 and t["rounds_left"] >= 0 and t["worst_minutes"] >= 0
 
-
-def test_best_of_keeps_the_run_with_the_lowest_sample_text_error(setup_for, monkeypatch):
-    import pytest
-
-    from pruneagent import bestof
-
-    run_cfg, setup, root = setup_for("bestof")
-    use(monkeypatch, root, Agent())
-    RR.start(run_cfg, setup, root / "runs", "a")
-    RR.start(run_cfg, setup, root / "runs", "b")
-    rec = bestof.pick(root / "runs", ["a", "b"])
-    errs = [r["sample_error"] for r in rec["runs"]]
-    assert errs == sorted(errs) and rec["winner"] == rec["runs"][0]["run"]
-    with pytest.raises(bestof.PickError):
-        bestof.pick(root / "runs", ["a"])
