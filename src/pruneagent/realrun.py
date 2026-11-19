@@ -356,6 +356,9 @@ def dry_run(run_cfg: RunConfig, setup: Setup, notify: Notify = _stderr) -> dict:
         pass
     return {"prompt": catcher.prompt, "notes": built.notes, "scores_cached": built.scores_cached,
             "estimate": est.message() if est is not None else None,
-            "usage": None if est is None else {"calls": est.calls, "calls_fit": est.calls_fit, "fits": est.fits},
+            "usage": None if est is None else {
+                "calls": est.calls, "calls_fit": est.calls_fit, "fits": est.fits,
+                "windows": [{"name": w.name, "used_pct": w.used, "pct_per_call": w.pct_per_call,
+                             "resets_at": w.resets_at.isoformat() if w.resets_at else None} for w in est.windows]},
             "stop_reason": state.get("stop_reason"),
             "warnings": [w.message for w in state.get("warnings", [])]}
