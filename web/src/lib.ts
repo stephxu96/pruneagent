@@ -56,11 +56,13 @@ export type Round = {
   check_seconds: number;
 };
 
-export type Step = { round: number; error: number; size_mb: number; layers: Layer[] };
+export type Step = { round: number; error: number; size_mb: number; mac_mb: number | null; layers: Layer[] };
 
 export type RunDetail = RunSummary & {
   shape: { layers: number; mlp_full: number; groups_full: number };
-  flap: { size_mb: number; error: number | null; layers: Layer[] } | null;
+  flap: { size_mb: number; error: number | null; mac_mb: number | null; layers: Layer[] } | null;
+  mac_context: number;
+  bandwidth_mb_s: number | null;
   steps: Step[];
   rounds: Round[];
 };
