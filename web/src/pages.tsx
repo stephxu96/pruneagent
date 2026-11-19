@@ -403,8 +403,7 @@ function FeasibilityResult({ job, model }: { job: Job; model: string }) {
       </div>
       {r.smallest_mb != null && r.original_mb != null && (
         <div className="f-line">
-          {sizeOk ? "✓" : "✕"} Size: the target ({mb(r.limit_mb)}) has to be smaller than the original ({mb(r.original_mb)})
-          {" "}and no smaller than the most the rules allow cutting to ({mb(r.smallest_mb)}).
+          {sizeOk ? "✓" : "✕"} Size: {mb(r.limit_mb)} is {sizeOk ? "within reach" : "out of reach"}. The original is {mb(r.original_mb)}; the smallest this model can go is {mb(r.smallest_mb)}.
         </div>
       )}
       {r.usage && (
