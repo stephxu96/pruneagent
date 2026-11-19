@@ -1,6 +1,6 @@
 # ADR-008: A Web Application on Top of the Existing Tools
 
-- **Status:** Proposed (v0.9)
+- **Status:** Accepted (v0.9, 2026-11-19)
 - **Date:** 2026-11-19
 - **Deciders:** Steph Xu
 - **Related:** ADR-001, ADR-005, ADR-006; ARCHITECTURE.md §1.2 (FR16), §2, §3, §5, §8b, §13 (Q2)
