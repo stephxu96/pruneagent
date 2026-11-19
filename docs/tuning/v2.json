@@ -1,0 +1,63 @@
+{
+ "version": "v2",
+ "optimizer": "Claude (coding agent), acting as the prompt optimizer of docs/prompt_optimizer_plan.md; Steph delegated tuning rounds 1-2 on 2026-11-19",
+ "evidence_runs": [
+  "20261118-0046-qwen3-0.6b-codex (10%)",
+  "20261118-1718-qwen3-0.6b-codex (20%)",
+  "20261118-1016-qwen3-0.6b-codex (30%)"
+ ],
+ "diagnosis": [
+  {
+   "behaviour": "Near the limit, the agent tries to finish in one round with large bundles; they break the 15% step limit (round wasted) or pass with the run's costliest step.",
+   "impact": "high",
+   "evidence": [
+    "20%, round 15: three candidates of 16-30 choices freeing ~58 MB (all that was left): +53.2%, +49.5%, +25.5%, all rejected",
+    "20%, round 19: three 9-choice candidates freeing ~40 MB (all that was left): +20.2%, +20.4%, +20.9%, all rejected",
+    "20%, round 20: kept a 21-choice candidate at +14.6%, the run's largest step; its rise per MB (3.57) was worse than most earlier kept steps",
+    "30%, round 27: 'making it the strongest single-step fitting alternative'; rounds 27-28 rejected at +19% to +28%",
+    "30%, round 32: kept a 12-choice candidate at +13.6%"
+   ],
+   "cause": "The instructions never say that reaching the limit sooner is worth nothing, nor that choices applied together interact. Rounds were never short (20 of 40 used at 20%), so the rush has no reason.",
+   "cause_in_instructions": true
+  },
+  {
+   "behaviour": "The agent re-proposes plans already measured; the code refuses them and the round is lost.",
+   "impact": "low",
+   "evidence": [
+    "30%, round 30: 'candidate 1 gives a plan already evaluated in an earlier round'",
+    "30%, round 31: same"
+   ],
+   "cause": "The rules section the code fills in already says 'none may repeat a model already measured'; the agent did not follow it. Not an instructions gap.",
+   "cause_in_instructions": false
+  },
+  {
+   "behaviour": "The agent picks layers to drop from the quick tests rather than the measured damage.",
+   "impact": "medium",
+   "evidence": [
+    "20%, round 15: 'Quick tests identify layer 3 as an unusually low-damage drop candidate' (rejected at +53%)"
+   ],
+   "cause": "The instructions already say to use measured damage for the layer choice; one instance only, so not edited this round.",
+   "cause_in_instructions": false
+  }
+ ],
+ "edits": [
+  {
+   "replace": "Candidates are your experiments: make them test different ideas, not small\nvariations of one idea. Small steps let you re-measure before committing\nfurther. You can return to an earlier kept plan, but a later step cannot undo\nthe damage of an earlier one.",
+   "with": "Candidates are your experiments: make them test different ideas, not small\nvariations of one idea. Small steps let you re-measure before committing\nfurther. Choices in one candidate interact: together they often do more damage\nthan the sum of their separate measurements. Reaching the limit in fewer\nrounds earns nothing; only perplexity at the limit counts. You can return to\nan earlier kept plan, but a later step cannot undo the damage of an earlier\none.",
+   "fixes": "rushing to the limit with large bundles",
+   "expected_signal": "fewer candidates that free all remaining memory at once; fewer ROLLBACK rounds near the limit; a smaller final step (< +10%); lower unseen-validation perplexity at the same limit",
+   "single_model_evidence": true
+  }
+ ],
+ "not_instruction_issues": [
+  "Quick tests are misleading for layer drops on this model (known since task 2.x); the instructions already rank measured damage above them for choosing layers.",
+  "Repeated plans (30% run, rounds 30-31) despite the rule being stated; the code already refuses them, costing one round each. If it recurs, the code could list the already-measured plans next to the rule."
+ ],
+ "neutrality_check": "Neither edit names, ranks or discourages a method or a layer; both state facts true of the system (the validator refuses repeated plans; the score is perplexity at the limit; interaction is observed in the round results the agent sees).",
+ "change_log_entry": {
+  "version": "v2",
+  "model": "Qwen3-0.6B-Base",
+  "edit": "E1 only: choices in one candidate interact; reaching the limit in fewer rounds earns nothing",
+  "effect": "to be measured: 2 runs at 20%, unseen validation perplexity vs v1 (23.22 and run A)"
+ }
+}
