@@ -84,7 +84,7 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunne
     @app.get("/api/machine")
     def this_machine() -> dict:
         """This computer's chip and memory, and each model's original size."""
-        return {"machine": M.machine(), "models": M.model_sizes(), "max_cut": J.MAX_CUT}
+        return {"machine": M.machine(), "models": M.model_sizes(), "max_cut": J.MAX_CUT, "free_share": M.FREE_SHARE}
 
     @app.get("/api/runs/{run_id}/events")
     async def events(run_id: str) -> StreamingResponse:

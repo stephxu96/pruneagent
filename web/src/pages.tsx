@@ -197,8 +197,9 @@ export function NewRunPage() {
 
 type Machine = {
   machine: { name: string; chip: string; memory_gb: number | null };
-  models: { id: string; size_mb: number }[];
+  models: { id: string; size_mb: number; working_mb: number }[];
   max_cut: number;
+  free_share: number;
 };
 
 // other devices are rough examples: memory only, as sold
@@ -210,34 +211,51 @@ const DEVICES: { id: string; label: string; memory_gb: number }[] = [
   { id: "pi2", label: "Small board · 2 GB", memory_gb: 2 },
 ];
 
+const GB = 1073.741824; // MB in one GB of memory
+
 function MachinePanel() {
   const [m, setM] = useState<Machine | null>(null);
   const [device, setDevice] = useState("this");
-  const [share, setShare] = useState(50);
+  const [memGb, setMemGb] = useState<number | null>(null);
+  const [free, setFree] = useState<number | null>(null);
   const [model, setModel] = useState<string | null>(null);
   useEffect(() => {
     api<Machine>("/api/machine").then((x) => {
       setM(x);
+      setFree(Math.round(x.free_share * 100));
+      setMemGb(Math.round(x.machine.memory_gb ?? 8));
       setModel(x.models[x.models.length - 1]?.id ?? null);
     }).catch(() => undefined);
   }, []);
-  if (!m) return <div className="machine muted">Reading your computer…</div>;
-  const mem = device === "this" ? m.machine.memory_gb ?? 0 : DEVICES.find((d) => d.id === device)!.memory_gb;
-  const budget = mem * 1024 * (share / 100) * 1.048576; // GiB share -> MB
+  if (!m || free == null || memGb == null) return <div className="machine muted">Reading your computer…</div>;
   const sel = m.models.find((x) => x.id === model) ?? m.models[0];
   if (!sel) return null;
-  const fits = sel.size_mb <= budget;
-  const cut = 1 - budget / sel.size_mb;
-  const reachable = cut <= m.max_cut;
-  const maxBar = Math.max(sel.size_mb, budget) * 1.05;
+  const pick = (id: string) => {
+    setDevice(id);
+    if (id === "this") setMemGb(Math.round(m.machine.memory_gb ?? 8));
+    else if (id !== "custom") setMemGb(DEVICES.find((d) => d.id === id)!.memory_gb);
+  };
+  const total = memGb * GB;
+  const others = total * (free / 100);
+  const working = sel.working_mb;
+  const room = Math.max(0, total - others - working);
+  const fits = sel.size_mb <= room;
+  const cut = 1 - room / sel.size_mb;
+  const reachable = room > 0 && cut <= m.max_cut;
+  const parts = [
+    { cls: "others", label: "Kept free for other apps", mb: others },
+    { cls: "working", label: "Room it needs while answering", mb: working },
+    { cls: "room", label: "Room for the model", mb: room },
+  ];
   return (
     <section className="machine">
       <div className="m-grid">
         <label>
-          <span className="m-label">Device</span>
-          <select value={device} onChange={(e) => setDevice(e.target.value)}>
-            <option value="this">This computer: {m.machine.name} · {m.machine.chip.replace("Apple ", "")} · {Math.round(m.machine.memory_gb ?? 0)} GB</option>
+          <span className="m-label">Preset device</span>
+          <select value={device} onChange={(e) => pick(e.target.value)}>
+            <option value="this">This computer: {m.machine.name} · {m.machine.chip.replace("Apple ", "")}</option>
             {DEVICES.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+            <option value="custom">Custom</option>
           </select>
         </label>
         <label>
@@ -247,34 +265,42 @@ function MachinePanel() {
           </select>
         </label>
         <label>
-          <span className="m-label">Memory the model may use: <b>{share}%</b> ({mb(budget)})</span>
-          <input type="range" min={10} max={90} step={5} value={share} onChange={(e) => setShare(Number(e.target.value))} />
+          <span className="m-label">Memory (GB)</span>
+          <input type="number" min={1} max={512} step={1} value={memGb}
+            onChange={(e) => { setMemGb(Math.max(1, Number(e.target.value) || 1)); setDevice("custom"); }} />
+        </label>
+        <label>
+          <span className="m-label">Keep free for other apps (%)</span>
+          <input type="number" min={10} max={90} step={5} value={free}
+            onChange={(e) => setFree(Math.min(90, Math.max(10, Number(e.target.value) || 50)))} />
         </label>
       </div>
-      <div className="m-bars">
-        <div className="bar-row">
-          <span className="bar-name">Model</span>
-          <span className="bar-track"><span className={`bar-fill ${fits ? "ok" : "agent"}`} style={{ width: `${(sel.size_mb / maxBar) * 100}%` }} /></span>
-          <span className="bar-val">{mb(sel.size_mb)}</span>
+
+      <div>
+        <div className="m-label">How the {memGb} GB is shared</div>
+        <div className="stack" role="img" aria-label="How the memory is shared">
+          {parts.map((p) => <span key={p.cls} className={`seg ${p.cls}`} style={{ width: `${(p.mb / total) * 100}%` }} title={`${p.label}: ${mb(p.mb)}`} />)}
         </div>
-        <div className="bar-row">
-          <span className="bar-name">Room for it</span>
-          <span className="bar-track"><span className="bar-fill room" style={{ width: `${(budget / maxBar) * 100}%` }} /></span>
-          <span className="bar-val">{mb(budget)}</span>
+        <div className="legend">
+          {parts.map((p) => <span key={p.cls}><i className={`sw ${p.cls}`} /> {p.label}: {mb(p.mb)}</span>)}
         </div>
       </div>
+
       <div className="m-verdict">
         {fits ? (
-          <span className="ok-text">Fits already ✓</span>
+          <span className="ok-text">{modelName(sel.id)} fits as it is ({mb(sel.size_mb)}). No cutting needed.</span>
         ) : reachable ? (
           <>
-            <span className="warn">Too big: needs to be {pct(cut)} smaller</span>
+            <span>
+              Suggested: cut {modelName(sel.id)} from {mb(sel.size_mb)} to <b>{mb(room)}</b> ({pct(cut)} smaller)
+            </span>
             <a className="primary" href={`#/new?model=${encodeURIComponent(sel.id)}&cut=${Math.ceil(cut * 100) / 100}`}>Make it fit →</a>
           </>
         ) : (
-          <span className="warn">Too big: would need {pct(cut)} smaller. Cutting alone can't do that; pick a smaller model.</span>
+          <span className="warn">{modelName(sel.id)} would need to be {room > 0 ? pct(cut) : "100%"} smaller. Too much to cut; pick a smaller model.</span>
         )}
       </div>
+
     </section>
   );
 }
