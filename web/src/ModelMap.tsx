@@ -38,7 +38,7 @@ export function ModelMap({
           return (
             <g key={i} className={l.dropped ? "layer dropped" : "layer"}>
               <title>
-                {`Layer ${i + 1}: ` +
+                {`Layer ${i}: ` +
                   (l.dropped
                     ? "removed entirely"
                     : `${l.groups} of ${full.groups} attention units, ${Math.round(share * 100)}% of its knowledge part left`)}
@@ -65,7 +65,7 @@ export function ModelMap({
                 </text>
               )}
               <text x={x + COL / 2} y={height - 6} className="num" textAnchor="middle">
-                {i + 1}
+                {i}
               </text>
             </g>
           );

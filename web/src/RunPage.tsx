@@ -157,7 +157,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
               full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
               changed={showFlap ? undefined : changed}
               caption={showFlap ? "What the standard method (FLAP) cuts to reach the same size: a bit from almost everywhere."
-                : `${at === 0 ? "The original model" : `The model after round ${at}`}: ${run.shape.layers} layers, left to right.`}
+                : `${at === 0 ? "The original model" : `The model after round ${at}`}: ${run.shape.layers} layers (0 to ${run.shape.layers - 1}), left to right.`}
             />
             <MapLegend />
           </>

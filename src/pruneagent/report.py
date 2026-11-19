@@ -35,7 +35,7 @@ def _loss_text(x: float) -> str:
 def _changes(changes: list[dict]) -> str:
     by: dict[str, list[int]] = {}
     for c in changes:
-        by.setdefault(c["strategy"], []).append(c["layer"] + 1)
+        by.setdefault(c["strategy"], []).append(c["layer"])
     parts = []
     for s, layers in by.items():
         ls = sorted(set(layers))
@@ -69,7 +69,7 @@ def summarize(root: Path, run_id: str) -> dict:
         "rounds": len(d["rounds"]),
         "outcomes": dict(Counter(r["outcome"] for r in d["rounds"])),
         "strategies": {s: {"proposed": proposed[s], "kept": kept[s]} for s in STRATEGY},
-        "layers_removed": [i + 1 for i, layer in enumerate(last["layers"]) if layer["dropped"]],
+        "layers_removed": [i for i, layer in enumerate(last["layers"]) if layer["dropped"]],
         "cost": {"ai_calls": sum(1 for r in d["rounds"] if r["agent_seconds"] > 0),
                  "ai_seconds": sum(r["agent_seconds"] for r in d["rounds"]),
                  "check_seconds": sum(r["check_seconds"] for r in d["rounds"])},
@@ -137,7 +137,7 @@ def _charts(d: dict, out: Path) -> None:
     full_mlp, full_g = d["shape"]["mlp_full"], d["shape"]["groups_full"]
     last = d["steps"][-1]["layers"]
     fig, axes = plt.subplots(2, 1, figsize=(9, 5), dpi=150, sharex=True)
-    xs = range(1, n + 1)
+    xs = range(n)  # layers numbered from 0
     w = 0.4
     for ax, key, full, title in ((axes[0], "mlp", full_mlp, "Knowledge part left in each layer (%)"),
                                  (axes[1], "groups", full_g, "Attention units left in each layer")):
@@ -149,7 +149,7 @@ def _charts(d: dict, out: Path) -> None:
             ax.bar([x + w / 2 for x in xs], fl, width=w, color=FLAP, label="Standard method (FLAP)")
         for i, layer in enumerate(last):
             if layer["dropped"]:
-                ax.text(i + 1 - w / 2, 0, "✕", ha="center", va="bottom", color=AGENT, fontsize=9)
+                ax.text(i - w / 2, 0, "✕", ha="center", va="bottom", color=AGENT, fontsize=9)
         _style(ax, title, "", "")
         ax.set_ylim(0, (100 if key == "mlp" else full_g) * 1.1)
     axes[1].set_xlabel("Layer (✕ = removed entirely)")
