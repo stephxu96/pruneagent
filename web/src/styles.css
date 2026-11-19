@@ -261,3 +261,7 @@ details > summary::before {
 }
 details[open] > summary::before { transform: rotate(90deg); }
 .job > summary:hover .job-what { text-decoration: underline; }
+details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); font-weight: 700; }
+.job { transition: border-color .15s ease, background .15s ease; }
+.job:hover { border-color: var(--ink-3); background: color-mix(in srgb, var(--panel) 85%, var(--ink) 4%); }
+.job > summary { min-height: 28px; }
