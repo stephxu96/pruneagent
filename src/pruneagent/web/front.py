@@ -66,7 +66,11 @@ def create_front(tools_url: str = TOOLS_URL, dist: Path | None = DEFAULT_DIST,
         @app.get("/{path:path}", include_in_schema=False)
         def page(path: str) -> FileResponse:
             f = dist / path
-            return FileResponse(f if path and f.is_file() and dist in f.resolve().parents else dist / "index.html")
+            if path and f.is_file() and dist in f.resolve().parents:
+                return FileResponse(f)
+            # the page itself is never kept by the browser, so a reload always gets the deployed version (the
+            # scripts it names have the build's hash in their names, so they can be kept)
+            return FileResponse(dist / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
     return app
 

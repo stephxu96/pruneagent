@@ -51,3 +51,14 @@ def test_the_app_server_starts_as_a_lone_file_like_in_the_image(tmp_path):
     out = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, env=env, capture_output=True, text=True,
                          check=False)
     assert out.returncode == 0 and out.stdout.strip() == "/app/dist", out.stderr
+
+
+def test_the_page_is_never_cached_but_its_scripts_can_be(tmp_path):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<html></html>")
+    (dist / "assets" / "index-abc.js").write_text("x")
+    front = TestClient(create_front("http://tools", dist=dist))
+    for path in ("/", "/run/r1"):
+        assert "no-store" in front.get(path).headers["cache-control"]
+    assert "no-store" not in front.get("/assets/index-abc.js").headers.get("cache-control", "")
