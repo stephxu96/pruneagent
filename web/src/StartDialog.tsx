@@ -49,7 +49,7 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
               {SEARCHES.map((s) => (
                 <label key={s.id} className={search === s.id ? "on" : ""}>
                   <input type="radio" name="search" checked={search === s.id} onChange={() => onSearch(s.id)} />
-                  <span title={s.text}><b>{s.label}</b></span>
+                  <span title={s.text}>{s.label}</span>
                 </label>
               ))}
             </div>
@@ -86,12 +86,6 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
           </dd>
         </dl>
 
-        {!check && (
-          <div className="sd-note">
-            <b>No feasibility check for this size yet.</b> It takes about half a minute and shows the time and usage
-            before anything starts.
-          </div>
-        )}
         {blocked && (
           <div className="sd-note bad">
             <b>Not feasible at this size.</b> {check?.stop_reason}
