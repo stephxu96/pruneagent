@@ -52,9 +52,9 @@ function App() {
     <>
       <nav className="top">
         <a href="#/" className="brand">✂ PruneAgent</a>
-        <a href="#/">Runs</a>
         <a href="#/new">Prune a model</a>
         <a href="#/models">Models</a>
+        <a href="#/">Past runs</a>
         <a href="#/compare">Compare</a>
       </nav>
       <ServiceNotice />
