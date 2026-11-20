@@ -52,7 +52,7 @@ def test_prompt_states_the_strategy(tmp_path):
     assert "This round: layer 1 (layer 2 of 4" in " ".join(single[1].split())  # the next round, the next layer
     # nothing in a sweep's prompt offers going back, or a round count it doesn't use
     assert "return to an earlier kept plan" not in flat and "rollback_to" not in flat
-    assert 'To leave the layer as it is, answer {"candidates": []}.' in single[0] and "You have 4 rounds left." in flat
+    assert 'To leave the layer as it is, answer {"candidates": [], "reason": "<why, naming the evidence>"}.' in flat and "You have 4 rounds left." in flat
 
 
 def sweep(tmp_path, policy, **kw):
@@ -65,14 +65,31 @@ def test_sweep_decides_each_layer_once_in_order(tmp_path):
     # round k: cut plans for layer k only; layer 2 is left as it is
     def policy(n, p):
         layer = int(re.search(r"This round: layer (\d+)", p).group(1))
-        return {"candidates": []} if layer == 2 else v1_reply([(layer, "narrow_mlp")], [(layer, "narrow_mlp")] * 2)
+        if layer == 2:
+            return {"candidates": [], "reason": "layer 2's quick tests show high damage for every cut"}
+        return v1_reply([(layer, "narrow_mlp")], [(layer, "narrow_mlp")] * 2)
     state, backend = sweep(tmp_path, policy)
     assert len(backend.prompts) == 4  # exactly one decision per layer
     assert outcomes(state) == ["ACCEPT", "ACCEPT", "LEFT", "ACCEPT"]
+    # the step log keeps why the layer was left
+    assert state["history"][2].rationale == "layer 2's quick tests show high damage for every cut"
+    assert backend.schemas[0] is G.SWEEP_REPLY_SCHEMA
     assert state["stop_reason"] == "every layer decided (4 layers, first to last)"
     plans = [a.plan for a in state["accepted"]]
     changed = [[i for i in after if after[i] != before[i]] for before, after in itertools.pairwise(plans)]
     assert changed == [[0], [1], [3]]
+
+
+def test_sweep_asks_again_when_a_layer_is_left_without_a_reason(tmp_path):
+    def policy(n, p):
+        layer = int(re.search(r"This round: layer (\d+)", p).group(1))
+        if layer == 1:
+            return {"candidates": []} if "Give the reason for leaving layer 1" not in p else \
+                {"candidates": [], "reason": "attention and feed-forward both measured fragile"}
+        return v1_reply([(layer, "narrow_mlp")])
+    state, backend = sweep(tmp_path, policy)
+    assert outcomes(state) == ["ACCEPT", "INVALID", "LEFT", "ACCEPT", "ACCEPT"]
+    assert state["history"][2].rationale == "attention and feed-forward both measured fragile"
 
 
 def test_sweep_refuses_other_layers_and_asks_again(tmp_path):

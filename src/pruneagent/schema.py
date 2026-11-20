@@ -273,6 +273,8 @@ def normalize_candidate(raw: Any) -> Any:
     if not isinstance(raw, dict):
         return raw
     d = _rename(raw, "reason", "rationale")
+    if "rationale" in d and d["rationale"] is None:  # a sweep reply's empty top-level reason: as if absent
+        d = {k: v for k, v in d.items() if k != "rationale"}
     if isinstance(d.get("choices"), list):
         d = {**d, "choices": [normalize_choice(c) for c in d["choices"]]}
     return d

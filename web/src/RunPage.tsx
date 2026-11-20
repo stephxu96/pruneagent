@@ -249,8 +249,15 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
                   </li>
                 ))}
               </ol>
+            ) : round.outcome === "LEFT" ? (
+              round.why ? (
+                <details>
+                  <summary>AI reasoning</summary>
+                  <p>{round.why}</p>
+                </details>
+              ) : <p className="muted">No reason recorded</p>
             ) : (
-              <p className="muted">{round.outcome === "LEFT" ? "Left as it is" : round.refused_reasons.join(" ") || "No ideas"}</p>
+              <p className="muted">{round.refused_reasons.join(" ") || "No ideas"}</p>
             )}
           </>
         ) : null}
