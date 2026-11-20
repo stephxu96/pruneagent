@@ -2,6 +2,7 @@ import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import { MapLegend, ModelMap } from "./ModelMap";
 import { Neurons3D } from "./Neurons3D";
 import { PathChart } from "./PathChart";
+import { NeuronMap, StepGrid, type Removal } from "./StepsView";
 import {
   api, changedLayers, changesText, duration, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText, timeLeftText,
   type Results, type RunDetail,
@@ -16,7 +17,8 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   const [playing, setPlaying] = useState(false);
   const [showFlap, setShowFlap] = useState(false);
   const [follow, setFollow] = useState(true);
-  const [threeD, setThreeD] = useState(CAN_3D);
+  const [view3, setView] = useState<"3d" | "flat" | "exact">(CAN_3D ? "3d" : "flat");
+  const [removal, setRemoval] = useState<Removal | null>(null);
 
   const [pending, setPending] = useState<Job | null>(null); // requested, but the run hasn't started yet
   const load = () =>
@@ -43,6 +45,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   useEffect(() => {
     load();
     api<Results>(`/api/runs/${id}/results`).then(setResults).catch(() => undefined);
+    api<Removal>(`/api/runs/${id}/removal`).then(setRemoval).catch(() => setRemoval(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -188,14 +191,21 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
           )}
         </div>
 
-        {CAN_3D && (
-          <div className="view-toggle" role="group" aria-label="View">
-            <button className={threeD ? "on" : ""} onClick={() => setThreeD(true)}>3D neurons</button>
-            <button className={threeD ? "" : "on"} onClick={() => setThreeD(false)}>Flat</button>
-          </div>
-        )}
-        {threeD ? (
-          <Fallback onError={() => setThreeD(false)}><Neurons3D
+        <div className="view-toggle" role="group" aria-label="View">
+          {CAN_3D && <button className={view3 === "3d" ? "on" : ""} onClick={() => setView("3d")}>3D neurons</button>}
+          <button className={view3 === "flat" ? "on" : ""} onClick={() => setView("flat")}>Flat</button>
+          {removal && <button className={view3 === "exact" ? "on" : ""} onClick={() => setView("exact")}>Exact neurons</button>}
+        </div>
+        {view3 === "exact" && removal ? (
+          <NeuronMap removal={removal} full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
+            prev={showFlap && run.flap ? run.steps[0].layers : (prev ?? step).layers}
+            cur={showFlap && run.flap ? run.flap.layers : step.layers}
+            caption={showFlap ? "Exactly what the standard method (FLAP) removes from the original model."
+              : at === 0 ? "The original model: every neuron kept."
+              : prev ? `Exactly what round ${at} removed (orange), at each neuron's real place in its layer.`
+              : `Round ${at} kept nothing; dark parts were removed in earlier rounds.`} />
+        ) : view3 === "3d" ? (
+          <Fallback onError={() => setView("flat")}><Neurons3D
             layers={showFlap && run.flap ? run.flap.layers : step.layers}
             prev={showFlap ? undefined : prev?.layers}
             full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
@@ -248,6 +258,12 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
           <p className="muted">Press Play, or step with ◀ ▶ (or the arrow keys): each round shows the ideas the AI
             tried, what each cut, how much quality it cost, and which one was kept.</p>
         )}
+      </section>
+
+      <section>
+        <h2>Every step, layer by layer</h2>
+        <p className="muted">One row per kept round, one column per layer: how much of each layer that round removed.</p>
+        <StepGrid run={run} removal={removal} at={at} onPick={(r) => { setPlaying(false); setAt(r); }} />
       </section>
 
       <section>

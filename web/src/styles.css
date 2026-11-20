@@ -411,3 +411,16 @@ pre.code { background: var(--bg); border: 1px solid var(--line); border-radius: 
 /* replay: step one round back or forward */
 .player .step-btn { padding: 6px 12px; min-width: 40px; }
 .player .step-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* exact neurons and the every-step grid */
+.legend .sw.earlier { background: var(--line); }
+.step-grid svg { width: 100%; height: auto; }
+.step-grid .cell { fill: none; stroke: var(--line); stroke-width: 1; }
+.step-grid .cell.hit { fill: var(--agent); stroke: none; }
+.step-grid .grid-row { cursor: pointer; }
+.step-grid .row-hit { fill: transparent; }
+.step-grid .grid-row:hover .row-hit { fill: var(--line); opacity: .5; }
+.step-grid .grid-row.on .row-hit { fill: var(--line); opacity: .9; }
+.step-grid .grid-row.on .tick { fill: var(--ink); font-weight: 600; }
+.step-grid .tick { font-size: 9px; }
+.step-grid .tick.total { font-weight: 600; }
