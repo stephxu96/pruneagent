@@ -61,15 +61,15 @@ def command(kind: str, params: dict, known: tuple[str, ...] | list[str] = MODELS
     raise JobError(f"unknown job kind: {kind}")
 
 
-PREPARE_STEPS = 3
+PREPARE_STEPS = 4
 _STEP = re.compile(r"Step (\d+) of (\d+): (.+)")
 _ENTRY = re.compile(r"\[(\d+)/(\d+)\]")
 
 
 def prepare_progress(text: str) -> dict:
-    """How far a model preparation is, from its output: the step (1 text, 2 scores and quick tests, 3 damage table)
-    and, in step 3, the damage-table entries measured. `share` is the whole job's share done (step 3 is most of
-    the time)."""
+    """How far a model setup is, from its output: the step (1 load the model, 2 sample text, 3 part usage, 4 cut
+    tests) and, in step 4, the cut tests measured. `share` is the whole setup's share done (step 4 is most of the
+    time)."""
     steps = _STEP.findall(text)
     step = int(steps[-1][0]) if steps else 0
     label = steps[-1][2].strip() if steps else "starting"
@@ -79,6 +79,7 @@ def prepare_progress(text: str) -> dict:
         entries = _ENTRY.findall(tail)
         if entries:
             done, total = int(entries[-1][0]), int(entries[-1][1])
-    weight = {0: 0.0, 1: 0.0, 2: 0.03, 3: 0.1}[min(step, 3)]
+    # share of the whole setup done when each step starts (the cut tests are most of the time)
+    weight = {0: 0.0, 1: 0.0, 2: 0.03, 3: 0.06, 4: 0.1}[min(step, 4)]
     share = weight + (0.9 * done / total if total else 0.0)
     return {"step": step, "of": PREPARE_STEPS, "label": label, "done": done, "total": total, "share": min(share, 1.0)}

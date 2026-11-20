@@ -19,10 +19,12 @@ type ModelRow = { id: string; ready: boolean; built_in: boolean; size_mb: number
 const ACTIVE = ["queued", "running"];
 const STEPS = ["Name", "Check", "Set up", "Ready"];
 // setup's three parts, in the order the tool runs them (text; scores and quick tests; damage table)
+// setup's two parts and their steps, in the order the tools run them (`pruneagent setup`, steps 1-4)
 const PARTS = [
-  { title: "Sample text", text: "Download text samples and split them into pieces the way this model reads." },
-  { title: "Model and part usage", text: "Load the model, run the samples through it and see how much it uses each part." },
-  { title: "Cut tests", text: "Try each kind of cut on each layer and measure how much quality drops." },
+  { group: "Load the model", title: "Model", text: "Download the model from Hugging Face onto this computer." },
+  { group: "Generate assets", title: "Sample text", text: "Download text samples and split them into pieces the way this model reads." },
+  { group: "Generate assets", title: "Part usage", text: "Run the samples through the model and see how much it uses each part." },
+  { group: "Generate assets", title: "Cut tests", text: "Try each kind of cut on each layer and measure how much quality drops." },
 ];
 
 export function ModelsPage() {
@@ -242,25 +244,29 @@ function PrepareStep({ id, job, onPause, onContinue }: {
   const left = active ? timeLeft(job) : null;
   return (
     <div className="prepare-step">
-      <p className="prep-head">Setting up <b>{modelName(id)}</b>: loading the model and generating what pruning needs</p>
-      <ol className="checklist">
-        {PARTS.map((part, i) => {
-          const n = i + 1;
-          const state = n < at || (n === at && !active && job.status === "done") ? "done" : n === at ? "current" : "todo";
-          return (
-            <li key={part.title} className={state}>
-              <span className="mark">{state === "done" ? "✓" : n}</span>
-              <div>
-                <div className="c-title">{part.title}</div>
-                <div className="c-text">{part.text}</div>
-                {state === "current" && n === 3 && p && p.total > 0 && (
-                  <div className="c-count">{p.done} of {p.total} cuts tested</div>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+      <p className="prep-head">Setting up <b>{modelName(id)}</b></p>
+      {["Load the model", "Generate assets"].map((group) => (
+        <div key={group} className="check-group">
+          <div className="m-label">{group}</div>
+          <ol className="checklist">
+            {PARTS.map((part, i) => ({ part, n: i + 1 })).filter(({ part }) => part.group === group).map(({ part, n }) => {
+              const state = n < at || (n === at && !active && job.status === "done") ? "done" : n === at ? "current" : "todo";
+              return (
+                <li key={part.title} className={state}>
+                  <span className="mark">{state === "done" ? "✓" : n}</span>
+                  <div>
+                    <div className="c-title">{part.title}</div>
+                    <div className="c-text">{part.text}</div>
+                    {state === "current" && n === PARTS.length && p && p.total > 0 && (
+                      <div className="c-count">{p.done} of {p.total} cuts tested</div>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      ))}
       <div className="prep-foot">
         <div className="bar"><div className="fill" style={{ width: `${Math.round((p?.share ?? 0) * 100)}%` }} /></div>
         <div className="prep-status">

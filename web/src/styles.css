@@ -400,3 +400,4 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .pv-size .fill { height: 100%; background: var(--agent); border-radius: 99px; transition: width .6s ease; }
 .pv-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 12px; }
 @media (max-width: 640px) { .pv-grid { grid-template-columns: 1fr; } }
+.check-group { display: grid; gap: 8px; }

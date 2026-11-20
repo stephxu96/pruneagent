@@ -1387,7 +1387,7 @@ def prepare_cmd(
     try:
         models.check(model, machine.machine()["memory_gb"])
     except models.ModelError as e:
-        typer.echo(f"Cannot prepare {model}: {e}", err=True)
+        typer.echo(f"Cannot set up {model}: {e}", err=True)
         raise typer.Exit(1) from None
     models.add(root, model)
     name = f"{RR._slug(model)}__{device}__{dtype}"
@@ -1395,16 +1395,21 @@ def prepare_cmd(
                               RR.DAMAGE_DIR / f"{name}.json")
     needed = [d.calib_name(model), d.flap_calib_name(model), d.wikitext_name("validation", model),
               d.wikitext_name("test", model)]
-    typer.echo("Step 1 of 3: text", err=True)
+    # load the model (download it; a model already downloaded is reused), then generate the assets
+    typer.echo("Step 1 of 4: load the model", err=True)
+    from huggingface_hub import snapshot_download
+
+    snapshot_download(model, allow_patterns=["*.json", "*.safetensors", "*.model", "*.txt", "*.tiktoken"])
+    typer.echo("Step 2 of 4: sample text", err=True)
     if not all(n in d.read_manifest().get("entries", {}) for n in needed):
         d.build_cache(model, log=lambda m: typer.echo(m, err=True))
-    typer.echo("Step 2 of 3: neuron scores and quick tests", err=True)
+    typer.echo("Step 3 of 4: part usage (neuron scores and quick tests)", err=True)
     probe_cmd(model=model, dtype=dtype, device=device, scores_path=scores, out=probes)
-    typer.echo("Step 3 of 3: damage table", err=True)
+    typer.echo("Step 4 of 4: cut tests (damage table)", err=True)
     subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2] / "scripts" / "damage_table.py"),
                     "--model", model, "--device", device, "--dtype", dtype, "--windows", "32",
                     "--scores", str(scores), "--quick-tests", str(probes), "--out", str(damage)], check=True)
-    typer.echo(f"Prepared {model}: ready for runs.", err=True)
+    typer.echo(f"Set up {model}: ready for pruning.", err=True)
 
 
 @app.command("report")
