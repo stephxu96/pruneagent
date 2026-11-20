@@ -1221,14 +1221,19 @@ def run_cmd(
                 original = E.weight_bytes(config, P.dense_plan(config)) / 1e6
                 to_free = max(0.0, original - run_cfg.limit_bytes / 1e6)
                 rates = runstore.past_rates(root, model)
-                sweep = SEARCH.get(search).order == "sweep"
-                time_est = runstore.time_estimate(rates, to_free, run_cfg.rules.max_rounds,
-                                                  sweep_layers=config.num_hidden_layers if sweep else None)
+                # every strategy's estimate, so the app can show the one chosen without another check
+                by_search = {
+                    name: runstore.time_estimate(
+                        rates, to_free, RR.make_run_config(model, config, device, memory_limit_mb=memory_limit_mb,
+                                                           memory_cut=memory_cut, search=name).rules.max_rounds,
+                        sweep_layers=config.num_hidden_layers if strat.order == "sweep" else None)
+                    for name, strat in SEARCH.STRATEGIES.items()}
+                time_est = by_search[search]
                 typer.echo(json.dumps({"feasible": out["prompt"] is not None, "stop_reason": out["stop_reason"],
                                        "warnings": out["warnings"], "usage": out["usage"], "usage_text": out["estimate"],
                                        "limit_mb": run_cfg.limit_bytes / 1e6, "original_mb": original,
                                        "smallest_mb": E.weight_bytes(config, D.smallest_plan(config, run_cfg.rules)) / 1e6,
-                                       "time": time_est}))
+                                       "time": time_est, "time_by_search": by_search}))
                 return
             for note in out["notes"]:
                 typer.echo(f"  {note}")

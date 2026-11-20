@@ -15,6 +15,7 @@ export type Feasibility = {
   original_mb?: number;
   smallest_mb?: number;
   time?: { minutes: [number, number]; rounds: [number, number]; based_on_runs: number; worst_minutes?: number; max_rounds?: number } | null;
+  time_by_search?: Record<string, { minutes: [number, number]; rounds: [number, number]; based_on_runs: number; worst_minutes?: number; max_rounds?: number } | null>;
 };
 export type Job = {
   id: number; kind: string; reason?: string | null; params: { model?: string; cut?: number; run_id?: string }; run_id: string | null; status: string;
