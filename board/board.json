@@ -741,7 +741,7 @@
       "status": "doing",
       "notes": [
         "[2026-11-19 21:20] Added to scope by Steph: needed for a user-friendly app. Code assumes the Qwen3/Llama layout; only Qwen3 tried so far. Mac time: preparing a ~1-2B model takes ~1-3 h (1.7B took 2 h 55 min).",
-        "[2026-11-19 22:30] Built and merged: `pruneagent check-model` / `prepare`, Your models page (check, prepare with progress and time left, pause/continue), added models in the pickers. Supported: Qwen3, Qwen2, Llama, Mistral (tiny-model tests: prune, generate, reload, exact size); Gemma, Phi and expert models refused in plain words. Local folders later. Left for done: prepare one model outside Qwen3 for real (SmolLM2-360M, Llama kind: ~1 h 45 min-2 h 45 min Mac GPU, no Codex), then a run on it from the browser (Steph triggers)."
+        "[2026-11-19 21:26] Built and merged: `pruneagent check-model` / `prepare`, Your models page (check, prepare with progress and time left, pause/continue), added models in the pickers. Supported: Qwen3, Qwen2, Llama, Mistral (tiny-model tests: prune, generate, reload, exact size); Gemma, Phi and expert models refused in plain words. Local folders later. Left for done: prepare one model outside Qwen3 for real (SmolLM2-360M, Llama kind: ~1 h 45 min-2 h 45 min Mac GPU, no Codex), then a run on it from the browser (Steph triggers)."
       ]
     },
     {
@@ -757,7 +757,7 @@
       "gpu": "—",
       "status": "doing",
       "notes": [
-        "[2026-11-19 23:00] Requested by Steph: the start-run warning was the browser's plain pop-up."
+        "[2026-11-19 21:34] Requested by Steph: the start-run warning was the browser's plain pop-up."
       ]
     },
     {
@@ -773,7 +773,7 @@
       "gpu": "—",
       "status": "todo",
       "notes": [
-        "[2026-11-19 23:00] Requested by Steph; queued after 3.9."
+        "[2026-11-19 21:34] Requested by Steph; queued after 3.9."
       ]
     },
     {
