@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, duration, durationRange, mb, modelName } from "./lib";
+import { StepBar } from "./parts";
 
 // Model setup (docs/APP_DESIGN.md §2.1, FR17): put a model on this computer, ready to prune. Name it, check it, set it
 // up (load the model, generate the assets pruning needs), ready. Pruning is a separate story (PrunePage). The flow
@@ -97,14 +98,7 @@ export function ModelsPage() {
       <ModelList rows={rows} latest={latest} onOpen={choose} />
       <h2>Set up a model</h2>
 
-      <ol className="stepper">
-        {STEPS.map((s, i) => (
-          <li key={s} className={i + 1 < step ? "done" : i + 1 === step ? "current" : ""}>
-            <span className="dot">{i + 1 < step ? "✓" : i + 1}</span>
-            <span>{s}</span>
-          </li>
-        ))}
-      </ol>
+      <StepBar steps={STEPS} at={step} />
 
       <section className="wizard">
         {step === 1 && (

@@ -6,7 +6,7 @@ import {
   api, changedLayers, changesText, duration, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText, timeLeftText,
   type Results, type RunDetail,
 } from "./lib";
-import type { Job } from "./parts";
+import { StepBar, type Job } from "./parts";
 
 export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   const [run, setRun] = useState<RunDetail | null>(null);
@@ -338,13 +338,7 @@ function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }
   const loss = run.now_error && run.original_error ? qualityLoss(run.now_error, run.original_error) : null;
   return (
     <section className="progress-view">
-      <ol className="stepper">
-        {STAGES.map((x, i) => (
-          <li key={x.key} className={i < at ? "done" : i === at ? "current" : ""}>
-            <span className="dot">{i < at ? "✓" : i + 1}</span><span>{x.label}</span>
-          </li>
-        ))}
-      </ol>
+      <StepBar steps={STAGES.map((x) => x.label)} at={at + 1} />
       <div className="pv-grid">
         <div className="pv-size">
           <div className="g-label">Size</div>
