@@ -266,7 +266,7 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .job:hover { border-color: var(--ink-3); background: color-mix(in srgb, var(--panel) 85%, var(--ink) 4%); }
 .job > summary { min-height: 28px; }
 
-/* ---------------------------------------------------------------- Your models (bring your own model) */
+/* ---------------------------------------------------------------- Select your model (bring your own model) */
 .models-page .lead { color: var(--ink-2); margin: -4px 0 18px; }
 .add-model { display: grid; gap: 12px; max-width: 640px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
 .add-model label { display: grid; gap: 6px; }

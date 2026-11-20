@@ -146,7 +146,7 @@ type Job = {
   progress?: { step: number; of: number; label: string; done: number; total: number; share: number };
 };
 
-const ADD_MODEL = "__add__"; // the model pickers' last option: go to "Your models"
+const ADD_MODEL = "__add__"; // the model pickers' last option: go to "Select your model"
 
 export function NewRunPage() {
   const q = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
@@ -213,7 +213,7 @@ export function NewRunPage() {
         {!ready && (
           <p className="warn">
             {modelName(model)} isn't prepared yet. Each model is measured once on this computer before its first
-            run. <a href="#/models">Prepare it on Your models →</a>
+            run. <a href="#/models">Prepare it on Select your model →</a>
           </p>
         )}
         {check && <FeasibilityResult job={check} model={model} />}

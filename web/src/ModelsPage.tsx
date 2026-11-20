@@ -64,7 +64,7 @@ export function ModelsPage() {
   return (
     <div className="models-page">
       <a href="#/" className="back">← All runs</a>
-      <h1>Your models</h1>
+      <h1>Select your model</h1>
       <p className="lead">Use a model from Hugging Face. It's measured once on this computer before its first run.</p>
 
       <section className="add-model">

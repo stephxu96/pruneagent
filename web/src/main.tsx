@@ -33,7 +33,7 @@ function App() {
         <a href="#/" className="brand">✂ PruneAgent</a>
         <a href="#/compare">Comparison</a>
         <a href="#/new">New run</a>
-        <a href="#/models">Your models</a>
+        <a href="#/models">Select your model</a>
       </nav>
       <main>{page}</main>
     </>
