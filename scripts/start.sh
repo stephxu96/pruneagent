@@ -12,6 +12,8 @@ mkdir -p runs/service_logs
 tools_pid=runs/service_logs/tools.pid
 app_pid=runs/service_logs/app.pid   # only when the app runs without a container
 
+# start in its own session, so closing this terminal doesn't stop it
+detach() { nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' "$@" ; }
 have_docker() { command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; }
 stop_pid() {
   if [[ -f "$1" ]] && kill -0 "$(cat "$1")" 2>/dev/null; then
@@ -38,7 +40,7 @@ echo "== Tools (native)"
 uv sync --extra web --extra report --quiet
 scripts/deploy.sh                      # a release of the tools: new work uses it, running work keeps its own
 stop_pid "$tools_pid"
-nohup .venv/bin/pruneagent tools-service >> runs/service_logs/tools.log 2>&1 &
+detach .venv/bin/pruneagent tools-service >> runs/service_logs/tools.log 2>&1 &
 echo $! > "$tools_pid"
 wait_for "$tools_url/api/service" "The tools"
 echo "Tools API: $tools_url"
@@ -52,7 +54,7 @@ else
   [[ -d web/node_modules ]] || (cd web && npm install --silent)
   (cd web && npm run build --silent >/dev/null)
   stop_pid "$app_pid"
-  nohup .venv/bin/pruneagent web >> runs/service_logs/app.log 2>&1 &
+  detach .venv/bin/pruneagent web >> runs/service_logs/app.log 2>&1 &
   echo $! > "$app_pid"
 fi
 wait_for "$app_url/api/service" "The app"
