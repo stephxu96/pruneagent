@@ -471,7 +471,8 @@ class Service:
     # -- loop
 
     def serve(self) -> None:
-        signal.signal(signal.SIGTERM, lambda *_: self._stop.set())
+        if threading.current_thread() is threading.main_thread():  # in the tools service it runs in a thread
+            signal.signal(signal.SIGTERM, lambda *_: self._stop.set())
         import traceback
 
         while not self._stop.is_set():

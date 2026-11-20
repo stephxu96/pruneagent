@@ -135,3 +135,17 @@ def test_a_step_that_cannot_start_fails_without_stopping_the_service(service, tm
     assert out.state == "failed" and "Release abc is missing" in out.reason
     ok = service.store.submit("two", {})
     assert run_until(service, ok.id, ("finished",)).state == "finished"
+
+
+def test_the_runner_can_run_in_a_thread_of_the_tools_service(service):
+    import threading
+
+    t = threading.Thread(target=service.serve, daemon=True)
+    t.start()
+    for _ in range(100):
+        if W.service_status(service.runs)["running"]:
+            break
+        time.sleep(0.05)
+    assert t.is_alive() and W.service_status(service.runs)["running"]
+    service.stop()
+    t.join(5)
