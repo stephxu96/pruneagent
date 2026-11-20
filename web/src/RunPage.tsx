@@ -17,7 +17,10 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   const [playing, setPlaying] = useState(false);
   const [showFlap, setShowFlap] = useState(false);
   const [follow, setFollow] = useState(true);
-  const [view3, setView] = useState<"3d" | "flat" | "exact">(CAN_3D ? "3d" : "flat");
+  // the view can be named in the address (…/run/<id>/<round>?view=exact), to link to it
+  const asked = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("view");
+  const [view3, setView] = useState<"3d" | "flat" | "exact">(
+    asked === "exact" || asked === "flat" ? asked : CAN_3D ? "3d" : "flat");
   const [removal, setRemoval] = useState<Removal | null>(null);
 
   const [pending, setPending] = useState<Job | null>(null); // requested, but the run hasn't started yet
