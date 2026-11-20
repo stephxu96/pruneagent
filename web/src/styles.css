@@ -294,3 +294,43 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .f-top { flex-wrap: wrap; }
 .f-title { overflow-wrap: anywhere; min-width: 0; }
 .add-model > * { min-width: 0; }
+
+/* guided flow: Choose → Check → Prepare → Ready */
+.stepper { list-style: none; display: flex; gap: 6px; padding: 0; margin: 4px 0 18px; max-width: 760px; flex-wrap: wrap; }
+.stepper li { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-weight: 600; }
+.stepper li + li::before { content: ""; width: 28px; height: 2px; background: var(--line); margin-right: 2px; }
+.stepper .dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; border: 2px solid var(--line); background: var(--panel); }
+.stepper li.current { color: var(--ink); }
+.stepper li.current .dot { border-color: var(--agent); color: var(--agent); }
+.stepper li.done { color: var(--ink-2); }
+.stepper li.done .dot { background: var(--good); border-color: var(--good); color: #fff; }
+.wizard { display: grid; gap: 14px; max-width: 760px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.wizard > * { min-width: 0; }
+.choose-step { display: grid; gap: 12px; }
+.choose-step label { display: grid; gap: 6px; }
+.on-computer { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: inherit; font-size: 14px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.chip:hover { border-color: var(--agent); }
+.feasible .actions, .ready-step .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.prepare-step { display: grid; gap: 14px; }
+.prep-head { margin: 0; }
+.checklist { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.checklist li { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+.checklist .mark { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; border: 2px solid var(--line); color: var(--ink-3); }
+.checklist li.current { border-color: var(--agent); }
+.checklist li.current .mark { border-color: var(--agent); color: var(--agent); animation: prep-pulse 1.6s ease-in-out infinite; }
+.checklist li.done .mark { background: var(--good); border-color: var(--good); color: #fff; }
+.checklist li.todo { opacity: .7; }
+.c-title { font-weight: 600; }
+.c-text { color: var(--ink-2); font-size: 14px; }
+.c-count { margin-top: 4px; font-size: 13px; color: var(--agent); font-weight: 600; }
+.prep-foot { display: grid; gap: 8px; }
+.prep-foot .bar { height: 10px; background: var(--gone); border-radius: 99px; overflow: hidden; }
+.prep-foot .fill { height: 100%; background: var(--agent); border-radius: 99px; transition: width .6s ease; }
+.prep-status { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ready-step { display: grid; gap: 14px; }
+.ready-big { font-size: 18px; font-weight: 600; margin: 0; color: var(--good); }
+@keyframes prep-pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--agent) 20%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .checklist li.current .mark { animation: none; } }
+@media (max-width: 640px) { .stepper li + li::before { width: 10px; } }
