@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ResultBars } from "./RunPage";
+import { StartDialog } from "./StartDialog";
 import { api, duration, durationRange, FINAL_CHECK_MIN, lossText, mb, modelName, pct, qualityLoss, runLabel, stateText, type Compare, type RunSummary } from "./lib";
 
 // ---------------------------------------------------------------- home: every run
@@ -155,6 +156,7 @@ export function NewRunPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [check, setCheck] = useState<Job | null>(null);
+  const [asking, setAsking] = useState(false);
   useEffect(() => {
     if (!check || !["queued", "running"].includes(check.status)) return;
     const t = setTimeout(() => api<Job>(`/api/jobs/${check.id}`).then(setCheck).catch(() => undefined), 1500);
@@ -178,6 +180,14 @@ export function NewRunPage() {
       .then((j) => { setMsg(`Queued (job ${j.id}).`); refresh(); })
       .catch((e) => setMsg(String(e)));
   const orig = info?.size_mb;
+  const sameRun = (j: Job) => j.kind === "precheck" && j.status === "done" && !!j.result && j.params?.model === model
+    && Math.abs((j.params?.cut ?? -1) - cut / 100) < 1e-6;
+  const lastCheck = [check, ...jobs].find((j): j is Job => !!j && sameRun(j))?.result ?? null;
+  const runCheck = () => {
+    setMsg(null);
+    api<Job>("/api/precheck", { method: "POST", headers: { "Content-Type": "application/json" }, body })
+      .then(setCheck).catch((e) => setMsg(String(e)));
+  };
   return (
     <div>
       <a href="#/" className="back">← All runs</a>
@@ -201,14 +211,8 @@ export function NewRunPage() {
           {orig && <span className="muted">{mb(orig)} → under {mb(orig * (1 - cut / 100))}</span>}
         </label>
         <div className="actions">
-          <button className="secondary" onClick={() => {
-            setMsg(null);
-            api<Job>("/api/precheck", { method: "POST", headers: { "Content-Type": "application/json" }, body })
-              .then(setCheck).catch((e) => setMsg(String(e)));
-          }} title="Checks that this size can be reached, without starting anything" disabled={!ready}>Feasibility check</button>
-          <button className="primary" disabled={!ready} onClick={() => {
-            if (confirm(`Start a real run? It uses the Mac's GPU and AI calls for about an hour.`)) post("/api/runs");
-          }}>Start run</button>
+          <button className="secondary" onClick={runCheck} title="Checks that this size can be reached, without starting anything" disabled={!ready}>Feasibility check</button>
+          <button className="primary" disabled={!ready} onClick={() => setAsking(true)}>Start run</button>
         </div>
         {!ready && (
           <p className="warn">
@@ -217,6 +221,8 @@ export function NewRunPage() {
           </p>
         )}
         {check && <FeasibilityResult job={check} model={model} />}
+        <StartDialog open={asking} model={model} cut={cut / 100} originalMb={orig} check={lastCheck}
+          onStart={() => post("/api/runs")} onCheck={runCheck} onClose={() => setAsking(false)} />
         {msg && <p className="note">{msg}</p>}
       </div>
       <h2>History</h2>
