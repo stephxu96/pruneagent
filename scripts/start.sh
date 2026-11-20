@@ -12,8 +12,8 @@ mkdir -p runs/service_logs
 tools_pid=runs/service_logs/tools.pid
 app_pid=runs/service_logs/app.pid   # only when the app runs without a container
 
-# start in its own session, so closing this terminal doesn't stop it
-detach() { nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' "$@" ; }
+# each service starts in its own session (perl's setsid), so closing this terminal doesn't stop it
+setsid=(nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV')
 have_docker() { command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; }
 stop_pid() {
   if [[ -f "$1" ]] && kill -0 "$(cat "$1")" 2>/dev/null; then
@@ -40,9 +40,11 @@ echo "== Tools (native)"
 uv sync --extra web --extra report --quiet
 scripts/deploy.sh                      # a release of the tools: new work uses it, running work keeps its own
 stop_pid "$tools_pid"
-detach .venv/bin/pruneagent tools-service >> runs/service_logs/tools.log 2>&1 &
+"${setsid[@]}" .venv/bin/pruneagent tools-service >> runs/service_logs/tools.log 2>&1 &
 echo $! > "$tools_pid"
 wait_for "$tools_url/api/service" "The tools"
+for _ in $(seq 1 15); do curl -s "$tools_url/api/service" | grep -q '"running":true' && break; sleep 1; done
+curl -s "$tools_url/api/service" | grep -q '"running":true' || { echo "The tools' workflow runner didn't start. Log: runs/service_logs/tools.log" >&2; exit 1; }
 echo "Tools API: $tools_url"
 
 echo "== App"
@@ -54,7 +56,7 @@ else
   [[ -d web/node_modules ]] || (cd web && npm install --silent)
   (cd web && npm run build --silent >/dev/null)
   stop_pid "$app_pid"
-  detach .venv/bin/pruneagent web >> runs/service_logs/app.log 2>&1 &
+  "${setsid[@]}" .venv/bin/pruneagent web >> runs/service_logs/app.log 2>&1 &
   echo $! > "$app_pid"
 fi
 wait_for "$app_url/api/service" "The app"
