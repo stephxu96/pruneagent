@@ -389,3 +389,14 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .sets table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
 .sets th, .sets td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .sets td + td, .sets th + th { text-align: right; white-space: nowrap; }
+
+/* progress at a glance for an active run */
+.progress-view { background: var(--panel); border: 1px solid var(--agent); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; margin: 8px 0 16px; }
+.progress-view .stepper { margin: 0; }
+.pv-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 18px; }
+.pv-big { font-size: 22px; font-weight: 700; margin: 2px 0 6px; }
+.pv-big .muted { font-size: 15px; font-weight: 400; }
+.pv-size .bar { height: 10px; background: var(--gone); border-radius: 99px; overflow: hidden; margin: 4px 0 6px; }
+.pv-size .fill { height: 100%; background: var(--agent); border-radius: 99px; transition: width .6s ease; }
+.pv-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 12px; }
+@media (max-width: 640px) { .pv-grid { grid-template-columns: 1fr; } }

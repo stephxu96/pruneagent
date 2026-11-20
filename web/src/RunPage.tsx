@@ -3,7 +3,7 @@ import { MapLegend, ModelMap } from "./ModelMap";
 import { Neurons3D } from "./Neurons3D";
 import { PathChart } from "./PathChart";
 import {
-  api, changedLayers, changesText, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText, timeLeftText,
+  api, changedLayers, changesText, duration, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText, timeLeftText,
   type Results, type RunDetail,
 } from "./lib";
 import type { Job } from "./parts";
@@ -120,6 +120,8 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
           )}
         </p>
       </header>
+
+      <RunProgress run={run} onChange={load} />
 
       <section className="player">
         <button className="primary" onClick={() => { if (at >= last) setAt(0); setPlaying(!playing); }}>
@@ -287,6 +289,96 @@ export function ResultBars({ held }: { held: NonNullable<Results["heldout"]> }) 
       <p className="note">Quality lost compared with the original model; shorter is better. Both models are the same size.</p>
     </div>
   );
+}
+
+const STAGES = [
+  { key: "run", label: "Pruning" },
+  { key: "heldout", label: "Unseen-text test" },
+  { key: "accuracy", label: "Quiz questions" },
+  { key: "done", label: "Done" },
+];
+
+/** Progress at a glance for a run that is going, paused or being evaluated (docs/APP_DESIGN.md §2.2 step 5):
+ * the stage, size against the target, quality so far, rounds, time left, and pause or continue. */
+function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }) {
+  const [job, setJob] = useState<Job | null>(null);
+  const [check, setCheck] = useState<Job | null>(null); // a test started on its own for this run
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const read = () => api<Job[]>("/api/jobs").then((js) => {
+      setJob(js.find((j) => j.run_id === run.id && (j.kind === "start" || j.kind === "resume")) ?? null);
+      setCheck(js.find((j) => j.run_id === run.id && (j.kind === "heldout" || j.kind === "accuracy")
+        && ["queued", "running"].includes(j.status)) ?? null);
+    }).catch(() => undefined);
+    read();
+    const t = setInterval(read, 5000);
+    return () => clearInterval(t);
+  }, [run.id]);
+
+  const active = (job && ["queued", "running", "stopped", "failed"].includes(job.status)) || !!check;
+  if (run.state === "finished" && !active) return null;
+  const orig = run.original_mb ?? 0;
+  const now = run.now_mb ?? orig;
+  const toCut = Math.max(1, orig - run.limit_mb);
+  const share = Math.min(1, Math.max(0, (orig - now) / toCut));
+  const stepName = run.state !== "finished" ? "run" : check ? check.kind
+    : job && job.status !== "done" ? job.steps?.[job.step ?? 0]?.name ?? "done" : "done";
+  const at = Math.max(0, STAGES.findIndex((x) => x.key === stepName));
+  const paused = run.state === "paused" || run.state === "interrupted" || job?.status === "stopped" || job?.status === "failed";
+  const status = job?.status === "queued" ? "Waiting for the Mac to be free"
+    : job?.status === "failed" ? `Stopped: ${job.reason ?? "an error"}`
+    : paused ? `Paused${run.reason || job?.reason ? `: ${job?.reason ?? run.reason}` : ""}`
+    : run.state === "running" ? (run.time_left ? timeLeftText(run.time_left) : "Running")
+    : check?.status === "queued" ? `${STAGES[at].label}: waiting for the Mac to be free`
+    : `${STAGES[at].label}: running${testLeft(check?.output ?? job?.output ?? "")}`;
+  const act = (what: "pause" | "resume") => {
+    setBusy(true);
+    api(`/api/runs/${run.id}/${what}`, { method: "POST" }).then(onChange).catch(() => undefined).finally(() => setBusy(false));
+  };
+  const loss = run.now_error && run.original_error ? qualityLoss(run.now_error, run.original_error) : null;
+  return (
+    <section className="progress-view">
+      <ol className="stepper">
+        {STAGES.map((x, i) => (
+          <li key={x.key} className={i < at ? "done" : i === at ? "current" : ""}>
+            <span className="dot">{i < at ? "✓" : i + 1}</span><span>{x.label}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="pv-grid">
+        <div className="pv-size">
+          <div className="g-label">Size</div>
+          <div className="pv-big">{mb(now)} <span className="muted">→ under {mb(run.limit_mb)}</span></div>
+          <div className="bar"><div className="fill" style={{ width: `${share * 100}%` }} /></div>
+          <div className="g-note">{share >= 1 ? "Target met ✓" : `${mb(now - run.limit_mb)} still to cut · ${Math.round(share * 100)}% of the way`}</div>
+        </div>
+        <div>
+          <div className="g-label">Quality so far</div>
+          <div className="pv-big">{loss == null ? "—" : lossText(loss)}</div>
+          <div className="g-note">than the original, on the sample text</div>
+        </div>
+        <div>
+          <div className="g-label">Rounds</div>
+          <div className="pv-big">{run.round} <span className="muted">of up to {run.settings.max_rounds}</span></div>
+          <div className="g-note">{run.kept_steps} steps kept</div>
+        </div>
+      </div>
+      <div className="pv-foot">
+        <span className={paused ? "warn" : "muted"}>{status}</span>
+        {check ? null : job?.status === "running" || run.state === "running"
+          ? <button className="secondary" disabled={busy} onClick={() => act("pause")}>Pause</button>
+          : paused ? <button className="primary" disabled={busy} onClick={() => act("resume")}>Continue</button> : null}
+      </div>
+    </section>
+  );
+}
+
+/** "· this model: about 2 h 40 min left", from the test's own progress line (it tests the models one at a time). */
+function testLeft(output: string): string {
+  const m = [...output.matchAll(/(\d+)\/(\d+) \[[\d:]+<(\d+):(\d+)(?::(\d+))?/g)].pop();
+  if (!m) return "";
+  const [h, mm] = m[5] !== undefined ? [Number(m[3]), Number(m[4])] : [0, Number(m[3])];
+  return ` · this model: about ${duration(h * 60 + mm)} left`;
 }
 
 const SET_NAMES: Record<string, [string, string]> = {
