@@ -745,6 +745,38 @@
       ]
     },
     {
+      "id": "3.9",
+      "type": "task",
+      "phase": 3,
+      "title": "Start-run confirmation as a designed dialog (replaces the browser pop-up): model, target size, time, usage limits, lid-open reminder; offers the feasibility check first",
+      "owner": "Coding agent",
+      "deps": [
+        "3.6"
+      ],
+      "done_when": "Start run opens the dialog; Cancel, Escape and the backdrop close it; not-feasible sizes can't start",
+      "gpu": "—",
+      "status": "doing",
+      "notes": [
+        "[2026-11-19 23:00] Requested by Steph: the start-run warning was the browser's plain pop-up."
+      ]
+    },
+    {
+      "id": "3.10",
+      "type": "task",
+      "phase": 3,
+      "title": "Progress view for an active run: where it is, how far to the target, time left",
+      "owner": "Coding agent",
+      "deps": [
+        "3.6"
+      ],
+      "done_when": "A running run shows its progress at a glance, updated live",
+      "gpu": "—",
+      "status": "todo",
+      "notes": [
+        "[2026-11-19 23:00] Requested by Steph; queued after 3.9."
+      ]
+    },
+    {
       "id": "G3",
       "type": "gate",
       "phase": 3,
@@ -901,7 +933,9 @@
         "4.5",
         "4.6",
         "4.7",
-        "3.8"
+        "3.8",
+        "3.9",
+        "3.10"
       ],
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
