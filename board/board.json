@@ -873,7 +873,8 @@
       "notes": [
         "[2026-11-20 10:45] Steph: the proposal's 'layer by layer' was never made a rule; candidates have changed several layers since v0.6. Keep that as one strategy and add layer-by-layer as a second, switchable, with identical evaluation.",
         "[2026-11-20 10:45] Built: search.py, RunConfig.search, validator rule max_layers_per_candidate, {candidate_rule} in the instructions (several-layers prompt byte-identical, tested), --search on run, app start dialog choice, 'How it cuts' on runs, Compare line per strategy. Waiting for Steph's test run.",
-        "[2026-11-20 11:05] Rebuilt per Steph: a sweep, exactly one round per layer (28 for 0.6B and 1.7B); round k decides layer k; the AI proposes up to 3 cut plans for it from the bank (slim 1-7 steps, remove 1-7 attention units, remove the layer, or leave it); the shared gate keeps the best. Ends after the last layer or at the memory limit. Prompt shows 'This round' with the bank and an even share per layer; no rollback. Estimates: 28 rounds at past pace per round."
+        "[2026-11-20 11:05] Rebuilt per Steph: a sweep, exactly one round per layer (28 for 0.6B and 1.7B); round k decides layer k; the AI proposes up to 3 cut plans for it from the bank (slim 1-7 steps, remove 1-7 attention units, remove the layer, or leave it); the shared gate keeps the best. Ends after the last layer or at the memory limit. Prompt shows 'This round' with the bank and an even share per layer; no rollback. Estimates: 28 rounds at past pace per round.",
+        "[2026-11-20 17:16] Steph started the run (0.6B, 20% smaller, one layer per step): 20261120-1716-qwen3-0.6b-codex. Round 1 left layer 0 as it is."
       ]
     },
     {
