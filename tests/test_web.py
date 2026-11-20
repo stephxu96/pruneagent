@@ -164,10 +164,10 @@ def test_prepare_jobs_check_the_name_and_report_progress():
         J.command("start", {"model": "HuggingFaceTB/SmolLM2-360M", "cut": 0.2})
     assert "HuggingFaceTB/SmolLM2-360M" in J.command("start", {"model": "HuggingFaceTB/SmolLM2-360M", "cut": 0.2},
                                                      known=[*J.MODELS, "HuggingFaceTB/SmolLM2-360M"])
-    log = ("Step 1 of 3: text\nStep 2 of 3: neuron scores and quick tests\n[3/16] probe\n"
-           "Step 3 of 3: damage table\n  [1/64] layer 0 narrow_mlp\n  [32/64] layer 7 drop_layer\n")
+    log = ("Step 1 of 4: load the model\nStep 2 of 4: sample text\nStep 3 of 4: part usage\n[3/16] probe\n"
+           "Step 4 of 4: cut tests (damage table)\n  [1/64] layer 0 narrow_mlp\n  [32/64] layer 7 drop_layer\n")
     p = J.prepare_progress(log)
-    assert (p["step"], p["done"], p["total"]) == (3, 32, 64) and abs(p["share"] - 0.55) < 1e-9
+    assert (p["step"], p["done"], p["total"]) == (4, 32, 64) and abs(p["share"] - 0.55) < 1e-9
     assert J.prepare_progress("")["step"] == 0
 
 
