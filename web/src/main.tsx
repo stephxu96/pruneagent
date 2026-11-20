@@ -38,25 +38,30 @@ function ServiceNotice() {
   );
 }
 
-// The deployed app updates itself: every few seconds it asks for the page and, when a new version has been deployed
-// (the page names a different script), reloads, except while a popup is open or a field is being typed in.
-function useNewVersionReload() {
+// When a new version of the app has been deployed, say so and offer a reload. Never reload by itself: that would
+// throw away whatever the user is in the middle of.
+function NewVersionNotice() {
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     const mine = document.querySelector<HTMLScriptElement>('script[src*="/assets/index-"]')?.src.split("/").pop();
     if (!mine) return; // the development server (hot reload of its own)
     const look = () =>
       fetch("/", { cache: "no-store" }).then((r) => r.text()).then((html) => {
         const now = html.match(/\/assets\/(index-[^"]+\.js)/)?.[1];
-        const busy = document.querySelector("dialog[open]") || ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName ?? "");
-        if (now && now !== mine && !busy) window.location.reload();
+        setReady(!!now && now !== mine);
       }).catch(() => undefined);
-    const t = setInterval(look, 5000);
+    const t = setInterval(look, 10000);
     return () => clearInterval(t);
   }, []);
+  if (!ready) return null;
+  return (
+    <div className="version-notice" role="status">
+      New version ready. <button className="small" onClick={() => window.location.reload()}>Reload</button>
+    </div>
+  );
 }
 
 function App() {
-  useNewVersionReload();
   const hash = useHash();
   const run = hash.match(/^#\/run\/([\w.-]+)(?:\/(\d+))?/);
   let page;
@@ -76,6 +81,7 @@ function App() {
         <a href="#/compare">Compare</a>
       </nav>
       <ServiceNotice />
+      <NewVersionNotice />
       <main>{page}</main>
       <footer className="foot"><a href="#/activity">Activity</a></footer>
     </>
