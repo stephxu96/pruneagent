@@ -43,3 +43,6 @@ web/*.tsbuildinfo
 releases/
 web/dist.next/
 web/dist.old/
+
+# working copies for side work (git worktree)
+.worktrees/
