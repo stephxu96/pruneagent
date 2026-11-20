@@ -180,7 +180,7 @@ function Answer({ model, fit, device, onBack, onStart }: {
   fit: Fit;
   device: Device;
   onBack: () => void;
-  onStart: (r: Feasibility, cut: number) => void;
+  onStart: (r: Feasibility | null, cut: number) => void; // r: the feasibility check, if one has finished
 }) {
   const [check, setCheck] = useState<Job | null>(null);
   const [past, setPast] = useState<Compare | null>(null);
@@ -227,8 +227,9 @@ function Answer({ model, fit, device, onBack, onStart }: {
         {fitsNote}
         <div className="actions">
           <button className="secondary" onClick={onBack}>← Device</button>
-          <button className="primary" title="Checks that this size can be reached, without starting anything"
+          <button className="secondary" title="Checks that this size can be reached, without starting anything"
             onClick={() => setChecked(slider / 100)}>Feasibility check</button>
+          <button className="primary" onClick={() => onStart(null, slider / 100)}>Start →</button>
         </div>
       </div>
     );
@@ -281,7 +282,7 @@ function Answer({ model, fit, device, onBack, onStart }: {
       )}
       <div className="actions">
         <button className="secondary" onClick={onBack}>← Device</button>
-        <button className="primary" disabled={checking || !r?.feasible} onClick={() => r && onStart(r, cut)}>Start →</button>
+        <button className="primary" disabled={!checking && r != null && !r.feasible} onClick={() => onStart(checking ? null : r, cut)}>Start →</button>
       </div>
     </div>
   );
