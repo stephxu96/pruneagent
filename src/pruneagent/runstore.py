@@ -397,7 +397,7 @@ def time_estimate(rates: list[dict], to_free_mb: float, max_rounds: int) -> dict
 RECENT_ROUNDS = 10
 
 
-def time_left(store: "RunStore", rates: list[dict]) -> dict | None:
+def time_left(store: RunStore, rates: list[dict]) -> dict | None:
     """How long a running run still needs, from its own progress: MB still to cut times its own pace so far, and
     the slowest past pace for the upper end. Pace per round is the last RECENT_ROUNDS rounds (the agent slows as
     its history grows). Capped by the rounds left."""

@@ -140,9 +140,13 @@ type Feasibility = {
   smallest_mb?: number;
   time?: { minutes: [number, number]; rounds: [number, number]; based_on_runs: number; worst_minutes?: number; max_rounds?: number } | null;
 };
-type Job = { id: number; kind: string; params: { model?: string; cut?: number; run_id?: string }; run_id: string | null; status: string; created: string; output: string; result: Feasibility | null };
+type Job = {
+  id: number; kind: string; params: { model?: string; cut?: number; run_id?: string }; run_id: string | null; status: string;
+  created: string; output: string; result: Feasibility | null;
+  progress?: { step: number; of: number; label: string; done: number; total: number; share: number };
+};
 
-const ORIGINAL_MB: Record<string, number> = { "Qwen/Qwen3-0.6B-Base": 1192.1, "Qwen/Qwen3-1.7B-Base": 3441.1 };
+const ADD_MODEL = "__add__"; // the model pickers' last option: go to "Your models"
 
 export function NewRunPage() {
   const q = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
@@ -156,12 +160,13 @@ export function NewRunPage() {
     const t = setTimeout(() => api<Job>(`/api/jobs/${check.id}`).then(setCheck).catch(() => undefined), 1500);
     return () => clearTimeout(t);
   }, [check]);
-  const [prepared, setPrepared] = useState<Record<string, boolean>>({});
+  const [models, setModels] = useState<Machine["models"]>([]);
   const refresh = () => api<Job[]>("/api/jobs").then(setJobs).catch(() => undefined);
   useEffect(() => {
-    api<Machine>("/api/machine").then((x) => setPrepared(Object.fromEntries(x.models.map((m) => [m.id, m.ready])))).catch(() => undefined);
+    api<Machine>("/api/machine").then((x) => setModels(x.models)).catch(() => undefined);
   }, []);
-  const ready = prepared[model] ?? true;
+  const info = models.find((x) => x.id === model);
+  const ready = info?.ready ?? true;
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 3000);
@@ -172,7 +177,7 @@ export function NewRunPage() {
     api<Job>(path, { method: "POST", headers: { "Content-Type": "application/json" }, body })
       .then((j) => { setMsg(`Queued (job ${j.id}).`); refresh(); })
       .catch((e) => setMsg(String(e)));
-  const orig = ORIGINAL_MB[model];
+  const orig = info?.size_mb;
   return (
     <div>
       <a href="#/" className="back">← All runs</a>
@@ -180,9 +185,14 @@ export function NewRunPage() {
       <div className="form">
         <label>
           Model
-          <select value={model} onChange={(e) => setModel(e.target.value)}>
-            <option value="Qwen/Qwen3-0.6B-Base">Qwen3-0.6B (small, for testing)</option>
-            <option value="Qwen/Qwen3-1.7B-Base">Qwen3-1.7B (the final model)</option>
+          <select value={model} onChange={(e) => {
+            if (e.target.value === ADD_MODEL) window.location.hash = "#/models";
+            else setModel(e.target.value);
+          }}>
+            {(models.length ? models : [{ id: model, ready: true, built_in: true, size_mb: 0, working_mb: 0 }]).map((x) => (
+              <option key={x.id} value={x.id}>{modelName(x.id)}{x.ready ? "" : " (not prepared)"}</option>
+            ))}
+            <option value={ADD_MODEL}>Add your own model…</option>
           </select>
         </label>
         <label>
@@ -202,8 +212,8 @@ export function NewRunPage() {
         </div>
         {!ready && (
           <p className="warn">
-            {modelName(model)} isn't prepared yet. Before the AI can work on a model, the model is measured once to see
-            how much each part matters. That takes about 6 hours on this Mac and is planned (task 3.7).
+            {modelName(model)} isn't prepared yet. Each model is measured once on this computer before its first
+            run. <a href="#/models">Prepare it on Your models →</a>
           </p>
         )}
         {check && <FeasibilityResult job={check} model={model} />}
@@ -240,7 +250,7 @@ export function NewRunPage() {
 
 type Machine = {
   machine: { name: string; chip: string; memory_gb: number | null };
-  models: { id: string; ready: boolean; size_mb: number; working_mb: number }[];
+  models: { id: string; ready: boolean; built_in: boolean; size_mb: number; working_mb: number }[];
   max_cut: number;
   free_share: number;
 };
@@ -313,8 +323,12 @@ function MachinePanel() {
         </label>
         <label>
           <span className="m-label">Model</span>
-          <select value={sel.id} onChange={(e) => setModel(e.target.value)}>
+          <select value={sel.id} onChange={(e) => {
+            if (e.target.value === ADD_MODEL) window.location.hash = "#/models";
+            else setModel(e.target.value);
+          }}>
             {m.models.map((x) => <option key={x.id} value={x.id}>{modelName(x.id)} · {mb(x.size_mb)}</option>)}
+            <option value={ADD_MODEL}>Add your own model…</option>
           </select>
         </label>
         <label>
@@ -457,18 +471,21 @@ const JOB_KIND: Record<string, string> = {
   resume: "Run resume",
   heldout: "Unseen-text test",
   accuracy: "Quiz check",
+  prepare: "Model preparation",
 };
 
 function jobTitle(j: Job): string {
   const what = JOB_KIND[j.kind] ?? j.kind;
   const p = j.params ?? {};
   if (p.model && p.cut != null) return `${what}: ${modelName(p.model)}, ${pct(p.cut)} smaller`;
+  if (p.model) return `${what}: ${modelName(p.model)}`;
   if (j.run_id) return `${what}: run ${j.run_id}`;
   return what;
 }
 
 function jobOutcome(j: Job): string {
   if (j.kind === "precheck" && j.result) return j.result.feasible ? "Feasible ✓" : "Not feasible";
+  if (j.kind === "prepare" && j.status === "running" && j.progress) return `Running · ${Math.round(j.progress.share * 100)}%`;
   return { queued: "Waiting", running: "Running", done: "Finished", failed: "Didn't finish", stopped: "Paused",
            lost: "Interrupted" }[j.status] ?? j.status;
 }

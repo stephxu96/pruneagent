@@ -78,7 +78,7 @@ export type Compare = {
 
 // ---------------------------------------------------------------- wording
 
-export const modelName = (id: string) => id.replace(/^Qwen\//, "").replace(/-Base$/, "");
+export const modelName = (id: string) => (id.split("/").pop() ?? id).replace(/-Base$/, "");
 export const pct = (x: number, digits = 0) => `${(x * 100).toFixed(digits)}%`;
 export const mb = (x: number) => `${Math.round(x).toLocaleString()} MB`;
 

@@ -265,3 +265,32 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .job { transition: border-color .15s ease, background .15s ease; }
 .job:hover { border-color: var(--ink-3); background: color-mix(in srgb, var(--panel) 85%, var(--ink) 4%); }
 .job > summary { min-height: 28px; }
+
+/* ---------------------------------------------------------------- Your models (bring your own model) */
+.models-page .lead { color: var(--ink-2); margin: -4px 0 18px; }
+.add-model { display: grid; gap: 12px; max-width: 640px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.add-model label { display: grid; gap: 6px; }
+.add-row { display: flex; gap: 8px; }
+.add-row input { flex: 1; min-width: 0; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.add-row input:focus { outline: 2px solid var(--agent); outline-offset: -1px; }
+.add-model .actions { display: flex; gap: 10px; align-items: center; }
+.model-list { display: grid; gap: 8px; max-width: 760px; }
+.model-line { display: grid; grid-template-columns: minmax(140px, 1fr) auto minmax(260px, 2fr); gap: 12px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.ml-name { font-weight: 600; overflow-wrap: anywhere; }
+.ml-state { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.ml-state .badge { margin-right: 0; }
+.prep { display: grid; gap: 4px; flex: 1; min-width: 180px; }
+.prep .bar { height: 8px; background: var(--gone); border-radius: 99px; overflow: hidden; }
+.prep .fill { height: 100%; background: var(--agent); border-radius: 99px; transition: width .6s ease; }
+.prep .muted { font-size: 13px; }
+@media (max-width: 640px) {
+  .model-line { grid-template-columns: 1fr; }
+  .ml-state { justify-content: flex-start; }
+}
+@media (max-width: 640px) {
+  nav.top { flex-wrap: wrap; gap: 6px 14px; padding: 12px 16px; }
+  nav.top .brand { flex-basis: 100%; }
+}
+.f-top { flex-wrap: wrap; }
+.f-title { overflow-wrap: anywhere; min-width: 0; }
+.add-model > * { min-width: 0; }

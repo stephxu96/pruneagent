@@ -33,6 +33,21 @@ uv run --extra web pruneagent web          # http://127.0.0.1:8125
 
 Open a round directly with `#/run/<run-id>/<round>`, e.g. `http://127.0.0.1:8125/#/run/20261118-1016-qwen3-0.6b-codex/14`. The app only calls the same commands as the CLI and reads their files (ADR-008); it runs on this computer only. For interface work, `cd web && npm run dev` serves it on :5173 with the API forwarded.
 
+### Your own model
+
+Any Qwen3, Qwen2, Llama or Mistral model from Hugging Face can be used. In the app, open **Your models**, type the
+model's name (e.g. `HuggingFaceTB/SmolLM2-360M`), and press **Check**: it says whether the model fits this computer
+and how long preparing it takes. **Prepare this model** then measures it once on this computer (its text, how much
+each part is used, and the quality cost of each cut); this can be paused and continued. From the command line:
+
+```bash
+uv run pruneagent check-model HuggingFaceTB/SmolLM2-360M
+uv run pruneagent prepare HuggingFaceTB/SmolLM2-360M      # ~1.5-3 h on an M4 Mac for a 0.4-2B model
+```
+
+Models that need a license on Hugging Face (e.g. Llama) need `hf auth login` first. Models built from expert parts
+(mixture of experts), and other families such as Gemma and Phi, are refused with a reason.
+
 ## Agent backend
 
 The agent's decisions come from `pruneagent.agent_client`. By default it calls Codex on your ChatGPT plan; an API backend is also built in, but it has not yet made a real call.

@@ -12,8 +12,6 @@ import os
 import platform
 import subprocess
 
-from pruneagent.web.jobs import MODELS
-
 WORKING_CONTEXT = 2048  # tokens of conversation the suggested setup leaves room for
 FREE_SHARE = 0.5  # share of the device's memory left for the system and other apps
 
@@ -37,23 +35,33 @@ def machine() -> dict:
 
 
 @functools.cache
-def model_sizes() -> list[dict]:
+def _size(model_id: str) -> dict | None:
     from transformers import AutoConfig
 
     from pruneagent import estimate as E
     from pruneagent import plan as P
 
+    try:
+        cfg = AutoConfig.from_pretrained(model_id)
+        dense = P.dense_plan(cfg)
+    except (OSError, ValueError, KeyError):  # offline and not cached, or a layout we can't read
+        return None
+    # working memory while answering: the model's notes on the conversation so far (key/value cache),
+    # for a conversation of WORKING_CONTEXT tokens, unpruned (an upper bound for any cut)
+    return {"size_mb": E.weight_bytes(cfg, dense) / 1e6,
+            "working_mb": E.kv_cache_bytes(cfg, dense, context=WORKING_CONTEXT) / 1e6}
+
+
+def model_sizes(ids: tuple[str, ...] | list[str] | None = None) -> list[dict]:
+    """Each model's size and whether it is prepared on this machine (read fresh: a preparation may just have
+    finished). `ids` defaults to the built-in models."""
+    from pruneagent import models
+
     out = []
-    for m in MODELS:
-        try:
-            cfg = AutoConfig.from_pretrained(m)
-            dense = P.dense_plan(cfg)
-            # working memory while answering: the model's notes on the conversation so far (key/value cache),
-            # for a conversation of WORKING_CONTEXT tokens, unpruned (an upper bound for any cut)
-            out.append({"id": m, "ready": ready(m), "size_mb": E.weight_bytes(cfg, dense) / 1e6,
-                        "working_mb": E.kv_cache_bytes(cfg, dense, context=WORKING_CONTEXT) / 1e6})
-        except OSError:  # offline and not cached
-            continue
+    for m in ids or models.BUILT_IN:
+        size = _size(m)
+        if size:
+            out.append({"id": m, "ready": ready(m), "built_in": m in models.BUILT_IN, **size})
     return out
 
 
@@ -87,7 +95,7 @@ def live() -> dict:
 
 def ready(model_id: str, device: str = "mps", dtype: str = "float16") -> bool:
     """Whether the model has been prepared for a run on this machine: its quick tests exist (a run stops without
-    them; see `realrun.make_setup`). Preparing a model is task 3.7 for Qwen3-1.7B."""
+    them; see `realrun.make_setup`). `pruneagent prepare` makes them."""
     from pathlib import Path
 
     from pruneagent import realrun as RR

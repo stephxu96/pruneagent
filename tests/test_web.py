@@ -11,6 +11,7 @@ from test_kill_resume import Agent, setup_for, use  # noqa: F401  (setup_for is 
 
 from pruneagent import realrun as RR
 from pruneagent.web import jobs as J
+from pruneagent.web import machine as M
 from pruneagent.web.app import create_app
 
 
@@ -107,7 +108,7 @@ def test_machine_reports_memory_and_model_sizes(finished_run, tmp_path, monkeypa
     from pruneagent.web import machine as M
 
     monkeypatch.setattr(M, "machine", lambda: {"name": "MacBook Pro", "chip": "Apple M4", "memory_gb": 24.0})
-    monkeypatch.setattr(M, "model_sizes", lambda: [{"id": J.MODELS[0], "ready": True, "size_mb": 1192.1, "working_mb": 117.4}])
+    monkeypatch.setattr(M, "model_sizes", lambda ids=None: [{"id": J.MODELS[0], "ready": True, "size_mb": 1192.1, "working_mb": 117.4}])
     api, _ = client(finished_run, tmp_path)
     got = api.get("/api/machine").json()
     assert got["machine"]["memory_gb"] == 24.0 and got["models"][0]["size_mb"] == 1192.1 and got["max_cut"] == 0.6 and got["free_share"] == 0.5
@@ -163,3 +164,45 @@ def test_time_left_reads_a_runs_own_progress(finished_run):
     t = R.time_left(R.RunStore.open("r1", finished_run), [])
     assert t is not None and t["mb_left"] >= 0 and t["rounds_left"] >= 0 and t["worst_minutes"] >= 0
 
+
+
+def test_prepare_jobs_check_the_name_and_report_progress():
+    assert J.command("prepare", {"model": "HuggingFaceTB/SmolLM2-360M"})[-3:] == ["pruneagent", "prepare",
+                                                                                  "HuggingFaceTB/SmolLM2-360M"]
+    for bad in ("", "no-slash", "a/b; rm -rf ~", "../x/y"):
+        with pytest.raises(J.JobError):
+            J.command("prepare", {"model": bad})
+    # a run may use an added model only when the app passes it as known
+    with pytest.raises(J.JobError):
+        J.command("start", {"model": "HuggingFaceTB/SmolLM2-360M", "cut": 0.2})
+    assert "HuggingFaceTB/SmolLM2-360M" in J.command("start", {"model": "HuggingFaceTB/SmolLM2-360M", "cut": 0.2},
+                                                     known=[*J.MODELS, "HuggingFaceTB/SmolLM2-360M"])
+    log = ("Step 1 of 3: text\nStep 2 of 3: neuron scores and quick tests\n[3/16] probe\n"
+           "Step 3 of 3: damage table\n  [1/64] layer 0 narrow_mlp\n  [32/64] layer 7 drop_layer\n")
+    p = J.prepare_progress(log)
+    assert (p["step"], p["done"], p["total"]) == (3, 32, 64) and abs(p["share"] - 0.55) < 1e-9
+    assert J.prepare_progress("")["step"] == 0
+
+
+def test_models_api_checks_and_prepares(finished_run, tmp_path, monkeypatch):
+    from pruneagent import models as MD
+
+    monkeypatch.setattr(M, "machine", lambda: {"name": "Mac", "chip": "M4", "memory_gb": 16.0})
+    monkeypatch.setattr(M, "ready", lambda m, *a: False)
+
+    def fake_check(model_id, memory_gb):
+        if model_id != "org/good-model":
+            raise MD.ModelError("not supported")
+        return {"id": model_id, "family": "Llama", "size_mb": 720.0, "layers": 32, "params_b": 0.36,
+                "prepare_minutes": [100.0, 160.0]}
+
+    monkeypatch.setattr(MD, "check", fake_check)
+    api, _ = client(finished_run, tmp_path)
+    assert api.get("/api/models/check", params={"id": "org/bad"}).json() == {"id": "org/bad", "ok": False,
+                                                                           "reason": "not supported"}
+    ok = api.get("/api/models/check", params={"id": "org/good-model"}).json()
+    assert ok["ok"] and not ok["prepared"] and not ok["added"]
+    assert api.post("/api/models/prepare", json={"model": "org/bad"}).status_code == 422
+    job = api.post("/api/models/prepare", json={"model": "org/good-model"}).json()
+    assert job["kind"] == "prepare" and job["progress"]["step"] == 0
+    assert MD.known(finished_run)[-1] == "org/good-model"

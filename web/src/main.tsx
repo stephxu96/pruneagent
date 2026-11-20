@@ -1,5 +1,6 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { ModelsPage } from "./ModelsPage";
 import { ComparePage, HomePage, NewRunPage } from "./pages";
 import { RunPage } from "./RunPage";
 import "./styles.css";
@@ -23,7 +24,8 @@ function App() {
   let page;
   if (run) page = <RunPage key={hash} id={run[1]} start={Number(run[2] ?? 0)} />;
   else if (hash.startsWith("#/compare")) page = <ComparePage />;
-  else if (hash.startsWith("#/new")) page = <NewRunPage />;
+  else if (hash.startsWith("#/new")) page = <NewRunPage key={hash} />;
+  else if (hash.startsWith("#/models")) page = <ModelsPage />;
   else page = <HomePage />;
   return (
     <>
@@ -31,6 +33,7 @@ function App() {
         <a href="#/" className="brand">✂ PruneAgent</a>
         <a href="#/compare">Comparison</a>
         <a href="#/new">New run</a>
+        <a href="#/models">Your models</a>
       </nav>
       <main>{page}</main>
     </>

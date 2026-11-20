@@ -1318,6 +1318,74 @@ def web_cmd(
     serve(port)
 
 
+@app.command("check-model")
+def check_model_cmd(
+    model: Annotated[str, typer.Argument(help="Hugging Face model id, like Qwen/Qwen3-0.6B-Base.")],
+    json_result: Annotated[bool, typer.Option(help="Print one JSON line.")] = False,
+) -> None:
+    """Whether a model can be prepared and pruned on this computer: supported kind, size, and how long preparing
+    it takes. Reads only the model's details from Hugging Face, not its weights."""
+    import json
+
+    from pruneagent import models
+    from pruneagent.web import machine
+
+    try:
+        info = models.check(model, machine.machine()["memory_gb"])
+        info["ok"], info["prepared"] = True, machine.ready(model)
+    except models.ModelError as e:
+        info = {"id": model, "ok": False, "reason": str(e)}
+    if json_result:
+        typer.echo(json.dumps(info))
+    elif info["ok"]:
+        lo, hi = info["prepare_minutes"]
+        typer.echo(f"{model}: {info['family']}, {info['size_mb']:,.0f} MB, {info['layers']} layers; "
+                   f"{'prepared' if info['prepared'] else f'preparing takes ~{lo:.0f}-{hi:.0f} min'}")
+    else:
+        typer.echo(f"{model}: {info['reason']}")
+        raise typer.Exit(1)
+
+
+@app.command("prepare")
+def prepare_cmd(
+    model: Annotated[str, typer.Argument(help="Hugging Face model id.")],
+    device: Annotated[str, typer.Option(help="mps, cuda or cpu.")] = "mps",
+    dtype: Annotated[str, typer.Option(help="float16 or bfloat16.")] = "float16",
+    root: Annotated[Path, typer.Option(help="Directory holding the runs (the model list is kept there).")] = Path("runs"),
+) -> None:
+    """Prepare a model for runs on this computer (FR17): its text, neuron scores, quick tests and measured damage
+    table. Each step reuses what an earlier, stopped preparation saved."""
+    import subprocess
+    import sys
+
+    from pruneagent import data as d
+    from pruneagent import models
+    from pruneagent import realrun as RR
+    from pruneagent.web import machine
+
+    try:
+        models.check(model, machine.machine()["memory_gb"])
+    except models.ModelError as e:
+        typer.echo(f"Cannot prepare {model}: {e}", err=True)
+        raise typer.Exit(1) from None
+    models.add(root, model)
+    name = f"{RR._slug(model)}__{device}__{dtype}"
+    scores, probes, damage = (RR.SCORES_DIR / f"{name}.safetensors", RR.PROBES_DIR / f"{name}.json",
+                              RR.DAMAGE_DIR / f"{name}.json")
+    needed = [d.calib_name(model), d.flap_calib_name(model), d.wikitext_name("validation", model),
+              d.wikitext_name("test", model)]
+    typer.echo("Step 1 of 3: text", err=True)
+    if not all(n in d.read_manifest().get("entries", {}) for n in needed):
+        d.build_cache(model, log=lambda m: typer.echo(m, err=True))
+    typer.echo("Step 2 of 3: neuron scores and quick tests", err=True)
+    probe_cmd(model=model, dtype=dtype, device=device, scores_path=scores, out=probes)
+    typer.echo("Step 3 of 3: damage table", err=True)
+    subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2] / "scripts" / "damage_table.py"),
+                    "--model", model, "--device", device, "--dtype", dtype, "--windows", "32",
+                    "--scores", str(scores), "--quick-tests", str(probes), "--out", str(damage)], check=True)
+    typer.echo(f"Prepared {model}: ready for runs.", err=True)
+
+
 @app.command("report")
 def report_cmd(
     run_id: Annotated[str, typer.Argument(help="The run to report on.")],
