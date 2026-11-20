@@ -93,7 +93,7 @@ export function ModelsPage() {
 
   return (
     <div className="models-page">
-      <a href="#/" className="back">← All runs</a>
+      <a href="#/" className="back">← Past runs</a>
       <h1>Models</h1>
       <ModelList rows={rows} latest={latest} onOpen={choose} />
       <h2>Set up a model</h2>

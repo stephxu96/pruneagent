@@ -74,8 +74,12 @@ export type Score = { size_mb: number; test_error: number; unseen_error: number 
 export type Accuracy = { all_questions: { acc: number; stderr: number; questions: number }; sets: Record<string, { acc: number; acc_stderr: number | null }> };
 export type Results = { heldout: Record<string, Score> | null; accuracy: Record<string, Accuracy> | null };
 export type Compare = {
-  runs: { id: string; model: string; cut: number; agent: Score; flap: Score; original: Score }[];
+  runs: {
+    id: string; model: string; cut: number; agent: Score; flap: Score; original: Score;
+    quiz: { agent?: number; flap?: number; original?: number } | null;
+  }[];
   flap_curve: { cut: number; test_error: number }[];
+  curve_model: string | null;
 };
 
 // ---------------------------------------------------------------- wording

@@ -40,7 +40,7 @@ export function HomePage() {
           </div>
         </>
       )}
-      <h2>Runs</h2>
+      <h2>Past runs</h2>
       {err && <p className="error">{err}</p>}
       {runs && finished.length === 0 && <p className="muted">No runs yet.</p>}
       <div className="cards">
@@ -97,11 +97,11 @@ export function ComparePage() {
   if (!data) return <p className="muted">Loading…</p>;
   return (
     <div>
-      <a href="#/" className="back">← All runs</a>
+      <a href="#/" className="back">← Past runs</a>
       <h1>Quality at the same size</h1>
       <p className="lede">
-        Each pair was cut to exactly the same size, then tested on text neither had seen. The standard method (FLAP)
-        applies one fixed rule; PruneAgent's AI tries ideas and keeps what works.
+        Each pair was cut to exactly the same size, then tested two ways: multiple-choice questions, and text neither
+        had seen. The standard method (FLAP) applies one fixed rule; PruneAgent's AI tries ideas and keeps what works.
       </p>
       <div className="cards wide">
         {data.runs.map((r) => (
@@ -109,6 +109,13 @@ export function ComparePage() {
             <div className="card-title">
               {modelName(r.model)}, {pct(r.cut)} smaller <span className="muted">({mb(r.agent.size_mb)})</span>
             </div>
+            <div className="m-label">Quiz questions (more is better)</div>
+            {r.quiz?.agent != null && r.quiz.flap != null ? (
+              <QuizBars quiz={r.quiz} />
+            ) : (
+              <p className="muted">Not checked yet.</p>
+            )}
+            <div className="m-label">Unseen text</div>
             <ResultBars held={{ unpruned: r.original, agent: r.agent, "Baseline: FLAP": r.flap }} />
             <a href={`#/run/${r.id}`}>Replay →</a>
           </div>
@@ -119,7 +126,27 @@ export function ComparePage() {
   );
 }
 
-function CurveChart({ data }: { data: Compare }) {
+function QuizBars({ quiz }: { quiz: NonNullable<Compare["runs"][number]["quiz"]> }) {
+  const rows = [
+    { name: "PruneAgent", cls: "agent", v: quiz.agent! },
+    { name: "Standard method (FLAP)", cls: "flap", v: quiz.flap! },
+  ];
+  return (
+    <div className="bars">
+      {rows.map((x) => (
+        <div key={x.name} className="bar-row">
+          <span className="bar-name">{x.name}</span>
+          <span className="bar-track"><span className={`bar-fill ${x.cls}`} style={{ width: `${x.v * 100}%` }} /></span>
+          <span className="bar-val">{pct(x.v, 1)} right</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CurveChart({ data: all }: { data: Compare }) {
+  // FLAP's curve is measured on one model, so only that model's runs go next to it
+  const data = { ...all, runs: all.runs.filter((r) => r.model === all.curve_model) };
   const W = 640, H = 300, M = { l: 78, r: 24, t: 20, b: 44 };
   const base = data.runs[0]?.original.test_error ?? 1;
   const times = (e: number) => e / base; // 1 = as good as the original
@@ -131,7 +158,7 @@ function CurveChart({ data }: { data: Compare }) {
   const yTicks = [1, 2, 5, 10, 20, 50].filter((t) => t <= yMax);
   return (
     <section>
-      <h2>Quality by size cut</h2>
+      <h2>Quality by size cut: {modelName(all.curve_model ?? "")}</h2>
       <p className="muted">How many times worse than the original model, at each size cut (lower is better).</p>
       <figure className="chart">
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Quality lost by size cut, both methods">
@@ -182,7 +209,7 @@ export function ActivityPage() {
   }, []);
   return (
     <div>
-      <a href="#/" className="back">← All runs</a>
+      <a href="#/" className="back">← Past runs</a>
       <h1>Activity</h1>
       {jobs.length === 0 && <p className="muted">Nothing yet.</p>}
       {jobs.map((j) => (
