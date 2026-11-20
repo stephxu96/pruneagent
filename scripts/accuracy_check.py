@@ -73,6 +73,7 @@ def main() -> None:
         )
         out_path.write_text(json.dumps(record, indent=2) + "\n")
         del model
+        ev.free_memory(device)  # before the next model is built: otherwise both stay in memory
 
 
 if __name__ == "__main__":
