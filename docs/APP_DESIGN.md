@@ -55,7 +55,7 @@ flowchart LR
         S1[Name the model] --> S2[Check] --> S3[Set up:<br/>load the model,<br/>generate assets] --> S4[Ready]
     end
     subgraph Pruning[Model pruning: once per device]
-        P1[Select your model] --> P2[Device] --> P3[The answer:<br/>size, quality,<br/>time, usage] --> P4[Start] --> P5[Watch] --> P6[Evaluate] --> P7[Your model]
+        P1[Select your model] --> P2[Device] --> P3[Estimate:<br/>size, quality,<br/>time, usage] --> P4[Start] --> P5[Watch] --> P6[Evaluate] --> P7[Your model]
     end
     S4 -. appears in .-> P1
     P1 -. not set up yet .-> S1
@@ -82,7 +82,7 @@ Setup ends at "ready". Pruning is a separate story that can start right away or 
 |---|---|---|---|---|
 | **1 Select your model** | Her set-up models, with their size | Which one | — | The one she wants isn't there: a link to model setup |
 | **2 Device** | This computer (read automatically) or a preset device: Mac mini, laptop, phone (presets lock memory, Custom unlocks it); how much to keep free for other apps | Which device | Works out the space the model may take: memory − other apps − working memory | Device too small for this model at any size: says so, suggests a smaller model |
-| **3 The answer** | "To fit, it must be 20% smaller. Expect about 1.7–1.9× worse than the original; the standard method would be 13× worse. About 1 h 15 min–1 h 35 min. Uses about 14% of your 5-hour limit." | Go ahead, or change the device | Picks the size from the device (with a buffer) and runs the feasibility check, both on its own. No size to choose, no check button | Can't fit: why, and what would |
+| **3 Estimate** | "To fit, it must be 20% smaller. Expect about 1.7–1.9× worse than the original; the standard method would be 13× worse. About 1 h 15 min–1 h 35 min. Uses about 14% of your 5-hour limit." | Go ahead, or change the device | Picks the size from the device (with a buffer) and runs the feasibility check, both on its own. No size to choose, no check button | Can't fit: why, and what would |
 | **4 Start** | A confirmation: model, device, size, time, usage; "keep the lid open" | Start or cancel | Queues the run, then the final check | Mac busy with another job: "waits for the Mac to be free" |
 | **5 Watch** | Progress at a glance: size against target, quality so far, time left; the round-by-round story below | Pause, continue | Streams each round as it lands | Lid closed, usage limit, crash: "Paused" or "Interrupted" with the reason and Continue |
 | **6 Evaluate** | Two tests, each with progress: **unseen text** (how well it predicts text it never saw) and **question sets** (how many quiz questions it gets right), each for the smaller model, the original and FLAP at the same size | — | Runs both tests on its own after the run | A test fails: which one and why; Continue runs it again |
@@ -106,7 +106,7 @@ The expected-quality range in step 3 comes from past runs at that model and size
 | Page | Address | Story | Holds | Today |
 |---|---|---|---|---|
 | **Runs** (home) | `#/` | Pruning | Active runs first, each with a progress bar; then finished runs; one main button: "Prune a model" | Run cards plus the "Your computer" panel |
-| **Prune a model** | `#/new` | Pruning, steps 1–4 | Step bar: Select your model → Device → The answer → Start | Split between the home panel and New run |
+| **Prune a model** | `#/new` | Pruning, steps 1–4 | Step bar: Select your model → Device → Estimate → Start | Split between the home panel and New run |
 | **Run** | `#/run/<id>` | Pruning, steps 5–7 | While running: the progress view, then the evaluation's progress. When finished: the result and download. Below both: "How it got there", the round-by-round replay | The replay, with results under it |
 | **Models** | `#/models` | Setup | The models on this computer (ready, setting up, paused) and "Set up a model", which opens the setup steps | "Select your model", which mixed both stories |
 | **Compare** | `#/compare` | — | Every finished run against FLAP across sizes (researchers, demo) | Same |

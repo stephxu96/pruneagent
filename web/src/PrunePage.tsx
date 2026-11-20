@@ -6,7 +6,7 @@ import { StartDialog } from "./StartDialog";
 // Model pruning (docs/APP_DESIGN.md §2.2): select your model → where it runs → the answer → start. The size follows
 // from the device and the feasibility check runs on its own; the user never chooses a percentage.
 
-const STEPS = ["Select your model", "Device", "The answer", "Start"];
+const STEPS = ["Select your model", "Device", "Estimate", "Start"];
 const NEAR = 0.05; // earlier runs within 5 points of this size count as "at this size"
 
 type Device = { id: string; memGb: number; free: number };
@@ -69,7 +69,7 @@ export function PrunePage() {
             <WhereItRuns m={m} model={sel} device={device} setDevice={setDevice} />
             <div className="actions">
               <button className="secondary" onClick={() => setAt(1)}>← Model</button>
-              <button className="primary" onClick={() => setAt(3)} disabled={!fit || fit.kind === "too-small"}>See the answer →</button>
+              <button className="primary" onClick={() => setAt(3)} disabled={!fit || fit.kind === "too-small"}>Next →</button>
             </div>
           </>
         )}
