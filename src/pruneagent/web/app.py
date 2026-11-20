@@ -10,7 +10,6 @@ import json
 import os
 import signal
 import socket
-from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -20,11 +19,40 @@ from pydantic import BaseModel
 
 from pruneagent import models as MD
 from pruneagent import runstore as R
+from pruneagent import workflows as W
 from pruneagent.web import jobs as J
 from pruneagent.web import machine as M
 from pruneagent.web import views as V
 
 REPO = Path(__file__).resolve().parents[3]
+
+
+KIND_FOR_UI = {"setup": "prepare", "precheck": "precheck"}
+STATUS_FOR_UI = {"waiting": "queued", "running": "running", "finished": "done", "failed": "failed",
+                 "paused": "stopped", "cancelled": "cancelled"}
+
+
+def public(wf: W.Workflow, tail: int = 4000) -> dict:
+    """A workflow in the shape the interface reads (one card in the history and on the Models page)."""
+    if wf.kind == "pruning":
+        kind = "resume" if wf.params.get("resume") else "start"
+    elif wf.kind == "check":
+        kind = wf.params.get("check", "check")
+    else:
+        kind = KIND_FOR_UI.get(wf.kind, wf.kind)
+    step = wf.steps[min(wf.step, len(wf.steps) - 1)] if wf.steps else {}
+    full = W.read_log(step.get("log"))
+    started = next((s["started"] for s in wf.steps if s["started"]), None)
+    out = {"id": wf.id, "kind": kind, "workflow": wf.kind, "run_id": wf.run_id, "status": STATUS_FOR_UI[wf.state],
+           "reason": wf.reason, "params": wf.params, "release": wf.release, "created": wf.created,
+           "started": started, "ended": step.get("ended"), "exit_code": step.get("exit_code"),
+           "output": full[-tail:], "result": None,
+           "steps": [{"name": s["name"], "state": s["state"]} for s in wf.steps], "step": wf.step}
+    if wf.kind == "precheck" and wf.state in ("finished", "failed"):
+        out["result"] = W.last_json(full)
+    if wf.kind == "setup":
+        out["progress"] = J.prepare_progress(full)
+    return out
 
 
 class PrepareModel(BaseModel):
@@ -37,24 +65,16 @@ class NewRun(BaseModel):
     backend: str = "codex"
 
 
-def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunner | None = None,
-               dist: Path | None = REPO / "web" / "dist", curve: Path | None = None,
-               start_worker: bool = True) -> FastAPI:
+def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | None = None,
+               dist: Path | None = REPO / "web" / "dist", curve: Path | None = None) -> FastAPI:
+    """The web app. It runs nothing long itself: it writes requests to the workflow store and reads state back;
+    the background workflow service (`pruneagent worker`) does the work (docs/APP_DESIGN.md §4)."""
     root, repo = Path(root), Path(repo)
     curve = curve or repo / "results" / "flap_curve" / "qwen3-0.6b-base.json"
     root.mkdir(parents=True, exist_ok=True)
-    runner = runner or J.JobRunner(root / "web_jobs.sqlite", repo, root / "web_jobs",
-                                   build=lambda kind, params: J.command(kind, params, known=MD.known(root)))
-
-    @asynccontextmanager
-    async def lifespan(_app: FastAPI):
-        if start_worker:
-            runner.start()
-        yield
-        runner.shutdown()
-
-    app = FastAPI(title="PruneAgent", docs_url="/api/docs", openapi_url="/api/openapi.json", lifespan=lifespan)
-    app.state.runner = runner
+    store = store or W.Store(root)
+    app = FastAPI(title="PruneAgent", docs_url="/api/docs", openapi_url="/api/openapi.json")
+    app.state.store = store
 
     def store_or_404(run_id: str) -> R.RunStore:
         if not J.RUN_ID.match(run_id) or not (root / run_id / "run.sqlite").exists():
@@ -62,10 +82,32 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunne
         return R.RunStore.open(run_id, root)
 
     def submit(kind: str, params: dict) -> dict:
+        """Check the request's fields (the same checks as the command line), then hand it to the service."""
         try:
-            return runner.submit(kind, params).public()
+            J.command(kind, params, known=MD.known(root))
         except J.JobError as e:
             raise HTTPException(422, str(e)) from None
+        release = W.current_release(repo)
+        if kind == "precheck":
+            wf = store.submit("precheck", {k: params[k] for k in ("model", "cut", "backend") if k in params}, release)
+        elif kind == "start":
+            taken = {w.run_id for w in store.list(limit=500) if w.run_id}
+            run_id = R.new_run_id(params["model"], params.get("backend", "codex"), root, taken=taken)
+            wf = store.submit("pruning", {"model": params["model"], "cut": float(params["cut"]),
+                                          "backend": params.get("backend", "codex"), "run_id": run_id}, release)
+        elif kind == "resume":
+            wf = store.submit("pruning", {"run_id": params["run_id"], "resume": True}, release)
+        elif kind in ("heldout", "accuracy"):
+            wf = store.submit("check", {"run_id": params["run_id"], "check": kind}, release)
+        elif kind == "prepare":
+            wf = store.submit("setup", {"model": params["model"]}, release)
+        else:
+            raise HTTPException(422, f"unknown request: {kind}")
+        return public(wf)
+
+    def workflow_for(run_id: str, states: tuple[str, ...]) -> W.Workflow | None:
+        return next((w for w in store.list(limit=500, states=states) if w.kind == "pruning" and w.run_id == run_id),
+                    None)
 
     # ---------------------------------------------------------------- runs (read only)
 
@@ -159,7 +201,10 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunne
 
     @app.post("/api/runs/{run_id}/pause")
     def pause(run_id: str) -> dict:
-        """Ctrl-C to the run's process: it saves a checkpoint and pauses, as from a terminal."""
+        """Pause a run: through its workflow, or Ctrl-C to a run started from a terminal (it checkpoints and stops)."""
+        wf = workflow_for(run_id, ("running", "waiting"))
+        if wf:
+            return public(store.request(wf.id, "pause"))
         info = store_or_404(run_id).info()
         if info.state != "running" or info.host != socket.gethostname() or not info.pid:
             raise HTTPException(409, f"the run is {info.describe()}, not running on this computer")
@@ -168,6 +213,9 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunne
 
     @app.post("/api/runs/{run_id}/resume")
     def resume(run_id: str) -> dict:
+        wf = workflow_for(run_id, ("paused", "failed"))
+        if wf:
+            return public(store.resume(wf.id))
         info = store_or_404(run_id).info()
         if not info.resumable:
             raise HTTPException(409, f"the run is {info.describe()}")
@@ -181,23 +229,37 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunne
             raise HTTPException(409, "checks run on finished runs")
         return submit(kind, {"run_id": run_id})
 
+    # ---------------------------------------------------------------- workflows ("jobs" in the interface)
+
+    @app.get("/api/service")
+    def service() -> dict:
+        """Whether the background workflow service is running; without it nothing starts."""
+        return W.service_status(root)
+
     @app.get("/api/jobs")
     def jobs() -> list[dict]:
-        return [j.public(tail=1500) for j in runner.list()]
+        return [public(w, tail=1500) for w in store.list()]
+
+    def get_or_404(job_id: int) -> W.Workflow:
+        try:
+            return store.get(job_id)
+        except KeyError:
+            raise HTTPException(404, "no such job") from None
 
     @app.get("/api/jobs/{job_id}")
     def job(job_id: int) -> dict:
-        try:
-            return runner.get(job_id).public()
-        except KeyError:
-            raise HTTPException(404, "no such job") from None
+        return public(get_or_404(job_id))
 
     @app.post("/api/jobs/{job_id}/stop")
     def stop(job_id: int) -> dict:
-        try:
-            return runner.stop(job_id).public()
-        except KeyError:
-            raise HTTPException(404, "no such job") from None
+        """Pause a running workflow (at a safe point), or cancel one that hasn't started."""
+        wf = get_or_404(job_id)
+        return public(store.request(wf.id, "pause" if wf.state == "running" else "cancel"))
+
+    @app.post("/api/jobs/{job_id}/continue")
+    def continue_job(job_id: int) -> dict:
+        """Continue a paused or failed workflow from the step it stopped at."""
+        return public(store.resume(get_or_404(job_id).id))
 
     # ---------------------------------------------------------------- the browser interface
 

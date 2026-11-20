@@ -80,6 +80,7 @@ export function ModelsPage() {
       .then(() => { setMsg(null); refresh(); })
       .catch((e) => setMsg(String(e)));
   const pause = (job: PrepJob) => api(`/api/jobs/${job.id}/stop`, { method: "POST" }).then(refresh);
+  const resume = (job: PrepJob) => api(`/api/jobs/${job.id}/continue`, { method: "POST" }).then(refresh);
 
   const row = rows.find((r) => r.id === selected);
   const job = selected ? latest.get(selected) : undefined;
@@ -109,7 +110,7 @@ export function ModelsPage() {
             : <CheckStep check={check} onPrepare={() => prepare(check.id)} onBack={restart} />
         )}
         {step === 3 && job && selected && (
-          <PrepareStep id={selected} job={job} onPause={() => pause(job)} onContinue={() => prepare(selected)} />
+          <PrepareStep id={selected} job={job} onPause={() => pause(job)} onContinue={() => resume(job)} />
         )}
         {step === 4 && selected && (
           <div className="ready-step">

@@ -1318,6 +1318,20 @@ def web_cmd(
     serve(port)
 
 
+@app.command("worker")
+def worker_cmd(
+    root: Annotated[Path, typer.Option(help="Data root: the folder holding runs/, checkpoints/, results/.")] = Path("."),
+    poll: Annotated[float, typer.Option(help="Seconds between passes.")] = 1.0,
+) -> None:
+    """The background workflow service: runs model setups, pruning runs and checks submitted from the web app,
+    apart from the app, so the app can be restarted or updated at any time (docs/APP_DESIGN.md §4)."""
+    from pruneagent import workflows as W
+
+    svc = W.Service(root)
+    typer.echo(f"PruneAgent workflow service: {svc.runs / W.STORE}; release {W.current_release(svc.root) or 'development'}")
+    svc.serve()
+
+
 @app.command("check-model")
 def check_model_cmd(
     model: Annotated[str, typer.Argument(help="Hugging Face model id, like Qwen/Qwen3-0.6B-Base.")],

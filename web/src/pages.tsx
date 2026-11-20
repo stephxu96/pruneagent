@@ -142,7 +142,7 @@ type Feasibility = {
   time?: { minutes: [number, number]; rounds: [number, number]; based_on_runs: number; worst_minutes?: number; max_rounds?: number } | null;
 };
 type Job = {
-  id: number; kind: string; params: { model?: string; cut?: number; run_id?: string }; run_id: string | null; status: string;
+  id: number; kind: string; reason?: string | null; params: { model?: string; cut?: number; run_id?: string }; run_id: string | null; status: string;
   created: string; output: string; result: Feasibility | null;
   progress?: { step: number; of: number; label: string; done: number; total: number; share: number };
 };
@@ -236,6 +236,11 @@ export function NewRunPage() {
             {(j.status === "running" || j.status === "queued") && (
               <button className="small" onClick={(e) => { e.preventDefault(); api(`/api/jobs/${j.id}/stop`, { method: "POST" }).then(refresh); }}>
                 {j.status === "running" ? "Pause" : "Cancel"}
+              </button>
+            )}
+            {(j.status === "stopped" || j.status === "failed") && j.kind !== "precheck" && (
+              <button className="small" onClick={(e) => { e.preventDefault(); api(`/api/jobs/${j.id}/continue`, { method: "POST" }).then(refresh); }}>
+                Continue
               </button>
             )}
           </summary>
@@ -493,5 +498,5 @@ function jobOutcome(j: Job): string {
   if (j.kind === "precheck" && j.result) return j.result.feasible ? "Feasible ✓" : "Not feasible";
   if (j.kind === "prepare" && j.status === "running" && j.progress) return `Running · ${Math.round(j.progress.share * 100)}%`;
   return { queued: "Waiting", running: "Running", done: "Finished", failed: "Didn't finish", stopped: "Paused",
-           lost: "Interrupted" }[j.status] ?? j.status;
+           cancelled: "Cancelled", lost: "Interrupted" }[j.status] ?? j.status;
 }

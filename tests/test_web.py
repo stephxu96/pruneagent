@@ -1,15 +1,14 @@
 """Task 3.6: the web application's API (ADR-008) reads tool outputs and runs fixed commands only."""
 
 import json
-import signal
-import sys
-import time
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from test_kill_resume import Agent, setup_for, use  # noqa: F401  (setup_for is a fixture)
 
 from pruneagent import realrun as RR
+from pruneagent import workflows as W
 from pruneagent.web import jobs as J
 from pruneagent.web import machine as M
 from pruneagent.web.app import create_app
@@ -28,9 +27,9 @@ def finished_run(setup_for, monkeypatch):  # noqa: F811
     return root / "runs"
 
 
-def client(runs, tmp_path, build=J.command):
-    runner = J.JobRunner(tmp_path / "jobs.sqlite", tmp_path, tmp_path / "logs", build=build)
-    return TestClient(create_app(root=runs, repo=tmp_path, runner=runner, dist=None, start_worker=False)), runner
+def client(runs, tmp_path):
+    store = W.Store(runs)
+    return TestClient(create_app(root=runs, repo=tmp_path, store=store, dist=None)), store
 
 
 def test_runs_detail_and_results_come_from_the_run_files(finished_run, tmp_path):
@@ -51,57 +50,45 @@ def test_runs_detail_and_results_come_from_the_run_files(finished_run, tmp_path)
     assert api.get("/api/runs/..%2Fetc").status_code == 404
 
 
-def test_actions_become_fixed_commands_only(finished_run, tmp_path):
-    api, runner = client(finished_run, tmp_path)
+def argv_of(store, job_id: int, step: int = 0) -> str:
+    wf = store.get(job_id)
+    sdef = W.steps_for(wf.kind, wf.params)[step]
+    ctx = W.StepCtx(Path("."), Path("runs"), wf.params, W.Tools(), continuing=False, exit_code=None, started=None,
+                    log="")
+    return " ".join(sdef.argv(ctx))
+
+
+def test_requests_become_workflows_of_fixed_commands(finished_run, tmp_path):
+    api, store = client(finished_run, tmp_path)
     job = api.post("/api/runs", json={"cut": 0.2}).json()
-    argv = runner.get(job["id"]).argv
-    assert argv.startswith("scripts/mac_gpu.sh caffeinate -i uv run pruneagent run")
-    assert "--memory-cut 0.2000" in argv and "--backend codex" in argv
-    assert "--dry-run" in runner.get(api.post("/api/precheck", json={"cut": 0.1}).json()["id"]).argv
+    assert job["kind"] == "start" and job["status"] == "queued" and job["run_id"].endswith("-qwen3-0.6b-codex")
+    assert [s["name"] for s in job["steps"]] == ["run", "heldout"]  # the final check follows the run on its own
+    argv = argv_of(store, job["id"])
+    assert argv.startswith("uv run pruneagent run") and "--memory-cut 0.2000" in argv
+    assert argv.endswith(f"--run-id {job['run_id']}")
+    assert "--dry-run" in argv_of(store, api.post("/api/precheck", json={"cut": 0.1}).json()["id"])
     assert api.post("/api/runs", json={"cut": 0.2, "model": "evil; rm -rf /"}).status_code == 422
     assert api.post("/api/runs", json={"cut": 5}).status_code == 422
     held = api.post("/api/runs/r1/checks/heldout").json()
-    assert runner.get(held["id"]).argv.endswith("python scripts/heldout_check.py runs/r1")
+    assert argv_of(store, held["id"]).endswith("python scripts/heldout_check.py runs/r1")
     assert api.post("/api/runs/r1/checks/rm").status_code == 404
     assert api.post("/api/runs/r1/resume").status_code == 409  # finished runs are not resumed
     assert api.post("/api/runs/r1/pause").status_code == 409
+    assert api.get("/api/service").json()["running"] is False  # no service in this test
 
 
-def test_job_runner_runs_in_order_and_stop_sends_ctrl_c(tmp_path):
-    script = ("import signal,sys,time\n"
-              "signal.signal(signal.SIGINT, lambda *a: (print('paused'), sys.exit(3)))\n"
-              "print('started', flush=True)\ntime.sleep(30)\n")
-
-    def build(kind, params):
-        return [sys.executable, "-c", "print('ok')"] if kind == "quick" else [sys.executable, str(tmp_path / "s.py")]
-
-    (tmp_path / "s.py").write_text(script)
-    runner = J.JobRunner(tmp_path / "jobs.sqlite", tmp_path, tmp_path / "logs", build=build, poll=0.05)
-    a, b = runner.submit("quick", {}), runner.submit("slow", {})
-    assert runner.step() and runner.get(a.id).status == "done"
-    assert "ok" in runner.get(a.id).public()["output"]
-    runner.start()
-    for _ in range(100):
-        if "started" in runner.get(b.id).public()["output"]:
-            break
-        time.sleep(0.05)
-    runner.stop(b.id)
-    for _ in range(100):
-        if runner.get(b.id).status != "running":
-            break
-        time.sleep(0.05)
-    runner.shutdown()
-    job = runner.get(b.id)
-    assert job.status == "stopped" and "paused" in job.public()["output"] and job.exit_code == 3
-    assert signal.SIGINT  # Ctrl-C, not a kill
-
-
-def test_a_job_running_when_the_server_stopped_is_marked_lost(tmp_path):
-    runner = J.JobRunner(tmp_path / "jobs.sqlite", tmp_path, tmp_path / "logs", build=lambda k, p: ["true"])
-    job = runner.submit("x", {})
-    runner._set(job.id, status="running")
-    again = J.JobRunner(tmp_path / "jobs.sqlite", tmp_path, tmp_path / "logs", build=lambda k, p: ["true"])
-    assert again.get(job.id).status == "lost"
+def test_pause_cancel_and_continue_go_through_the_workflow(finished_run, tmp_path):
+    api, store = client(finished_run, tmp_path)
+    run = api.post("/api/runs", json={"cut": 0.2}).json()
+    store.set(run["id"], state="running")
+    assert api.post(f"/api/runs/{run['run_id']}/pause").json()["id"] == run["id"]
+    assert store.get(run["id"]).want == "pause"  # the service sends Ctrl-C at its next pass
+    other = api.post("/api/precheck", json={"cut": 0.1}).json()
+    assert api.post(f"/api/jobs/{other['id']}/stop").json()["status"] == "cancelled"
+    store.set(run["id"], state="paused", reason="Usage limit, resets at 16:41", want=None)
+    again = api.post(f"/api/runs/{run['run_id']}/resume").json()
+    assert again["id"] == run["id"] and again["status"] == "queued"
+    assert api.post("/api/jobs/999/continue").status_code == 404
 
 
 def test_machine_reports_memory_and_model_sizes(finished_run, tmp_path, monkeypatch):
@@ -134,8 +121,8 @@ def test_live_usage_is_read_on_this_mac():
 
 def test_feasibility_result_is_read_from_the_last_json_line():
     out = 'Loading ...\nnotes\n{"feasible": false, "stop_reason": "limit below the smallest model allowed"}\n'
-    assert J._last_json(out) == {"feasible": False, "stop_reason": "limit below the smallest model allowed"}
-    assert J._last_json("no json here") is None
+    assert W.last_json(out) == {"feasible": False, "stop_reason": "limit below the smallest model allowed"}
+    assert W.last_json("no json here") is None
     assert J.command("precheck", {"cut": 0.2})[-2:] == ["--dry-run", "--json-result"]
 
 

@@ -354,3 +354,8 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .sd-keep li::before { content: "•"; position: absolute; left: 4px; color: var(--agent); }
 .sd-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .sd-actions .primary:disabled { opacity: .45; cursor: not-allowed; }
+
+/* the background service is off */
+.service-notice { margin: 12px auto 0; max-width: 1008px; padding: 10px 14px; border-radius: 10px; font-size: 14px; background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--ink); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.service-notice code { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+@media (max-width: 1040px) { .service-notice { margin: 12px 16px 0; } }
