@@ -785,7 +785,7 @@
       "id": "3.11",
       "type": "task",
       "phase": 3,
-      "title": "Background workflow service, separate from the web app: model setup, pruning (run → final check → download) and checks run as workflows with resumable steps; each workflow runs on the code release it started with; app updates never reach running work (docs/APP_DESIGN.md §4)",
+      "title": "Tools and app as two products (docs/APP_DESIGN.md §4.1): the tools service (tools API + workflow runner, native, with the GPU) and the app (interface + forwarding server, in a container); releases; scripts/start.sh",
       "owner": "Coding agent",
       "deps": [
         "3.6"
@@ -797,7 +797,8 @@
         "[2026-11-19 21:45] Raised by Steph: deploying should not depend on whether a run is going. Today the run re-reads instruction files every round and a restart marks running jobs 'Interrupted'.",
         "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed.",
         "[2026-11-19 22:05] Steph: long-running work must be a background workflow, separate from the app; deployment must not affect it. Design in docs/APP_DESIGN.md §4.1-4.3. On hold until the design is reviewed.",
-        "[2026-11-19 22:40] Design accepted; building it now (feature work resumes)."
+        "[2026-11-19 22:40] Design accepted; building it now (feature work resumes).",
+        "[2026-11-19 23:55] Built and live in main. Steph: proper software boundary between the user app and the command-line tools; containers for the app (a container can't use the Mac GPU, so the tools stay native). Checked end to end: browser → app → tools API → workflow runner → release b7b46…. macOS launch agents dropped (blocked by Documents privacy). Left: build and run the app container, once Docker is installed (not on this Mac yet); until then start.sh runs the app natively."
       ]
     },
     {
