@@ -6,7 +6,7 @@ import { StartDialog } from "./StartDialog";
 // Model pruning (docs/APP_DESIGN.md §2.2): select your model → where it runs → the answer → start. The size follows
 // from the device and the feasibility check runs on its own; the user never chooses a percentage.
 
-const STEPS = ["Select your model", "Where it runs", "The answer", "Start"];
+const STEPS = ["Select your model", "Device", "The answer", "Start"];
 const NEAR = 0.05; // earlier runs within 5 points of this size count as "at this size"
 
 type Device = { id: string; memGb: number; free: number };
@@ -50,7 +50,7 @@ export function PrunePage() {
       <section className="wizard">
         {step === 1 && (
           <div className="choose-step">
-            <span className="m-label">Ready to prune</span>
+            <span className="m-label">Models ready for pruning</span>
             {ready.length === 0 && <p className="muted">No models set up yet.</p>}
             <div className="model-picks">
               {ready.map((x) => (
@@ -146,7 +146,7 @@ function WhereItRuns({ m, model, device, setDevice }: {
             onCommit={(v) => setDevice({ ...device, memGb: v })} />
         </label>
         <label>
-          <span className="m-label">Kept free for other apps (%)</span>
+          <span className="m-label">Memory for other apps (%)</span>
           <NumberField min={0} max={95} step={1} value={device.free} onCommit={(v) => setDevice({ ...device, free: v })} />
         </label>
       </div>

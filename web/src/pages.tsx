@@ -55,7 +55,7 @@ export function HomePage() {
               <dd>{r.now_error && r.original_error ? lossText(qualityLoss(r.now_error, r.original_error)) : "—"}</dd>
               <dt>Rounds</dt>
               <dd>{r.round}</dd>
-              <dt>How it cuts</dt>
+              <dt>Strategy</dt>
               <dd>{r.search_label}</dd>
             </dl>
             <span className="go">Open →</span>

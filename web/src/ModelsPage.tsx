@@ -96,7 +96,7 @@ export function ModelsPage() {
       <a href="#/" className="back">← Past runs</a>
       <h1>Models</h1>
       <ModelList rows={rows} latest={latest} onOpen={choose} />
-      <h2>Set up a model</h2>
+      <h2>Model setup</h2>
 
       <StepBar steps={STEPS} at={step} />
 

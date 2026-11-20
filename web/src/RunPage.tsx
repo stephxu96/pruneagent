@@ -264,7 +264,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
       </section>
 
       <section>
-        <h2>Every step, layer by layer</h2>
+        <h2>Steps by layer</h2>
         <p className="muted">One row per kept round, one column per layer: how much of each layer that round removed.</p>
         <StepGrid run={run} removal={removal} at={at} onPick={(r) => { setPlaying(false); setAt(r); }} />
       </section>
@@ -284,7 +284,7 @@ function Settings({ run, orig }: { run: RunDetail; orig: number }) {
   const s = run.settings;
   const rows: [string, string][] = [
     ["Model", modelName(run.model)],
-    ["How it cuts", run.search_label],
+    ["Strategy", run.search_label],
     ["Original size", mb(orig)],
     ["Target size", `under ${mb(run.limit_mb)}${run.cut != null ? ` (${pct(run.cut)} smaller)` : ""}`],
     ["Device", s.device.toUpperCase()],
@@ -483,7 +483,7 @@ function YourModel({ run, onChange }: { run: RunDetail; onChange: () => void }) 
       </div>
       {run.has_model && (
         <details className="sets">
-          <summary>How to use it</summary>
+          <summary>Instructions</summary>
           <pre className="code">{`from pruneagent import loader
 from transformers import AutoTokenizer
 
