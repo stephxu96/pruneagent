@@ -377,3 +377,15 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .answer-big { font-size: 18px; margin: 0; }
 .answer .actions, .prune-page .wizard > .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .ok-text { color: var(--good); font-weight: 600; }
+
+/* evaluation: the two tests after a run */
+.evaluation { display: grid; gap: 12px; }
+.eval-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.eval-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.eval-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.eval-title { font-weight: 700; font-size: 17px; }
+.eval-card .badge { margin-right: 0; flex: none; }
+.bar-fill.orig { background: var(--ink-3); }
+.sets table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+.sets th, .sets td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.sets td + td, .sets th + th { text-align: right; white-space: nowrap; }
