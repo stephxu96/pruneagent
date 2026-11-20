@@ -69,7 +69,7 @@ flowchart LR
 |---|---|---|---|---|
 | **1 Name the model** | A box for the model's name on Hugging Face; which kinds work | Which model | — | — |
 | **2 Check** | Whether it can be used here, its kind, its size, how long setup takes | Set it up, or choose another | Reads the model's details (not its weights): supported kind, fits this computer | Not supported, too big, needs a license, misspelled: one plain sentence and "Choose another" |
-| **3 Set up** | Two parts with progress and time left: **load the model** (download it) and **generate assets** (sample text in the model's own pieces, how much it uses each part, the quality cost of each cut) | Pause, continue | Runs `pruneagent setup` | Stopped or failed: "Continue setup" picks up where it stopped |
+| **3 Set up** | Two parts with progress and time left: **load the model** (download it) and **generate assets** (sample text in the model's own pieces, how much it uses each part, the quality cost of each cut) | Pause, continue | Starts the setup workflow | Stopped or failed: "Continue setup" picks up where it stopped |
 | **4 Ready** | The model listed as ready | Prune it now, or later | — | — |
 
 Setup ends at "ready". Pruning is a separate story that can start right away or days later.
@@ -108,78 +108,81 @@ The expected-quality range in step 3 comes from past runs at that model and size
 | **Run** | `#/run/<id>` | Pruning, steps 5–6 | While running: the progress view. When finished: the result and download. Below both: "How it got there", the round-by-round replay | The replay, with results under it |
 | **Models** | `#/models` | Setup | The models on this computer (ready, setting up, paused) and "Set up a model", which opens the setup steps | "Select your model", which mixed both stories |
 | **Compare** | `#/compare` | — | Every finished run against FLAP across sizes (researchers, demo) | Same |
-| **Activity** | `#/activity` | — | Every job (checks, runs, setups), with outcome and system logs | The History list on New run |
+| **Activity** | `#/activity` | — | Every workflow and its steps, with outcome and system logs | The History list on New run |
 
 **Navigation:** Runs · Prune a model · Models · Compare. Activity sits in the footer: it's for fixing problems.
 
 ## 4. How it runs on the computer
 
-### 4.1 The pieces, and what each one is the source of truth for
+### 4.1 Two separate services
+
+Everything that takes longer than a page load (model setup, pruning runs, final checks, building a download) runs in
+a **background workflow service**, separate from the **web app**. They share files, not a process, and each is
+started, stopped and updated on its own.
 
 ```mermaid
 flowchart TB
-    B[Browser] -- HTTP, live updates --> S[App server]
-    S -- queue --> Q[(Job list<br/>runs/web_jobs.sqlite)]
-    S -- reads --> RF[(Run folders<br/>runs/&lt;id&gt;/)]
-    S -- reads --> MS[(Model assets<br/>scores, quick tests,<br/>damage tables, text)]
-    S -- starts --> W[Job process<br/>own process group]
-    W -- GPU lock --> G{{scripts/mac_gpu.sh}}
-    W -- writes --> RF
-    W -- writes --> MS
-    T[Terminal] -- same commands --> W
+    subgraph App[Web app: restart or update at any time]
+        B[Browser] -- HTTP --> S[App server]
+    end
+    subgraph Worker[Workflow service: runs on its own]
+        WS[Workflow runner] -- one step at a time --> P[Step process]
+        P -- GPU lock --> G{{scripts/mac_gpu.sh}}
+    end
+    S -- submit, pause, cancel --> Q[(Workflow store<br/>runs/workflows.sqlite)]
+    WS -- picks up, records progress --> Q
+    S -- reads --> Q
+    S -- reads --> F[(Run folders,<br/>model assets)]
+    P -- writes --> F
+    T[Terminal] -- same commands --> P
 ```
 
-| Piece | Source of truth for | Survives an app restart |
+| Part | Does | Owns | Started by | Updated |
+|---|---|---|---|---|
+| **Web app** (app server + browser interface) | Shows things; turns clicks into requests | Nothing that matters: it reads the workflow store and the files | `pruneagent web` | Any time, restart included; nothing running notices |
+| **Workflow service** | Runs workflows step by step, one GPU step at a time; records progress; retries and resumes | The workflow store | macOS on login (a launchd agent), so it runs without the app open | Only between workflows (§4.3) |
+| **Workflow store** `runs/workflows.sqlite` | Every workflow, its steps, their state and logs | — | — | — |
+| **Run folders** `runs/<id>/` | Everything about a run: settings, rounds, kept plans, checkpoint, final check, its own copy of the AI's instructions | — | — | — |
+| **Model assets** (scores, quick tests, damage table, sample text) | Whether a model is set up | — | — | — |
+
+The app talks to the service only through the workflow store: it writes a request ("set up this model", "pause
+this run") and reads state back. If the app is closed, restarting or being updated, workflows carry on. If the
+service is stopped, nothing is lost: on start it picks every workflow up at its last finished step.
+
+### 4.2 Workflows
+
+Each user story's long part is one workflow made of steps. A step is one command, the same one a user would type,
+and each step saves its result before the next starts, so a workflow can stop after any step and continue later.
+
+| Workflow | Steps | Uses the GPU |
 |---|---|---|
-| **Run folder** `runs/<id>/` | Everything about a run: settings, each round, kept plans, checkpoint, final check, and (new) its own copy of the AI's instructions | Yes |
-| **Model assets** (scores, quick tests, damage table, sample text) | Whether a model is set up on this computer | Yes |
-| **Model list** `runs/models.json` | Which added models the user sees | Yes |
-| **Job list** `runs/web_jobs.sqlite` | What the app was asked to do, each job's log and outcome. *Not* the run's state: that is in the run folder | Yes |
-| **Job process** | Doing the work: one process group per job, started with the same command a user would type | Yes (its own process group) |
-| **App server** | Nothing of its own: it reads the files above | — (it is what restarts) |
-| **GPU lock** | One GPU job at a time, from the app or a terminal | Yes |
+| **Model setup** | Load the model → sample text → part usage (scores, quick tests) → cut tests (damage table) | Yes, except loading |
+| **Model pruning** | Run (`pruneagent run`, rounds until the target) → final check (held-out, question sets) → build the download (`pruneagent save`) | Yes, except the download |
+| **Feasibility check** | One step: `pruneagent run --dry-run --json-result` | No; answered in about half a minute, so it can also run straight from the app |
 
-The rule that keeps it simple: **the server holds no state that matters.** It can stop and start at any time.
+**States:** waiting → running → finished; or paused (by the user, a usage limit or sleep), with the reason, and
+continued from the step it stopped at; or failed, with the error in one line and the logs.
 
-### 4.2 Jobs
+**One GPU step at a time**, across workflows and the terminal (the GPU lock). Workflows wait in the order they were
+started; the app shows what each is waiting for.
 
-| Kind | Command | Uses the GPU | Ends with |
-|---|---|---|---|
-| Feasibility check | `pruneagent run --dry-run --json-result` | No | A JSON line: reachable, time, usage |
-| Run | `pruneagent run` | Yes | The run folder's state: finished, paused, interrupted |
-| Continue | `pruneagent resume <id>` | Yes | Same |
-| Final check | `scripts/heldout_check.py`, `scripts/accuracy_check.py` | Yes | `heldout.json`, `accuracy.json` |
-| Model setup | `pruneagent setup <model>` | Yes | The model and its assets |
-| Build the download (new) | `pruneagent save <id>` | No | The saved model |
+### 4.3 Updates never reach a running workflow
 
-**States:** waiting → running → finished, paused, failed. A paused job can be continued.
+| What is updated | How |
+|---|---|
+| **Web app** (pages, app server) | Build the interface into a new folder and swap it in; restart the app server. Workflows don't notice |
+| **Workflow code** (runs, setup, checks, AI instructions) | Each workflow runs from the **release** it started with: a fixed copy of the code, kept under `releases/<commit>/`. An update adds a new release; new workflows use it, running ones finish on theirs. Each run folder records its release |
+| **Python packages** | Each release has its own environment, so an update can't change a running workflow's packages |
+| **Workflow service itself** | Rarely changes. When it does, it's restarted between steps: it stops taking new steps, waits for the running step to finish, restarts and carries on |
 
-**Follow-up jobs.** A run queues its own final check when it ends with the target met (new). The user doesn't start it.
-
-**After an app restart (new).** Each job's process id is stored. On start, the server looks at every job marked
-running: if its process is alive, it keeps watching it; if not, it reads the outcome from what the job left behind
-(the run folder's state, the result files). No job is marked "Interrupted" while it is still working.
-
-### 4.3 Updating the app while something runs
-
-Updating the app must never disturb a run in progress. What each kind of update touches, and the rule for it:
-
-| Update | Risk to a running job | Rule |
-|---|---|---|
-| Interface (pages, styles) | None | Build into a new folder and swap it in at once, so no one sees a half-built page |
-| App server code | The server restarts | Jobs are re-attached (§4.2) |
-| Run code | None: a running process keeps the code it loaded | — |
-| AI instructions | **High today:** a run re-reads them every round, so an update would change what the AI sees mid-run | Each run copies its instructions into its run folder at the start and reads only that copy (new). This also records exactly what the AI saw |
-| Check scripts, for a later final check | The check uses the newer code | Accepted: checks measure, they don't decide. Each result file records the code version it ran with |
-| Python packages (`uv sync`) | A running job may load a package later and get the new one | Wait until no GPU job runs |
-
-**One command does an update:** `scripts/deploy.sh` merges, builds the interface and swaps it in, restarts the server
-if its code changed, and leaves package updates for later if a job is running.
+**One command does an update:** `scripts/deploy.sh` builds a new release, swaps in the new interface and restarts
+the app server. The workflow service is left alone unless the service itself changed.
 
 ### 4.4 Live updates
 
-The run page gets each round as it lands (server-sent events, as today). The job list and the progress bars on the
-Runs page refresh every 3 seconds. That's fast enough for jobs that take minutes per step.
+The run page gets each round as it lands (server-sent events, as today), read from the run folder. Workflow progress
+on the Runs, Models and Activity pages refreshes every 3 seconds from the workflow store. That's fast enough for steps
+that take minutes.
 
 ### 4.5 When things go wrong
 
@@ -188,8 +191,8 @@ Runs page refresh every 3 seconds. That's fast enough for jobs that take minutes
 | Lid closed, computer asleep | "Interrupted: the computer went to sleep" | Continue; it picks up at the last kept round |
 | Usage limit reached | "Paused: usage limit, resets at 16:41" | Continue after the reset |
 | A job fails | "Didn't finish", with the last error in one line; system logs in a fold | Continue, or report the logs |
-| The Mac is busy with another GPU job | "Waiting for the Mac to be free (busy with: …)" | Wait, or cancel |
-| App closed or updated | Nothing changes: runs carry on | Open the app again |
+| Another workflow is using the GPU | "Waiting for the Mac to be free (busy with: …)" | Wait, or cancel |
+| App closed, restarted or updated | Nothing changes: workflows carry on in the workflow service | Open the app again |
 | A model needs a license or isn't supported | One plain sentence, at step 2 | Choose another model |
 
 ### 4.6 Safety
@@ -248,11 +251,11 @@ works everywhere; motion stops when the computer asks for less motion; light and
 | Active run | Replay controls only | A progress view at the top (§2.2 step 5) | 3.10 |
 | Final check | Started by hand on the run page | Queued on its own when a run meets its target | 3.13 (new) |
 | Download | The plan file | The saved model (plus plan) | 3.14 (new) |
-| Job history | At the bottom of New run | Activity page | 3.12 |
-| App updates | Can change a running run's instructions; restart marks jobs "Interrupted" | §4.3 rules and `scripts/deploy.sh` | 3.11 |
+| Job history | At the bottom of New run | Activity page: workflows and their steps | 3.12 |
+| Long-running work | Started and watched by the web app's server; an app restart loses track, an update can change a running run's instructions | A separate workflow service with releases (§4.1–4.3); the app only submits and reads | 3.11 |
 | Look | Each part styled where it was first needed | The shared parts of §5.1 | 3.12 |
 
-Suggested order: **3.11** (updates stop being risky) → **3.12** (two stories, structure) → **3.10**, **3.13**, **3.14**.
+Suggested order: **3.11** (the workflow service; updates stop being risky) → **3.12** (two stories, structure) → **3.10**, **3.13**, **3.14**.
 
 ---
 

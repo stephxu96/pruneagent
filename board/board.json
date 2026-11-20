@@ -783,17 +783,18 @@
       "id": "3.11",
       "type": "task",
       "phase": 3,
-      "title": "Deploy without interrupting runs: each run keeps its own copy of the AI's instructions; the app re-attaches to running jobs after a restart; the interface build swaps in at once",
+      "title": "Background workflow service, separate from the web app: model setup, pruning (run → final check → download) and checks run as workflows with resumable steps; each workflow runs on the code release it started with; app updates never reach running work (docs/APP_DESIGN.md §4)",
       "owner": "Coding agent",
       "deps": [
         "3.6"
       ],
-      "done_when": "A merge and app restart during a run leave the run unchanged and still shown as running, pausable",
+      "done_when": "Restarting or updating the web app during a run changes nothing in the run; a workflow continues after the service restarts; a new release doesn't change a running workflow",
       "gpu": "—",
       "status": "todo",
       "notes": [
         "[2026-11-19 21:45] Raised by Steph: deploying should not depend on whether a run is going. Today the run re-reads instruction files every round and a restart marks running jobs 'Interrupted'.",
-        "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed."
+        "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed.",
+        "[2026-11-19 22:05] Steph: long-running work must be a background workflow, separate from the app; deployment must not affect it. Design in docs/APP_DESIGN.md §4.1-4.3. On hold until the design is reviewed."
       ]
     },
     {
