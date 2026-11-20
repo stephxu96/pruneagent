@@ -1,0 +1,1426 @@
+{
+  "method": "probe",
+  "model": "Qwen/Qwen3-1.7B-Base",
+  "revision": "ea980cb0a6c2ae4b936e82123acc929f1cec04c1",
+  "device": "mps",
+  "dtype": "float16",
+  "seqlen": 2048,
+  "machine": "macOS-15.6.1-arm64-arm-64bit",
+  "torch": "2.15.0",
+  "transformers": "5.23.0",
+  "created_at": "2026-11-19T23:24:44+00:00",
+  "probe_samples": 8,
+  "probe_calib": "c4_calib__qwen3-1.7b-base",
+  "scores": {
+    "model": "Qwen/Qwen3-1.7B-Base",
+    "revision": "ea980cb0a6c2ae4b936e82123acc929f1cec04c1",
+    "device": "mps",
+    "dtype": "float16",
+    "calib": "c4_calib__qwen3-1.7b-base",
+    "calib_sha256": "258ae6ab927cceb2b3ccf1517e6aad79d04d44af922851a49e81f2cdcb77fd4d"
+  },
+  "capture_seconds": 17.74,
+  "probe_seconds": 56.98,
+  "table": {
+    "0": {
+      "layer": 0,
+      "block_influence": 0.9416168332099915,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.008417109508064383
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.019944831595711317
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.9962054495182592
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 0.0003324005118751289
+        }
+      ]
+    },
+    "1": {
+      "layer": 1,
+      "block_influence": 0.12341666221618652,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0003256156211950254
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.004404642595777194
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.27442532450131873
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 0.0005656878762742569
+        }
+      ]
+    },
+    "2": {
+      "layer": 2,
+      "block_influence": 0.09604990482330322,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 3.4320208495488916e-05
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 6.289755949798884e-05
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.9902786787587117
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 0.0010262483912157304
+        }
+      ]
+    },
+    "3": {
+      "layer": 3,
+      "block_influence": 0.11118113994598389,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 5.428487337968319e-05
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0003090407336221169
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0032319520843179838
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 1.929476827180361e-06
+        }
+      ]
+    },
+    "4": {
+      "layer": 4,
+      "block_influence": 0.09753537178039551,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 7.619238745236895e-05
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 8.270174949181748e-05
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.003983214427830548
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 2.6702666668988867e-06
+        }
+      ]
+    },
+    "5": {
+      "layer": 5,
+      "block_influence": 0.08260595798492432,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00015418831114285558
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 2.131841199054946e-05
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.004590879678323761
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 3.61948530238528e-06
+        }
+      ]
+    },
+    "6": {
+      "layer": 6,
+      "block_influence": 0.07374519109725952,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00016888418156747888
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0001221237182229831
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0049129861582950405
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 4.248896438305836e-06
+        }
+      ]
+    },
+    "7": {
+      "layer": 7,
+      "block_influence": 0.06532317399978638,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00015677712885167264
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 7.369818147275589e-05
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00512004702852317
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 4.6923142083012064e-06
+        }
+      ]
+    },
+    "8": {
+      "layer": 8,
+      "block_influence": 0.06410527229309082,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00020410270930992309
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00011981296778491666
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00618577562593575
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 5.6127041677265044e-06
+        }
+      ]
+    },
+    "9": {
+      "layer": 9,
+      "block_influence": 0.07410991191864014,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00022165361691085377
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0003468247119422496
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.01034582491849488
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 7.690308265810977e-06
+        }
+      ]
+    },
+    "10": {
+      "layer": 10,
+      "block_influence": 0.06441986560821533,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00024676716560611905
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0005288285046278442
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.016632174186913484
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 9.889012334892017e-06
+        }
+      ]
+    },
+    "11": {
+      "layer": 11,
+      "block_influence": 0.05887556076049805,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0003027975686995158
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0005557531300485084
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.019416405117776585
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 1.1444526491919297e-05
+        }
+      ]
+    },
+    "12": {
+      "layer": 12,
+      "block_influence": 0.03695189952850342,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00032701016259596873
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0006583413696321527
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.013025253509177529
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 1.2614417360045151e-05
+        }
+      ]
+    },
+    "13": {
+      "layer": 13,
+      "block_influence": 0.038510918617248535,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0003770751106759962
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0009561595470211978
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.017045383146284624
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 1.5754549515041054e-05
+        }
+      ]
+    },
+    "14": {
+      "layer": 14,
+      "block_influence": 0.04287141561508179,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00042354426631401173
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0005933195367275461
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.021515740176755418
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 1.833631227165556e-05
+        }
+      ]
+    },
+    "15": {
+      "layer": 15,
+      "block_influence": 0.0590059757232666,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0004751606602720457
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0010689164950414603
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.03828195679302068
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 2.755415147707916e-05
+        }
+      ]
+    },
+    "16": {
+      "layer": 16,
+      "block_influence": 0.088936448097229,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0006457636110367168
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0012040033564824201
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.09133976572624738
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 4.0129036345414364e-05
+        }
+      ]
+    },
+    "17": {
+      "layer": 17,
+      "block_influence": 0.0817025899887085,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0005656962200677032
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0024349845734974924
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.11383639557503483
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 5.7619776234270897e-05
+        }
+      ]
+    },
+    "18": {
+      "layer": 18,
+      "block_influence": 0.07626330852508545,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0004732357172891352
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0015660987988434154
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.12343685955867664
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 5.7956399753905324e-05
+        }
+      ]
+    },
+    "19": {
+      "layer": 19,
+      "block_influence": 0.08455634117126465,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00054886476043397
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0015982352043325814
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.15879096364675865
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 9.891047193376408e-05
+        }
+      ]
+    },
+    "20": {
+      "layer": 20,
+      "block_influence": 0.07445544004440308,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0003687529506081632
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0008971505879708293
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.15862741880206355
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 6.403651377736438e-05
+        }
+      ]
+    },
+    "21": {
+      "layer": 21,
+      "block_influence": 0.05810356140136719,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00023673681494958365
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.002479924291296003
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.12663642630461056
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 5.227867248789466e-05
+        }
+      ]
+    },
+    "22": {
+      "layer": 22,
+      "block_influence": 0.04817640781402588,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0002076025255417549
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.000764181891623466
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.11660586166589937
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 4.116729088007965e-05
+        }
+      ]
+    },
+    "23": {
+      "layer": 23,
+      "block_influence": 0.03631836175918579,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00020132243579771186
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0006445087435824349
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.08787048041357838
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 3.590696421964912e-05
+        }
+      ]
+    },
+    "24": {
+      "layer": 24,
+      "block_influence": 0.037094712257385254,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00022254332151364238
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0012232247496022706
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.09769619482062417
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 3.408308681016757e-05
+        }
+      ]
+    },
+    "25": {
+      "layer": 25,
+      "block_influence": 0.032939791679382324,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0002825017080140147
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0007736801660563312
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.08425516250697584
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 3.5737062798487114e-05
+        }
+      ]
+    },
+    "26": {
+      "layer": 26,
+      "block_influence": 0.044770121574401855,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0003124958890429121
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0002179896330265435
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.11910874184417398
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 2.734465721515105e-05
+        }
+      ]
+    },
+    "27": {
+      "layer": 27,
+      "block_influence": 0.539635956287384,
+      "candidates": [
+        {
+          "strategy": "narrow_mlp",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 5504,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.00013705274515318755
+        },
+        {
+          "strategy": "remove_attention_group",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 7,
+            "dropped": false,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.0003321432502177692
+        },
+        {
+          "strategy": "drop_layer",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": true,
+            "wanda_sparsity": 0.0
+          },
+          "local_error": 0.9471971578764397
+        },
+        {
+          "strategy": "wanda_sparsity",
+          "steps": 1,
+          "setting": {
+            "mlp_keep": 6144,
+            "groups_keep": 8,
+            "dropped": false,
+            "wanda_sparsity": 0.1
+          },
+          "local_error": 8.003388598293163e-05
+        }
+      ]
+    }
+  }
+}
