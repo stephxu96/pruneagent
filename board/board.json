@@ -799,7 +799,8 @@
         "[2026-11-19 22:05] Steph: long-running work must be a background workflow, separate from the app; deployment must not affect it. Design in docs/APP_DESIGN.md §4.1-4.3. On hold until the design is reviewed.",
         "[2026-11-19 22:40] Design accepted; building it now (feature work resumes).",
         "[2026-11-19 23:55] Built and live in main. Steph: proper software boundary between the user app and the command-line tools; containers for the app (a container can't use the Mac GPU, so the tools stay native). Checked end to end: browser → app → tools API → workflow runner → release b7b46…. macOS launch agents dropped (blocked by Documents privacy). Left: build and run the app container, once Docker is installed (not on this Mac yet); until then start.sh runs the app natively.",
-        "[2026-11-20 00:10] App container built and running (pruneagent-app, 244 MB, no PyTorch or data), reaching the native tools API at host.docker.internal:8124; scripts/start.sh does both. Restart/update safety checked by tests (re-attach, own exit codes, releases); the next live run confirms it in practice."
+        "[2026-11-20 00:10] App container built and running (pruneagent-app, 244 MB, no PyTorch or data), reaching the native tools API at host.docker.internal:8124; scripts/start.sh does both. Restart/update safety checked by tests (re-attach, own exit codes, releases); the next live run confirms it in practice.",
+        "[2026-11-20 00:00] Confirmed live: start.sh deployed a new tools release and restarted the tools service during the 1.7B quiz check; the check kept the same process (94211) and its own release e8bea…."
       ]
     },
     {
@@ -829,10 +830,11 @@
       ],
       "done_when": "A run that meets its target gets heldout.json and accuracy.json with no click; the run page shows the evaluation's progress, then its results",
       "gpu": "M4",
-      "status": "todo",
+      "status": "done",
       "notes": [
         "[2026-11-19 22:40] From the app design review (open question 1: recommended yes).",
-        "[2026-11-19 22:55] Steph: evaluate is part of the UI user flow. Workflow side done in 3.11 (pruning = run → unseen-text test → question sets); page and time estimate left."
+        "[2026-11-19 22:55] Steph: evaluate is part of the UI user flow. Workflow side done in 3.11 (pruning = run → unseen-text test → question sets); page and time estimate left.",
+        "[2026-11-20 00:00] Done. Pruning workflow runs run → unseen-text test → quiz questions with no click; run page has an Evaluation section: both tests, each waiting/running/done/not run (Run it), results against the original and FLAP, weighted quiz score then each set. Quizzes queued for the 1.7B run (05:15-06:00) and the 0.6B 20% run (06:30-07:30); measured pace ~2 h 40 min per model on 1.7B. Left for later: quiz time in the start estimate."
       ]
     },
     {
