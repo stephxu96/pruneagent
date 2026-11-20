@@ -20,6 +20,8 @@ export type RunSummary = {
   now_error: number | null;
   has_heldout: boolean;
   has_accuracy: boolean;
+  has_model?: boolean;
+  model_mb?: number | null;
   settings: {
     device: string;
     agent: string;

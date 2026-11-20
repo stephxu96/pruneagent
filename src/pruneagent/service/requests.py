@@ -55,6 +55,8 @@ def command(kind: str, params: dict, known: tuple[str, ...] | list[str] = MODELS
         return [*GPU, "caffeinate", "-i", *UV, *args]
     if kind == "resume":
         return [*GPU, "caffeinate", "-i", *UV, "pruneagent", "resume", _run_id(params.get("run_id", ""))]
+    if kind == "save":
+        return [*UV, "pruneagent", "save", _run_id(params.get("run_id", ""))]
     if kind in ("heldout", "accuracy"):
         script = {"heldout": "scripts/heldout_check.py", "accuracy": "scripts/accuracy_check.py"}[kind]
         return [*GPU, *UV, "python", script, f"runs/{_run_id(params.get('run_id', ''))}"]

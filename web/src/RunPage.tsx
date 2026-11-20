@@ -238,6 +238,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
       </section>
 
       {run.state === "finished" && <Evaluation runId={id} results={results} onResults={setResults} />}
+      {run.state === "finished" && <YourModel run={run} onChange={load} />}
     </div>
   );
 }
@@ -373,6 +374,56 @@ function testLeft(output: string): string {
   if (!m) return "";
   const [h, mm] = m[5] !== undefined ? [Number(m[3]), Number(m[4])] : [0, Number(m[3])];
   return ` · this model: about ${duration(h * 60 + mm)} left`;
+}
+
+/** Your model (docs/APP_DESIGN.md §2.2 step 7): the smaller model to download, built by pruning's last step. */
+function YourModel({ run, onChange }: { run: RunDetail; onChange: () => void }) {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const building = jobs.some((j) => j.run_id === run.id && ["queued", "running"].includes(j.status)
+    && (j.kind === "save" || j.steps?.[j.step ?? 0]?.name === "save"));
+  const failed = !run.has_model && jobs.find((j) => j.run_id === run.id && j.kind === "save")?.status === "failed";
+  useEffect(() => {
+    const read = () => api<Job[]>("/api/jobs").then(setJobs).catch(() => undefined);
+    read();
+    if (run.has_model) return;
+    const t = setInterval(() => { read(); onChange(); }, 5000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run.id, run.has_model]);
+  const build = () => api(`/api/runs/${run.id}/save`, { method: "POST" })
+    .then(() => api<Job[]>("/api/jobs").then(setJobs)).catch(() => undefined);
+  const name = modelName(run.model);
+  return (
+    <section className="your-model">
+      <h2>Your model</h2>
+      <div className="ym-card">
+        <div>
+          <div className="eval-title">{name}, {run.cut != null ? pct(run.cut) : ""} smaller</div>
+          <div className="muted">{mb(run.now_mb ?? 0)} instead of {mb(run.original_mb ?? 0)}{run.now_mb != null && run.now_mb <= run.limit_mb ? " · fits the target ✓" : ""}</div>
+        </div>
+        {run.has_model ? (
+          <a className="primary" href={`/api/runs/${run.id}/download/model`} download>
+            Download{run.model_mb ? ` (${mb(run.model_mb)})` : ""}
+          </a>
+        ) : building ? (
+          <span className="badge running">Building the download…</span>
+        ) : (
+          <button className="secondary" onClick={build}>{failed ? "Build it again" : "Build the download"}</button>
+        )}
+      </div>
+      {run.has_model && (
+        <details className="sets">
+          <summary>How to use it</summary>
+          <pre className="code">{`from pruneagent import loader
+from transformers import AutoTokenizer
+
+model = loader.load("${run.id}-model", device="mps")   # the unzipped folder; "cuda" or "cpu" elsewhere
+tokenizer = AutoTokenizer.from_pretrained("${run.model}")`}</pre>
+          <p className="muted">The folder also has the plan (which parts of each layer were kept) and a note on how it was made. <a href={`/api/runs/${run.id}/download/plan`}>Plan only (.json)</a></p>
+        </details>
+      )}
+    </section>
+  );
 }
 
 const SET_NAMES: Record<string, [string, string]> = {

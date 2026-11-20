@@ -1412,6 +1412,67 @@ def prepare_cmd(
     typer.echo(f"Set up {model}: ready for pruning.", err=True)
 
 
+MODEL_DIR = "model"
+MODEL_ZIP = "model.zip"
+HOW_TO_USE = """{name}: {model_id} made {cut} smaller by PruneAgent (run {run_id}).
+
+Files
+  model.safetensors   the smaller model's weights
+  plan.json           which parts of each layer were kept (the plan), and the original model's settings
+
+Use it in Python (pip install pruneagent, or from the repo: uv sync):
+  from pruneagent import loader
+  model = loader.load("path/to/this/folder", device="mps")   # or "cuda" / "cpu"
+  # a normal Hugging Face model from here on; the tokenizer is the original one:
+  from transformers import AutoTokenizer
+  tokenizer = AutoTokenizer.from_pretrained("{model_id}")
+"""
+
+
+@app.command("save")
+def save_cmd(
+    run_id: Annotated[str, typer.Argument(help="A finished run.")],
+    root: Annotated[Path, typer.Option(help="Directory holding the runs.")] = Path("runs"),
+) -> None:
+    """Build the smaller model of a finished run for download: rebuilds it from the run's last kept plan on the
+    processor, saves it with its plan, and zips it with a how-to-use note (runs/<id>/model.zip). Reloads it to
+    check the size matches the run (FR12)."""
+    import zipfile
+
+    from pruneagent import evaluate as ev
+    from pruneagent import loader, pruner, runstore
+    from pruneagent.realrun import Setup
+
+    store = runstore.RunStore.open(run_id, root)
+    if store.info().state != "finished":
+        typer.echo(f"Run {run_id} hasn't finished.", err=True)
+        raise typer.Exit(1)
+    run_cfg, setup, final = store.run_config(), Setup.load(store.dir), store.accepted()[-1]
+    typer.echo(f"Building the smaller model of {run_id} ({final.weight_bytes / 1e6:,.1f} MB)", err=True)
+    dense = ev.load_model(run_cfg.model_id, setup.revision, run_cfg.dtype, "cpu")
+    scores = _scores(dense, run_cfg.model_id, setup.revision or "", "cpu", run_cfg.dtype,
+                     Path(setup.data_dir) if setup.data_dir else None, Path(setup.scores), compute=False)
+    if scores is None:
+        typer.echo("This model's scores are missing; set the model up again (pruneagent setup).", err=True)
+        raise typer.Exit(1)
+    out = store.dir / MODEL_DIR
+    loader.save(pruner.prune(dense, final.plan, scores), out, model_id=run_cfg.model_id, revision=setup.revision,
+                extra={"run": run_id, "weight_bytes": final.weight_bytes})
+    del dense
+    size = (out / loader.WEIGHTS).stat().st_size
+    loader.load(out)  # strict reload: every weight must fit the plan
+    cut = 1 - run_cfg.limit_bytes / store.accepted()[0].weight_bytes
+    (out / "HOW_TO_USE.txt").write_text(HOW_TO_USE.format(
+        name=f"{run_cfg.model_id.split('/')[-1]}-pruneagent", model_id=run_cfg.model_id, cut=f"{cut:.0%}",
+        run_id=run_id))
+    tmp = store.dir / f"{MODEL_ZIP}.partial"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as z:  # weights don't compress; storing is fast
+        for f in sorted(out.iterdir()):
+            z.write(f, f"{run_id}-model/{f.name}")
+    tmp.replace(store.dir / MODEL_ZIP)
+    typer.echo(f"Saved {store.dir / MODEL_ZIP} ({size / 1e6:,.1f} MB of weights)", err=True)
+
+
 @app.command("report")
 def report_cmd(
     run_id: Annotated[str, typer.Argument(help="The run to report on.")],

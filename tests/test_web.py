@@ -62,7 +62,7 @@ def test_requests_become_workflows_of_fixed_commands(finished_run, tmp_path):
     api, store = client(finished_run, tmp_path)
     job = api.post("/api/runs", json={"cut": 0.2}).json()
     assert job["kind"] == "start" and job["status"] == "queued" and job["run_id"].endswith("-qwen3-0.6b-codex")
-    assert [s["name"] for s in job["steps"]] == ["run", "heldout", "accuracy"]  # evaluation follows on its own
+    assert [s["name"] for s in job["steps"]] == ["run", "heldout", "accuracy", "save"]  # evaluation follows on its own
     argv = argv_of(store, job["id"])
     assert argv.startswith("uv run pruneagent run") and "--memory-cut 0.2000" in argv
     assert argv.endswith(f"--run-id {job['run_id']}")
@@ -193,3 +193,24 @@ def test_models_api_checks_and_prepares(finished_run, tmp_path, monkeypatch):
     job = api.post("/api/models/prepare", json={"model": "org/good-model"}).json()
     assert job["kind"] == "prepare" and job["progress"]["step"] == 0
     assert MD.known(finished_run)[-1] == "org/good-model"
+
+
+def test_the_smaller_model_is_built_zipped_and_downloaded(finished_run, tmp_path):
+    import zipfile
+
+    from typer.testing import CliRunner
+
+    from pruneagent.cli import app as cli
+
+    api, store = client(finished_run, tmp_path)
+    assert api.get("/api/runs/r1/download/model").status_code == 404  # not built yet
+    assert api.get("/api/runs/r1/download/plan").status_code == 200
+    job = api.post("/api/runs/r1/save").json()
+    assert job["workflow"] == "save" and job["status"] == "queued"
+    res = CliRunner().invoke(cli, ["save", "r1", "--root", str(finished_run)])
+    assert res.exit_code == 0, res.output
+    z = zipfile.ZipFile(finished_run / "r1" / "model.zip")
+    assert sorted(n.split("/")[-1] for n in z.namelist()) == ["HOW_TO_USE.txt", "model.safetensors", "plan.json"]
+    got = api.get("/api/runs/r1/download/model")
+    assert got.status_code == 200 and got.headers["content-type"] == "application/zip"
+    assert api.get("/api/runs/r1").json()["has_model"] is True

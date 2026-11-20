@@ -71,6 +71,8 @@ def _summary(store: R.RunStore) -> dict:
             "test_passages": cfg.gate_windows,
         },
         "has_accuracy": (store.dir / "accuracy.json").exists(),
+        "has_model": (store.dir / "model.zip").exists(),
+        "model_mb": (store.dir / "model.zip").stat().st_size / MB if (store.dir / "model.zip").exists() else None,
     }
 
 
