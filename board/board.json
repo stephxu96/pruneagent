@@ -725,7 +725,8 @@
         "[2026-11-18 08:45] Added: the agent's evidence is per model and none exists for 1.7B. ~6 h Mac GPU (damage table ~5-6 h), no Codex, no Colab. Run after the midpoint report, e.g. overnight.",
         "[2026-11-19] Steph: run tonight (Mac GPU ~6 h, no Codex). The web app blocks 1.7B runs until it is done.",
         "[2026-11-19 18:11] Started on the Mac: scores + quick tests (~20-40 min), damage table (~5-6 h, 32 windows like 0.6B), then round-1 dry run. Expected done ~00:00-01:30. Each step resumes from its own file if interrupted.",
-        "[2026-11-19 21:06] Done in 2 h 55 min (damage table 161 min, not the 5-6 h estimated). Scores (checkpoints/, not in git), quick tests and damage table saved for Qwen3-1.7B-Base; round-1 dry run renders (results/damage_table/qwen3-1.7b-base__mps__float16__dry_run.txt). Unpruned 1.7B: 9.78 on the damage-table text. Quick tests vs measured (rank agreement): remove layer 0.61, attention 0.25, slim -0.31, so as on 0.6B the table, not the quick tests, picks layers."
+        "[2026-11-19 21:06] Done in 2 h 55 min (damage table 161 min, not the 5-6 h estimated). Scores (checkpoints/, not in git), quick tests and damage table saved for Qwen3-1.7B-Base; round-1 dry run renders (results/damage_table/qwen3-1.7b-base__mps__float16__dry_run.txt). Unpruned 1.7B: 9.78 on the damage-table text. Quick tests vs measured (rank agreement): remove layer 0.61, attention 0.25, slim -0.31, so as on 0.6B the table, not the quick tests, picks layers.",
+        "[2026-11-20 08:55] Quiz check (18,904 questions, question-weighted) on all four finished runs: agent ahead of FLAP every time. 1.7B 10%: 54.3% vs 51.9%; 0.6B 10/20/30%: 45.2/40.6/36.8% vs 43.8/34.6/31.2%. docs/quiz/finding.md"
       ]
     },
     {
