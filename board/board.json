@@ -706,7 +706,8 @@
         "[2026-11-19] Replaces the demo notebook. Architecture v0.9 approved by Steph (React + FastAPI). ~2 days of build; no Codex or GPU needed except the final live-run check.",
         "[2026-11-19 10:10] Built: FastAPI server + job runner, React app (home, run replay with model map and 'every idea tested' chart, comparison, new run). Tested against the 3 finished runs. Live run left for Steph to trigger.",
         "[2026-11-19 21:55] Steph: the app wasn't designed as a whole. Draft design for review: docs/APP_DESIGN.md (users, main path, pages, runtime, look and wording, gap list). Feature work waits for it. First browser-started run: 1.7B at 10%, 21:33.",
-        "[2026-11-19 22:40] First browser-started run finished: 20261119-2133-qwen3-1.7b-codex, 1.7B at 10% smaller, 43 min, 7 rounds all kept; sample-text error 9.78 -> 10.84 (11% worse) vs FLAP 11.23 (15% worse) at the same size. Final check not run yet. Left for done: pause and continue from the browser. App design reviewed with Steph: docs/APP_DESIGN.md (two user stories; background workflow service)."
+        "[2026-11-19 22:40] First browser-started run finished: 20261119-2133-qwen3-1.7b-codex, 1.7B at 10% smaller, 43 min, 7 rounds all kept; sample-text error 9.78 -> 10.84 (11% worse) vs FLAP 11.23 (15% worse) at the same size. Final check not run yet. Left for done: pause and continue from the browser. App design reviewed with Steph: docs/APP_DESIGN.md (two user stories; background workflow service).",
+        "[2026-11-20 09:40] Pre-phase-4 app check: 419 + 4 tests pass; every page rendered. Fixed: Compare now shows quiz scores and keeps FLAP's 0.6B curve to 0.6B runs; run page no longer goes blank without WebGL (flat map); time estimates include the checks (55-75 min per GB, was a fixed 20 min); 'Past runs' wording. Left: Steph's browser test of start, pause, continue."
       ]
     },
     {
