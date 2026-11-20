@@ -211,3 +211,42 @@ def compare(root: Path, curve_file: Path) -> dict:
     # the curve is measured on one model; the chart puts only that model's runs next to it
     return {"runs": sorted(runs, key=lambda r: (r["model"], r["cut"] or 0)), "flap_curve": flap_curve,
             "curve_model": curve.get("model") if curve else None}
+
+
+def removal_order(root: Path, run_id: str) -> dict | None:
+    """Which neurons and attention units each step removed, exactly (docs/APP_DESIGN.md §2.2 replay).
+
+    The pruner keeps, in every layer, the `mlp_keep` neurons and `groups_keep` attention units with the highest
+    usage score (ties: lower index first), from scores measured once on the original model. So each part has a
+    fixed place in its layer's removal order: rank r is removed once the layer keeps fewer than r + 1. With the
+    plans the run already returns, that gives every step's removed parts at their real positions.
+    Also returns weights per neuron and per attention unit, to show how much of a layer a step removed.
+    None when the run's scores aren't on this computer."""
+    store = R.RunStore.open(run_id, root)
+    setup = _read_json(store.dir / "setup.json") or {}
+    path = Path(setup.get("scores") or "")
+    if not path.is_file():
+        return None
+    out = _ranks(str(path), path.stat().st_mtime)
+    try:
+        d = E._dims(_config(store.run_config().model_id, setup.get("revision")))
+        per_group = 2 * d.hidden * d.heads_per_group * d.head_dim + 2 * d.hidden * d.head_dim  # q, o; k, v
+        out = {**out, "weights": {"per_neuron": 3 * d.hidden, "per_group": per_group}}
+    except (OSError, KeyError, ValueError):
+        out = {**out, "weights": None}
+    return out
+
+
+@functools.lru_cache(maxsize=8)
+def _ranks(path: str, _mtime: float) -> dict:
+    import torch
+    from safetensors import safe_open
+
+    def rank(score: "torch.Tensor") -> list[list[int]]:
+        order = torch.sort(score.float(), dim=1, descending=True, stable=True).indices  # same rule as pruner.top_mask
+        r = torch.empty_like(order)
+        r.scatter_(1, order, torch.arange(order.shape[1]).expand_as(order))
+        return r.tolist()
+
+    with safe_open(path, "pt") as f:
+        return {"mlp_rank": rank(f.get_tensor("mlp")), "attn_rank": rank(f.get_tensor("attn"))}

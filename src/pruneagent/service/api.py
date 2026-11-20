@@ -122,6 +122,14 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | N
         store_or_404(run_id)
         return V.run_detail(root, run_id)
 
+    @app.get("/api/runs/{run_id}/removal")
+    def removal(run_id: str) -> dict:
+        store_or_404(run_id)
+        out = V.removal_order(root, run_id)
+        if out is None:
+            raise HTTPException(404, "This run's scores aren't on this computer.")
+        return out
+
     @app.get("/api/runs/{run_id}/results")
     def results(run_id: str) -> dict:
         store_or_404(run_id)
