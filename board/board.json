@@ -704,7 +704,8 @@
       "status": "doing",
       "notes": [
         "[2026-11-19] Replaces the demo notebook. Architecture v0.9 approved by Steph (React + FastAPI). ~2 days of build; no Codex or GPU needed except the final live-run check.",
-        "[2026-11-19 10:10] Built: FastAPI server + job runner, React app (home, run replay with model map and 'every idea tested' chart, comparison, new run). Tested against the 3 finished runs. Live run left for Steph to trigger."
+        "[2026-11-19 10:10] Built: FastAPI server + job runner, React app (home, run replay with model map and 'every idea tested' chart, comparison, new run). Tested against the 3 finished runs. Live run left for Steph to trigger.",
+        "[2026-11-19 21:55] Steph: the app wasn't designed as a whole. Draft design for review: docs/APP_DESIGN.md (users, main path, pages, runtime, look and wording, gap list). Feature work waits for it. First browser-started run: 1.7B at 10%, 21:33."
       ]
     },
     {
@@ -774,7 +775,8 @@
       "gpu": "—",
       "status": "todo",
       "notes": [
-        "[2026-11-19 21:34] Requested by Steph; queued after 3.9."
+        "[2026-11-19 21:34] Requested by Steph; queued after 3.9.",
+        "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed."
       ]
     },
     {
@@ -788,9 +790,10 @@
       ],
       "done_when": "A merge and app restart during a run leave the run unchanged and still shown as running, pausable",
       "gpu": "—",
-      "status": "doing",
+      "status": "todo",
       "notes": [
-        "[2026-11-19 21:45] Raised by Steph: deploying should not depend on whether a run is going. Today the run re-reads instruction files every round and a restart marks running jobs 'Interrupted'."
+        "[2026-11-19 21:45] Raised by Steph: deploying should not depend on whether a run is going. Today the run re-reads instruction files every round and a restart marks running jobs 'Interrupted'.",
+        "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed."
       ]
     },
     {
