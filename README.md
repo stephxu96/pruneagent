@@ -29,13 +29,11 @@ that run in the background on this Mac: the **web app** (what the browser shows)
 work in progress (docs/APP_DESIGN.md §4).
 
 ```bash
-uv sync --extra web
-(cd web && npm install && npm run build)   # once
-scripts/install_services.sh                # web app + workflow service, started at login, restarted if they stop
-open http://127.0.0.1:8125
+scripts/start.sh          # everything: packages, release, interface, both services; opens http://127.0.0.1:8125
+scripts/start.sh --stop   # stop both
 ```
 
-**Updating:** after merging, run `scripts/deploy.sh`. It makes a new release (a fixed copy of the code with its own
+**Updating:** after merging, run `scripts/start.sh` again (or just `scripts/deploy.sh`). It makes a new release (a fixed copy of the code with its own
 environment, in `releases/`), swaps in the new interface and restarts both services. Work already running finishes on
 the release it started with.
 
