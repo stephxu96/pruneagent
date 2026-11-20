@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from pruneagent import workflows as W
+from pruneagent.service import workflows as W
 
 PY = sys.executable
 

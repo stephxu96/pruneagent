@@ -1,7 +1,7 @@
 """The checks on every request the web app accepts, and the progress of a model setup.
 
 The browser never sends a command line: each request is a few fields, checked here against the same rules as the
-command line, then handed to the background workflow service (`pruneagent.workflows`), which runs it.
+command line, then handed to the background workflow service (`pruneagent.service.workflows`), which runs it.
 """
 
 from __future__ import annotations

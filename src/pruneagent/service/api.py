@@ -1,6 +1,8 @@
-"""PruneAgent web application: an HTTP API over the tools, plus the built browser interface (ADR-008).
+"""The tools API (docs/APP_DESIGN.md §4.1): the one way into PruneAgent's tools from outside, for the app.
 
-Start it with `pruneagent web` (http://127.0.0.1:8125). Local, single user: it binds to 127.0.0.1 only.
+The tools service (`pruneagent tools-service`) runs this API and the workflow runner together, natively, on the
+machine with the GPU. It owns the run folders, the model assets, the workflow store and the hardware details; the
+app (a container) only calls these endpoints. Local and single user: it listens on 127.0.0.1 only.
 """
 
 from __future__ import annotations
@@ -14,15 +16,14 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from pruneagent import models as MD
 from pruneagent import runstore as R
-from pruneagent import workflows as W
-from pruneagent.web import jobs as J
-from pruneagent.web import machine as M
-from pruneagent.web import views as V
+from pruneagent.service import machine as M
+from pruneagent.service import requests as J
+from pruneagent.service import views as V
+from pruneagent.service import workflows as W
 
 REPO = Path(__file__).resolve().parents[3]
 
@@ -66,14 +67,13 @@ class NewRun(BaseModel):
 
 
 def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | None = None,
-               dist: Path | None = REPO / "web" / "dist", curve: Path | None = None) -> FastAPI:
-    """The web app. It runs nothing long itself: it writes requests to the workflow store and reads state back;
-    the background workflow service (`pruneagent worker`) does the work (docs/APP_DESIGN.md §4)."""
+               curve: Path | None = None) -> FastAPI:
+    """The tools API. Long work is handed to the workflow runner through the workflow store and read back."""
     root, repo = Path(root), Path(repo)
     curve = curve or repo / "results" / "flap_curve" / "qwen3-0.6b-base.json"
     root.mkdir(parents=True, exist_ok=True)
     store = store or W.Store(root)
-    app = FastAPI(title="PruneAgent", docs_url="/api/docs", openapi_url="/api/openapi.json")
+    app = FastAPI(title="PruneAgent tools API", docs_url="/api/docs", openapi_url="/api/openapi.json")
     app.state.store = store
 
     def store_or_404(run_id: str) -> R.RunStore:
@@ -261,20 +261,18 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | N
         """Continue a paused or failed workflow from the step it stopped at."""
         return public(store.resume(get_or_404(job_id).id))
 
-    # ---------------------------------------------------------------- the browser interface
-
-    if dist is not None and (dist / "index.html").exists():
-        app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
-
-        @app.get("/{path:path}", include_in_schema=False)
-        def page(path: str) -> FileResponse:
-            f = dist / path
-            return FileResponse(f if path and f.is_file() and dist in f.resolve().parents else dist / "index.html")
-
     return app
 
 
-def serve(port: int = 8125) -> None:
+TOOLS_PORT = 8124
+
+
+def serve(port: int = TOOLS_PORT, root: Path = REPO) -> None:
+    """The tools service: the workflow runner in a background thread and the tools API in front of it."""
+    import threading
+
     import uvicorn
 
-    uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="warning")
+    runner = W.Service(root)
+    threading.Thread(target=runner.serve, name="workflow-runner", daemon=True).start()
+    uvicorn.run(create_app(root=runner.runs, repo=root), host="127.0.0.1", port=port, log_level="warning")

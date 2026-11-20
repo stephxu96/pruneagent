@@ -15,7 +15,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from pruneagent.web import views as V
+from pruneagent.service import views as V
 
 AGENT, FLAP, PART, GOOD, IDEA = "#eb6834", "#2a78d6", "#55636f", "#1a8a5c", "#b7b6b0"
 STRATEGY = {"narrow_mlp": "slim a layer", "remove_attention_group": "remove an attention unit",

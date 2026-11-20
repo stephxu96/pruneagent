@@ -1,0 +1,7 @@
+# The app image needs only the interface source and the app server; never runs, models, data or environments.
+*
+!web/
+!src/pruneagent/web/front.py
+web/node_modules/
+web/dist/
+web/dist.*/

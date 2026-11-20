@@ -8,10 +8,10 @@ from fastapi.testclient import TestClient
 from test_kill_resume import Agent, setup_for, use  # noqa: F401  (setup_for is a fixture)
 
 from pruneagent import realrun as RR
-from pruneagent import workflows as W
-from pruneagent.web import jobs as J
-from pruneagent.web import machine as M
-from pruneagent.web.app import create_app
+from pruneagent.service import machine as M
+from pruneagent.service import requests as J
+from pruneagent.service import workflows as W
+from pruneagent.service.api import create_app
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def finished_run(setup_for, monkeypatch):  # noqa: F811
 
 def client(runs, tmp_path):
     store = W.Store(runs)
-    return TestClient(create_app(root=runs, repo=tmp_path, store=store, dist=None)), store
+    return TestClient(create_app(root=runs, repo=tmp_path, store=store)), store
 
 
 def test_runs_detail_and_results_come_from_the_run_files(finished_run, tmp_path):
@@ -92,7 +92,7 @@ def test_pause_cancel_and_continue_go_through_the_workflow(finished_run, tmp_pat
 
 
 def test_machine_reports_memory_and_model_sizes(finished_run, tmp_path, monkeypatch):
-    from pruneagent.web import machine as M
+    from pruneagent.service import machine as M
 
     monkeypatch.setattr(M, "machine", lambda: {"name": "MacBook Pro", "chip": "Apple M4", "memory_gb": 24.0})
     monkeypatch.setattr(M, "model_sizes", lambda ids=None: [{"id": J.MODELS[0], "ready": True, "size_mb": 1192.1, "working_mb": 117.4}])
@@ -102,7 +102,7 @@ def test_machine_reports_memory_and_model_sizes(finished_run, tmp_path, monkeypa
 
 
 def test_this_machine_is_read_for_real():
-    from pruneagent.web import machine as M
+    from pruneagent.service import machine as M
 
     m = M.machine()
     assert m["memory_gb"] and m["memory_gb"] > 1
@@ -111,7 +111,7 @@ def test_this_machine_is_read_for_real():
 def test_live_usage_is_read_on_this_mac():
     import platform
 
-    from pruneagent.web import machine as M
+    from pruneagent.service import machine as M
 
     got = M.live()
     assert set(got) == {"memory_used_pct", "gpu_busy_pct", "gpu_memory_mb"}
