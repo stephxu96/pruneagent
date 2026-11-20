@@ -705,7 +705,8 @@
       "notes": [
         "[2026-11-19] Replaces the demo notebook. Architecture v0.9 approved by Steph (React + FastAPI). ~2 days of build; no Codex or GPU needed except the final live-run check.",
         "[2026-11-19 10:10] Built: FastAPI server + job runner, React app (home, run replay with model map and 'every idea tested' chart, comparison, new run). Tested against the 3 finished runs. Live run left for Steph to trigger.",
-        "[2026-11-19 21:55] Steph: the app wasn't designed as a whole. Draft design for review: docs/APP_DESIGN.md (users, main path, pages, runtime, look and wording, gap list). Feature work waits for it. First browser-started run: 1.7B at 10%, 21:33."
+        "[2026-11-19 21:55] Steph: the app wasn't designed as a whole. Draft design for review: docs/APP_DESIGN.md (users, main path, pages, runtime, look and wording, gap list). Feature work waits for it. First browser-started run: 1.7B at 10%, 21:33.",
+        "[2026-11-19 22:40] First browser-started run finished: 20261119-2133-qwen3-1.7b-codex, 1.7B at 10% smaller, 43 min, 7 rounds all kept; sample-text error 9.78 -> 10.84 (11% worse) vs FLAP 11.23 (15% worse) at the same size. Final check not run yet. Left for done: pause and continue from the browser. App design reviewed with Steph: docs/APP_DESIGN.md (two user stories; background workflow service)."
       ]
     },
     {
@@ -776,7 +777,8 @@
       "status": "todo",
       "notes": [
         "[2026-11-19 21:34] Requested by Steph; queued after 3.9.",
-        "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed."
+        "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed.",
+        "[2026-11-19 22:40] After 3.11 and 3.12 (docs/APP_DESIGN.md §6)."
       ]
     },
     {
@@ -790,11 +792,60 @@
       ],
       "done_when": "Restarting or updating the web app during a run changes nothing in the run; a workflow continues after the service restarts; a new release doesn't change a running workflow",
       "gpu": "—",
-      "status": "todo",
+      "status": "doing",
       "notes": [
         "[2026-11-19 21:45] Raised by Steph: deploying should not depend on whether a run is going. Today the run re-reads instruction files every round and a restart marks running jobs 'Interrupted'.",
         "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed.",
-        "[2026-11-19 22:05] Steph: long-running work must be a background workflow, separate from the app; deployment must not affect it. Design in docs/APP_DESIGN.md §4.1-4.3. On hold until the design is reviewed."
+        "[2026-11-19 22:05] Steph: long-running work must be a background workflow, separate from the app; deployment must not affect it. Design in docs/APP_DESIGN.md §4.1-4.3. On hold until the design is reviewed.",
+        "[2026-11-19 22:40] Design accepted; building it now (feature work resumes)."
+      ]
+    },
+    {
+      "id": "3.12",
+      "type": "task",
+      "phase": 3,
+      "title": "App structure per docs/APP_DESIGN.md: two user stories (Models page for model setup; Prune a model: select your model → where it runs → the answer → start), size from the device with the check run on its own, Runs home, Activity page, shared parts, 'set up' wording",
+      "owner": "Coding agent",
+      "deps": [
+        "3.11"
+      ],
+      "done_when": "Both stories work end to end in the browser; no size slider or check button; interface tests pass",
+      "gpu": "—",
+      "status": "todo",
+      "notes": [
+        "[2026-11-19 22:40] From the app design review."
+      ]
+    },
+    {
+      "id": "3.13",
+      "type": "task",
+      "phase": 3,
+      "title": "Final check runs on its own as the pruning workflow's second step",
+      "owner": "Coding agent",
+      "deps": [
+        "3.11"
+      ],
+      "done_when": "A run that meets its target gets heldout.json and accuracy.json with no click",
+      "gpu": "M4",
+      "status": "todo",
+      "notes": [
+        "[2026-11-19 22:40] From the app design review (open question 1: recommended yes)."
+      ]
+    },
+    {
+      "id": "3.14",
+      "type": "task",
+      "phase": 3,
+      "title": "Download the smaller model itself (saved model + plan, FR12) as the pruning workflow's last step",
+      "owner": "Coding agent",
+      "deps": [
+        "3.11"
+      ],
+      "done_when": "The run page offers the saved model; it reloads to the same quality",
+      "gpu": "—",
+      "status": "todo",
+      "notes": [
+        "[2026-11-19 22:40] From the app design review."
       ]
     },
     {
@@ -957,7 +1008,10 @@
         "3.8",
         "3.9",
         "3.10",
-        "3.11"
+        "3.11",
+        "3.12",
+        "3.13",
+        "3.14"
       ],
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
