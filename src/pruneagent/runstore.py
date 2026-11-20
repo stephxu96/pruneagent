@@ -237,6 +237,23 @@ class RunStore:
 
     # ------------------------------------------------------------------------- the graph's four store methods
 
+    def set_now(self, now: dict | None) -> None:
+        """What the current round is doing (`now.json`; none between rounds), for the live view. Replaced in one
+        step, so a reader never sees half a file."""
+        path = self.dir / "now.json"
+        if now is None:
+            path.unlink(missing_ok=True)
+            return
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({**now, "since": _now()}))
+        os.replace(tmp, path)
+
+    def now(self) -> dict | None:
+        try:
+            return json.loads((self.dir / "now.json").read_text())
+        except (OSError, ValueError):
+            return None
+
     def append_log(self, record: StepRecord) -> None:
         """One line of the decision log, flushed to disk before the graph moves on."""
         with self.log_path.open("a") as f:

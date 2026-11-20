@@ -70,6 +70,8 @@ export type RunDetail = RunSummary & {
   steps: Step[];
   rounds: Round[];
   time_left: { minutes: [number, number] | null; worst_minutes: number; rounds_left: number; mb_left: number } | null;
+  // what the current round is doing (running runs only)
+  now: { round: number; layer: number | null; phase: "proposing" | "measuring"; plans?: number; since: string } | null;
 };
 
 export type Score = { size_mb: number; test_error: number; unseen_error: number };

@@ -172,6 +172,7 @@ class Store(Protocol):
     def load_checkpoint(self) -> dict | None: ...
     def sync(self, state: dict) -> None: ...  # before resuming: drop what an unfinished round wrote
     def set_status(self, status: str, reason: str | None = None) -> None: ...
+    def set_now(self, now: dict | None) -> None: ...  # what the current round is doing, for the live view
 
 
 @dataclass
@@ -207,6 +208,11 @@ class MemoryStore:
 
     def set_status(self, status: str, reason: str | None = None) -> None:
         self.status = (status, reason)
+
+    now: dict | None = None
+
+    def set_now(self, now: dict | None) -> None:
+        self.now = now
 
 
 @dataclass
@@ -418,6 +424,7 @@ def build_graph(deps: Deps, checkpointer=None):
         if state["usage"].calls >= run.max_agent_calls:
             return {"stop_reason": f"agent call cap reached ({run.max_agent_calls} calls)"}
         n = state["round"] + 1
+        store.set_now({"round": n, "layer": sweep_layer(run, state), "phase": "proposing"})
         prompt = deps.build_prompt(agent_request(cfg, state), state.get("feedback"))
         start = time.perf_counter()
         try:
@@ -498,6 +505,8 @@ def build_graph(deps: Deps, checkpointer=None):
                      "rationale": reply.candidates[c.index].rationale, "plan": c.plan}
                     for c in state["check"].candidates]
         acc = state["accepted"][-1]
+        store.set_now({"round": state["round"], "layer": sweep_layer(state["run"], state), "phase": "measuring",
+                       "plans": len(jobs)})
         return [Send("evaluate", {"job": {**j, "last_ppl": last, "accepted_plan": acc.plan,
                                           "accepted_bytes": acc.weight_bytes}, "run": state["run"]})
                 for j in jobs]
@@ -576,6 +585,7 @@ def build_graph(deps: Deps, checkpointer=None):
             reason = f"{state['round']} rounds"
         elif state["usage"].calls >= run.max_agent_calls:
             reason = f"agent call cap reached ({run.max_agent_calls} calls)"
+        store.set_now(None)  # between rounds
         store.checkpoint({**state, "stop_reason": reason})
         if state.get("pause") and not reason:  # the round is saved: stop here until the limit resets
             raise RunPaused(*state["pause"])

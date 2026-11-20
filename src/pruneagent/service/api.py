@@ -182,7 +182,8 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | N
             last = None
             while True:
                 info = store.info()
-                mark = (info.updated, info.round, info.status)
+                now = store.now() or {}
+                mark = (info.updated, info.round, info.status, now.get("phase"), now.get("round"))  # also a round's phase
                 if mark != last:
                     last = mark
                     yield f"data: {json.dumps({'state': info.state, 'round': info.round})}\n\n"
