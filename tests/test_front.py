@@ -36,3 +36,17 @@ def test_the_app_reads_no_project_files():
 
     src = Path(f.__file__).read_text()
     assert "import pruneagent" not in src and "from pruneagent" not in src  # standalone: forwards, never reads
+
+
+def test_the_app_server_starts_as_a_lone_file_like_in_the_image(tmp_path):
+    import shutil
+    import subprocess
+    import sys
+
+    import pruneagent.web.front as f
+
+    shutil.copy(f.__file__, tmp_path / "front.py")  # in the image it is /app/front.py, nothing around it
+    code = "import front; print(front.DEFAULT_DIST)"
+    env = {"PATH": "/usr/bin:/bin", "PRUNEAGENT_DIST": "/app/dist"}
+    out = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, env=env, capture_output=True, text=True)
+    assert out.returncode == 0 and out.stdout.strip() == "/app/dist", out.stderr

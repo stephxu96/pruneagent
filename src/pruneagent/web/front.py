@@ -21,7 +21,15 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 
 TOOLS_URL = os.environ.get("PRUNEAGENT_TOOLS_URL", "http://127.0.0.1:8124")
-DEFAULT_DIST = Path(os.environ.get("PRUNEAGENT_DIST", Path(__file__).resolve().parents[3] / "web" / "dist"))
+def _default_dist() -> Path | None:
+    """`PRUNEAGENT_DIST` (set in the image), else `web/dist` of the repo this file is in."""
+    if os.environ.get("PRUNEAGENT_DIST"):
+        return Path(os.environ["PRUNEAGENT_DIST"])
+    parents = Path(__file__).resolve().parents
+    return parents[3] / "web" / "dist" if len(parents) > 3 else None
+
+
+DEFAULT_DIST = _default_dist()
 HOP = {"connection", "keep-alive", "transfer-encoding", "te", "trailer", "upgrade", "content-length", "host",
        "content-encoding"}
 

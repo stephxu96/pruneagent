@@ -6,7 +6,7 @@
 #   scripts/start.sh --no-open  don't open the browser
 set -euo pipefail
 cd "$(dirname "$0")/.."
-export PATH="$HOME/.docker/bin:$HOME/.orbstack/bin:$PATH"   # where Docker Desktop and OrbStack put \`docker\`
+export PATH="$HOME/.docker/bin:$HOME/.orbstack/bin:$PATH"   # where Docker Desktop and OrbStack put the docker command
 tools_url="http://127.0.0.1:8124"
 app_url="http://127.0.0.1:8125"
 mkdir -p runs/service_logs
