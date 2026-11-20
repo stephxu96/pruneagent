@@ -755,9 +755,10 @@
       ],
       "done_when": "Start run opens the dialog; Cancel, Escape and the backdrop close it; not-feasible sizes can't start",
       "gpu": "—",
-      "status": "doing",
+      "status": "done",
       "notes": [
-        "[2026-11-19 21:34] Requested by Steph: the start-run warning was the browser's plain pop-up."
+        "[2026-11-19 21:34] Requested by Steph: the start-run warning was the browser's plain pop-up.",
+        "[2026-11-19 21:45] Live (interface only; deployed during the 1.7B run without touching it)."
       ]
     },
     {
@@ -774,6 +775,22 @@
       "status": "todo",
       "notes": [
         "[2026-11-19 21:34] Requested by Steph; queued after 3.9."
+      ]
+    },
+    {
+      "id": "3.11",
+      "type": "task",
+      "phase": 3,
+      "title": "Deploy without interrupting runs: each run keeps its own copy of the AI's instructions; the app re-attaches to running jobs after a restart; the interface build swaps in at once",
+      "owner": "Coding agent",
+      "deps": [
+        "3.6"
+      ],
+      "done_when": "A merge and app restart during a run leave the run unchanged and still shown as running, pausable",
+      "gpu": "—",
+      "status": "doing",
+      "notes": [
+        "[2026-11-19 21:45] Raised by Steph: deploying should not depend on whether a run is going. Today the run re-reads instruction files every round and a restart marks running jobs 'Interrupted'."
       ]
     },
     {
@@ -935,7 +952,8 @@
         "4.7",
         "3.8",
         "3.9",
-        "3.10"
+        "3.10",
+        "3.11"
       ],
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
