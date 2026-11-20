@@ -55,6 +55,8 @@ export function HomePage() {
               <dd>{r.now_error && r.original_error ? lossText(qualityLoss(r.now_error, r.original_error)) : "—"}</dd>
               <dt>Rounds</dt>
               <dd>{r.round}</dd>
+              <dt>How it cuts</dt>
+              <dd>{r.search_label}</dd>
             </dl>
             <span className="go">Open →</span>
           </a>
@@ -107,7 +109,7 @@ export function ComparePage() {
         {data.runs.map((r) => (
           <div key={r.id} className="card static">
             <div className="card-title">
-              {modelName(r.model)}, {pct(r.cut)} smaller <span className="muted">({mb(r.agent.size_mb)})</span>
+              {modelName(r.model)}, {pct(r.cut)} smaller <span className="muted">({mb(r.agent.size_mb)} · {r.search_label.toLowerCase()})</span>
             </div>
             <div className="m-label">Quiz questions (more is better)</div>
             {r.quiz?.agent != null && r.quiz.flap != null ? (
@@ -147,6 +149,9 @@ function QuizBars({ quiz }: { quiz: NonNullable<Compare["runs"][number]["quiz"]>
 function CurveChart({ data: all }: { data: Compare }) {
   // FLAP's curve is measured on one model, so only that model's runs go next to it
   const data = { ...all, runs: all.runs.filter((r) => r.model === all.curve_model) };
+  // one line per search strategy, so the two ways of cutting are never joined into one line
+  const lines = [...new Set(data.runs.map((r) => r.search))].sort().reverse()
+    .map((search) => ({ search, runs: data.runs.filter((r) => r.search === search) }));
   const W = 640, H = 300, M = { l: 78, r: 24, t: 20, b: 44 };
   const base = data.runs[0]?.original.test_error ?? 1;
   const times = (e: number) => e / base; // 1 = as good as the original
@@ -180,15 +185,21 @@ function CurveChart({ data: all }: { data: Compare }) {
               <title>{`Standard method, ${pct(p.cut, 1)} smaller: ${times(p.test_error).toFixed(1)}× worse`}</title>
             </circle>
           ))}
-          <polyline className="agent-line" points={[{ cut: 0, e: base }, ...data.runs.map((r) => ({ cut: r.cut, e: r.agent.test_error }))].map((p) => `${sx(p.cut)},${sy(times(p.e))}`).join(" ")} />
-          {data.runs.map((r) => (
-            <circle key={r.id} cx={sx(r.cut)} cy={sy(times(r.agent.test_error))} r={6} className="agent-dot">
-              <title>{`PruneAgent, ${pct(r.cut)} smaller: ${times(r.agent.test_error).toFixed(1)}× worse`}</title>
-            </circle>
+          {lines.map(({ search, runs }) => (
+            <g key={search} className={search === "multi_layer" ? "" : "alt-search"}>
+              <polyline className="agent-line" points={[{ cut: 0, e: base }, ...runs.map((r) => ({ cut: r.cut, e: r.agent.test_error }))].map((p) => `${sx(p.cut)},${sy(times(p.e))}`).join(" ")} />
+              {runs.map((r) => (
+                <circle key={r.id} cx={sx(r.cut)} cy={sy(times(r.agent.test_error))} r={6} className="agent-dot">
+                  <title>{`PruneAgent (${r.search_label.toLowerCase()}), ${pct(r.cut)} smaller: ${times(r.agent.test_error).toFixed(1)}× worse`}</title>
+                </circle>
+              ))}
+            </g>
           ))}
         </svg>
         <div className="legend">
-          <span><i className="sw agent" /> PruneAgent</span>
+          {lines.map(({ search, runs }) => (
+            <span key={search}><i className={`sw agent ${search === "multi_layer" ? "" : "alt"}`} /> PruneAgent, {runs[0].search_label.toLowerCase()}</span>
+          ))}
           <span><i className="sw flap" /> Standard method (FLAP)</span>
         </div>
       </figure>

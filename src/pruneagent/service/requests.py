@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 from pruneagent import models as MD
+from pruneagent import search as S
 
 MODELS = MD.BUILT_IN
 MAX_CUT = 0.6  # largest size cut the app offers; the run's own early warning says if it is reachable
@@ -48,8 +49,11 @@ def command(kind: str, params: dict, known: tuple[str, ...] | list[str] = MODELS
         backend = params.get("backend", "codex")
         if backend not in ("codex", "api"):
             raise JobError("backend must be codex or api")
+        search = params.get("search", S.DEFAULT)
+        if search not in S.STRATEGIES:
+            raise JobError(f"search must be one of {', '.join(S.STRATEGIES)}")
         args = ["pruneagent", "run", "--model", model, "--memory-cut", f"{cut:.4f}", "--device", "mps",
-                "--backend", backend]
+                "--backend", backend, "--search", search]
         if kind == "precheck":
             return [*UV, *args, "--dry-run", "--json-result"]
         return [*GPU, "caffeinate", "-i", *UV, *args]

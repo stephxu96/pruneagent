@@ -424,3 +424,13 @@ pre.code { background: var(--bg); border: 1px solid var(--line); border-radius: 
 .step-grid .grid-row.on .tick { fill: var(--ink); font-weight: 600; }
 .step-grid .tick { font-size: 9px; }
 .step-grid .tick.total { font-weight: 600; }
+
+/* start dialog: how the AI cuts */
+.sd-choice { display: flex; flex-direction: column; gap: 6px; }
+.sd-choice label { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.sd-choice label:hover { border-color: var(--ink-3); }
+.sd-choice label.on { border-color: var(--agent); }
+.sd-choice input { margin-top: 3px; accent-color: var(--agent); }
+.chart .alt-search .agent-line { stroke-dasharray: 6 4; }
+.chart .alt-search .agent-dot { fill: var(--panel); stroke: var(--agent); stroke-width: 2.5; }
+.legend .sw.agent.alt { background: transparent; border: 2px solid var(--agent); }

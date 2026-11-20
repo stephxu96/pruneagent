@@ -9,9 +9,7 @@ memory limit. FLAP's perplexity at this limit is {flap_ppl}. The unpruned
 model's is {dense_ppl}. Compare yourself with FLAP only once you are at the
 limit; before that your model is larger and should score better than FLAP.
 
-How rounds work. Each round, propose 1–3 candidates. Each candidate is a list
-of (layer, method) choices, applied together to the current model, one
-fixed-size step per choice. Code measures each candidate's real perplexity.
+How rounds work. Each round, propose 1–3 candidates. {candidate_rule} Code measures each candidate's real perplexity.
 A candidate is rejected if {rejection_rule}. Of the rest, code keeps
 {selection_rule}. If all are rejected, nothing changes and the round is used.
 You have {rounds_left} rounds left. {stop_rule}

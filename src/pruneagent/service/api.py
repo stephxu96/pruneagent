@@ -64,6 +64,7 @@ class NewRun(BaseModel):
     model: str = J.MODELS[0]
     cut: float
     backend: str = "codex"
+    search: str = "multi_layer"  # search strategy (search.py)
 
 
 def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | None = None,
@@ -89,12 +90,13 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | N
             raise HTTPException(422, str(e)) from None
         release = W.current_release(repo)
         if kind == "precheck":
-            wf = store.submit("precheck", {k: params[k] for k in ("model", "cut", "backend") if k in params}, release)
+            wf = store.submit("precheck", {k: params[k] for k in ("model", "cut", "backend", "search") if k in params}, release)
         elif kind == "start":
             taken = {w.run_id for w in store.list(limit=500) if w.run_id}
             run_id = R.new_run_id(params["model"], params.get("backend", "codex"), root, taken=taken)
             wf = store.submit("pruning", {"model": params["model"], "cut": float(params["cut"]),
-                                          "backend": params.get("backend", "codex"), "run_id": run_id}, release)
+                                          "backend": params.get("backend", "codex"),
+                                          "search": params.get("search", "multi_layer"), "run_id": run_id}, release)
         elif kind == "resume":
             wf = store.submit("pruning", {"run_id": params["run_id"], "resume": True}, release)
         elif kind == "save":

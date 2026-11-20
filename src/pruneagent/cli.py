@@ -1171,6 +1171,9 @@ def run_cmd(
     run_id: Annotated[str | None, typer.Option(help="Run id (default: <date>-<time>-<model>-<backend>).")] = None,
     instructions: Annotated[str, typer.Option(
         help="Agent instructions version: v1, v2, ... (src/pruneagent/prompts/instructions_<version>.txt).")] = "v1",
+    search: Annotated[str, typer.Option(
+        help="Search strategy (src/pruneagent/search.py): multi_layer (several layers per step) or layer_by_layer "
+             "(one layer per step).")] = "multi_layer",
     fresh_answers: Annotated[bool, typer.Option(
         "--fresh-answers", help="Ask the agent afresh instead of reusing answers saved by earlier runs (repeats).")]
     = False,
@@ -1193,14 +1196,18 @@ def run_cmd(
 
         if not (I.TEMPLATE_PATH.parent / f"instructions_{instructions}.txt").exists():
             raise RR.SetupError(f"no instructions version {instructions}")
+        from pruneagent import search as SEARCH
+
+        if search not in SEARCH.STRATEGIES:
+            raise RR.SetupError(f"no search strategy {search}; choose one of {', '.join(SEARCH.STRATEGIES)}")
         builder = RR.PROMPT_BUILDER if instructions == "v1" else f"pruneagent.instructions:build_prompt_{instructions}"
         setup = RR.make_setup(model, device, dtype, data_dir, scores, probes, damage, prompt_builder=builder)
         config = AutoConfig.from_pretrained(model, revision=setup.revision)
         run_cfg = RR.make_run_config(model, config, device, memory_limit_mb=memory_limit_mb, memory_cut=memory_cut,
                                      backend=backend, max_rounds=max_rounds, dtype=dtype, target=target,
-                                     agent_cache_scope="run" if fresh_answers else "shared")
+                                     agent_cache_scope="run" if fresh_answers else "shared", search=search)
         typer.echo(f"{model} on {device}: memory limit {run_cfg.limit_bytes / 1e6:,.1f} MB of weights; "
-                   f"agent {backend}, instructions {instructions}; up to {run_cfg.rules.max_rounds} rounds, {run_cfg.max_agent_calls} calls")
+                   f"agent {backend}, instructions {instructions}, search {search}; up to {run_cfg.rules.max_rounds} rounds, {run_cfg.max_agent_calls} calls")
         if dry_run:
             out = RR.dry_run(run_cfg, setup, notify=lambda m: typer.echo(m, err=True))
             if json_result:

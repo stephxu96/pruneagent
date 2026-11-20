@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { duration, durationRange, checksMinutes, mb, modelName } from "./lib";
+import { checksMinutes, duration, durationRange, mb, modelName, SEARCHES } from "./lib";
 
 // The confirmation before a real run: what it will do, how long, how much of the usage limits, and what to keep in
 // mind while it runs. Built on <dialog>, so Escape, focus and the backdrop behave as the browser's own.
@@ -12,12 +12,14 @@ export type CheckResult = {
   time?: { minutes: [number, number]; rounds: [number, number]; worst_minutes?: number; max_rounds?: number } | null;
 };
 
-export function StartDialog({ open, model, cut, originalMb, check, onStart, onCheck, onClose }: {
+export function StartDialog({ open, model, cut, originalMb, check, search, onSearch, onStart, onCheck, onClose }: {
   open: boolean;
   model: string;
   cut: number; // 0.10 = 10% smaller
   originalMb: number | undefined;
   check: CheckResult | null; // the latest feasibility check for this model and size, if any
+  search: string;
+  onSearch: (id: string) => void;
   onStart: () => void;
   onCheck: () => void;
   onClose: () => void;
@@ -41,6 +43,17 @@ export function StartDialog({ open, model, cut, originalMb, check, onStart, onCh
         <dl className="sd-facts">
           <dt>Model</dt>
           <dd>{modelName(model)}</dd>
+          <dt>How the AI cuts</dt>
+          <dd>
+            <div className="sd-choice" role="radiogroup" aria-label="How the AI cuts">
+              {SEARCHES.map((s) => (
+                <label key={s.id} className={search === s.id ? "on" : ""}>
+                  <input type="radio" name="search" checked={search === s.id} onChange={() => onSearch(s.id)} />
+                  <span><b>{s.label}</b><span className="muted"> · {s.text}</span></span>
+                </label>
+              ))}
+            </div>
+          </dd>
           <dt>Target size</dt>
           <dd>
             {originalMb ? <>{mb(originalMb)} → under {mb(originalMb * (1 - cut))}</> : <>under {check ? mb(check.limit_mb) : "?"}</>}

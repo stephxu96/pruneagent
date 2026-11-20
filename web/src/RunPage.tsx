@@ -284,6 +284,7 @@ function Settings({ run, orig }: { run: RunDetail; orig: number }) {
   const s = run.settings;
   const rows: [string, string][] = [
     ["Model", modelName(run.model)],
+    ["How it cuts", run.search_label],
     ["Original size", mb(orig)],
     ["Target size", `under ${mb(run.limit_mb)}${run.cut != null ? ` (${pct(run.cut)} smaller)` : ""}`],
     ["Device", s.device.toUpperCase()],
