@@ -19,6 +19,7 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.background import BackgroundTask
 
 TOOLS_URL = os.environ.get("PRUNEAGENT_TOOLS_URL", "http://127.0.0.1:8124")
 
@@ -55,12 +56,9 @@ def create_front(tools_url: str = TOOLS_URL, dist: Path | None = DEFAULT_DIST,
             return JSONResponse({"detail": "The PruneAgent tools aren't running. Start them with scripts/start.sh."},
                                 status_code=503)
         headers = {k: v for k, v in resp.headers.items() if k.lower() not in HOP}
-        if resp.headers.get("content-type", "").startswith("text/event-stream"):  # live updates pass straight through
-            return StreamingResponse(resp.aiter_raw(), status_code=resp.status_code, headers=headers,
-                                     background=None, media_type="text/event-stream")
-        body = await resp.aread()
-        await resp.aclose()
-        return Response(body, status_code=resp.status_code, headers=headers)
+        # everything streams straight through: live updates, and model downloads of several GB
+        return StreamingResponse(resp.aiter_raw(), status_code=resp.status_code, headers=headers,
+                                 background=BackgroundTask(resp.aclose))
 
     if dist is not None and (dist / "index.html").exists():
         app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")

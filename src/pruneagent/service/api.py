@@ -97,6 +97,8 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | N
                                           "backend": params.get("backend", "codex"), "run_id": run_id}, release)
         elif kind == "resume":
             wf = store.submit("pruning", {"run_id": params["run_id"], "resume": True}, release)
+        elif kind == "save":
+            wf = store.submit("save", {"run_id": params["run_id"]}, release)
         elif kind in ("heldout", "accuracy"):
             wf = store.submit("check", {"run_id": params["run_id"], "check": kind}, release)
         elif kind == "prepare":
@@ -182,11 +184,22 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | N
 
     @app.get("/api/runs/{run_id}/download/{what}")
     def download(run_id: str, what: str) -> FileResponse:
+        """The smaller model (`model`: a zip made by `pruneagent save`) or the kept plan alone (`plan`)."""
         store = store_or_404(run_id)
+        if what == "model" and (store.dir / "model.zip").exists():
+            return FileResponse(store.dir / "model.zip", filename=f"{run_id}-model.zip",
+                                media_type="application/zip")
         kept = sorted((store.dir / "plans").glob("accepted-*.json"))
-        if what != "plan" or not kept:
-            raise HTTPException(404, "nothing to download")
-        return FileResponse(kept[-1], filename=f"{run_id}-plan.json")
+        if what == "plan" and kept:
+            return FileResponse(kept[-1], filename=f"{run_id}-plan.json")
+        raise HTTPException(404, "nothing to download")
+
+    @app.post("/api/runs/{run_id}/save")
+    def save(run_id: str) -> dict:
+        """Build the download of a finished run (pruning's last step; on its own for runs from before it)."""
+        if store_or_404(run_id).info().state != "finished":
+            raise HTTPException(409, "only finished runs have a model to download")
+        return submit("save", {"run_id": run_id})
 
     # ---------------------------------------------------------------- actions (each is one tool command)
 
