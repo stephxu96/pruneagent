@@ -84,9 +84,8 @@ export function NeuronMap({ removal, prev, cur, full, caption }: {
     ctx.fillStyle = c.ink;
     ctx.textAlign = "right";
     ctx.fillText("Attention units", LEFT - 10, attnTop + SQ + 3);
-    ctx.fillText("Knowledge part:", LEFT - 10, neuronTop + 10);
-    ctx.fillText("every neuron,", LEFT - 10, neuronTop + 23);
-    ctx.fillText("in its real place", LEFT - 10, neuronTop + 36);
+    ctx.fillText("Knowledge", LEFT - 10, neuronTop + NEURON_H / 2 - 4);
+    ctx.fillText("part", LEFT - 10, neuronTop + NEURON_H / 2 + 9);
     ctx.fillText("Layer →", LEFT - 10, height - 6);
     ctx.textAlign = "center";
     for (let i = 0; i < n; i++) {
@@ -129,7 +128,6 @@ export function NeuronMap({ removal, prev, cur, full, caption }: {
         <span><i className="sw part" /> Kept</span>
         <span><i className="sw hot" /> Removed in this step</span>
         <span><i className="sw earlier" /> Removed earlier</span>
-        <span className="muted">Each column is one layer.</span>
       </div>
     </figure>
   );
@@ -176,7 +174,7 @@ export function StepGrid({ run, removal, at, onPick }: {
           </g>
         ))}
         <g>
-          <text x={L - 8} y={rowY(rows.length) + CH - 4} textAnchor="end" className="tick total">In total</text>
+          <text x={L - 8} y={rowY(rows.length) + CH - 4} textAnchor="end" className="tick total">Total</text>
           {total.map((v, i) => (
             <rect key={i} x={cellX(i)} y={rowY(rows.length) + 4} width={CW} height={CH} rx={2}
               className={v > 0 ? "cell total hit" : "cell"} style={v > 0 ? { fillOpacity: 0.18 + 0.82 * Math.min(1, v) } : undefined}>
@@ -186,8 +184,7 @@ export function StepGrid({ run, removal, at, onPick }: {
         </g>
       </svg>
       <div className="legend">
-        <span><i className="sw hot" /> Darker: more of that layer removed in that step</span>
-        <span className="muted">Click a round to show it above.</span>
+        <span><i className="sw hot" /> Share of layer removed</span>
       </div>
     </figure>
   );

@@ -179,7 +179,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
               <div className="g-label">Memory requirement</div>
               <div className="g-value">{mb(step.mac_mb)}</div>
               <div className="g-note" title={`The model plus its notes on a ${run.mac_context}-token conversation. It is also the memory access cost (MAC): all of it is read once for every token written.`}>
-                model + its notes while answering (MAC)
+                model + working memory
               </div>
             </div>
           )}
@@ -203,16 +203,13 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
           <NeuronMap removal={removal} full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
             prev={showFlap && run.flap ? run.steps[0].layers : (prev ?? step).layers}
             cur={showFlap && run.flap ? run.flap.layers : step.layers}
-            caption={showFlap ? "Exactly what the standard method (FLAP) removes from the original model."
-              : at === 0 ? "The original model: every neuron kept."
-              : prev ? `Exactly what round ${at} removed (orange), at each neuron's real place in its layer.`
-              : `Round ${at} kept nothing; dark parts were removed in earlier rounds.`} />
+            caption={showFlap ? "FLAP, same size" : at === 0 ? "Original model" : prev ? `Round ${at}` : `Round ${at}: nothing kept`} />
         ) : view3 === "3d" ? (
           <Fallback onError={() => setView("flat")}><Neurons3D
             layers={showFlap && run.flap ? run.flap.layers : step.layers}
             prev={showFlap ? undefined : prev?.layers}
             full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
-            caption={showFlap ? "What the standard method (FLAP) cuts to reach the same size." : undefined}
+            caption={showFlap ? "FLAP, same size" : undefined}
           /></Fallback>
         ) : (
           <>
@@ -220,8 +217,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
               layers={showFlap && run.flap ? run.flap.layers : step.layers}
               full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
               changed={showFlap ? undefined : changed}
-              caption={showFlap ? "What the standard method (FLAP) cuts to reach the same size: a bit from almost everywhere."
-                : `${at === 0 ? "The original model" : `The model after round ${at}`}: ${run.shape.layers} layers (0 to ${run.shape.layers - 1}), left to right.`}
+              caption={showFlap ? "FLAP, same size" : at === 0 ? "Original model" : `After round ${at}`}
             />
             <MapLegend />
           </>
@@ -254,18 +250,14 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
                 ))}
               </ol>
             ) : (
-              <p className="muted">{round.outcome === "LEFT" ? "The AI left this layer as it is." : round.refused_reasons.join(" ") || "No ideas this round."}</p>
+              <p className="muted">{round.outcome === "LEFT" ? "Left as it is" : round.refused_reasons.join(" ") || "No ideas"}</p>
             )}
           </>
-        ) : (
-          <p className="muted">Press Play, or step with ◀ ▶ (or the arrow keys): each round shows the ideas the AI
-            tried, what each cut, how much quality it cost, and which one was kept.</p>
-        )}
+        ) : null}
       </section>
 
       <section>
         <h2>Steps by layer</h2>
-        <p className="muted">One row per kept round, one column per layer: how much of each layer that round removed.</p>
         <StepGrid run={run} removal={removal} at={at} onPick={(r) => { setPlaying(false); setAt(r); }} />
       </section>
 
@@ -325,7 +317,7 @@ export function ResultBars({ held }: { held: NonNullable<Results["heldout"]> }) 
           <span className="bar-val">{lossText(r.loss)}</span>
         </div>
       ))}
-      <p className="note">Quality lost compared with the original model; shorter is better. Both models are the same size.</p>
+      <p className="note">Quality lost vs. the original · shorter is better</p>
     </div>
   );
 }
@@ -401,7 +393,7 @@ function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }
   return (
     <section className="progress-view">
       <StepBar steps={STAGES.map((x) => x.label)} at={at + 1} />
-      <div className="pv-grid">
+      <div className={`pv-grid ${run.state === "running" && run.now ? "with-now" : ""}`}>
         <div className="pv-size">
           <div className="g-label">Size</div>
           <div className="pv-big">{mb(now)} <span className="muted">→ under {mb(run.limit_mb)}</span></div>
@@ -411,7 +403,7 @@ function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }
         <div>
           <div className="g-label">Quality so far</div>
           <div className="pv-big">{loss == null ? "—" : lossText(loss)}</div>
-          <div className="g-note">than the original, on the sample text</div>
+          <div className="g-note">vs. the original</div>
         </div>
         <div>
           {run.search === "layer_by_layer" ? (
@@ -427,6 +419,15 @@ function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }
           )}
           <div className="g-note">{run.kept_steps} steps kept</div>
         </div>
+        {run.state === "running" && run.now && (
+          <div>
+            <div className="g-label">Now</div>
+            <div className="pv-big">{run.now.layer != null ? `Layer ${run.now.layer}` : `Round ${run.now.round}`}</div>
+            <div className="g-note">
+              {run.now.phase === "measuring" ? `Measuring ${run.now.plans ?? ""} plan${run.now.plans === 1 ? "" : "s"}` : "AI proposing"}
+            </div>
+          </div>
+        )}
       </div>
       <div className="pv-foot">
         <span className={paused ? "warn" : "muted"}>{status}</span>
@@ -548,12 +549,11 @@ function Evaluation({ runId, results, onResults }: {
   return (
     <section className="evaluation">
       <h2>Evaluation</h2>
-      <p className="muted">Two tests of the finished model, each against the original and the standard method (FLAP) at the same size.</p>
       <div className="eval-grid">
-        <EvalCard title="Unseen-text test" what="How well it predicts text it never saw (perplexity)" state={text} onRun={() => start("heldout")}>
+        <EvalCard title="Unseen-text test" what="Perplexity" state={text} onRun={() => start("heldout")}>
           {results?.heldout && <ResultBars held={results.heldout} />}
         </EvalCard>
-        <EvalCard title="Quiz questions" what="How many of 18,904 multiple-choice questions it gets right (accuracy)" state={quiz} onRun={() => start("accuracy")}>
+        <EvalCard title="Quiz questions" what="Accuracy · 18,904 questions" state={quiz} onRun={() => start("accuracy")}>
           {results?.accuracy && <QuizResult acc={results.accuracy} />}
         </EvalCard>
       </div>
@@ -580,7 +580,7 @@ function EvalCard({ title, what, state, onRun, children }: {
         <span className={`badge ${badge[0]}`}>{badge[1]}</span>
       </div>
       {state === "done" ? children
-        : state === "running" ? <p className="muted">Testing the original, this model and the standard method in turn. This page updates on its own.</p>
+        : state === "running" ? <p className="muted">Running</p>
         : state === "waiting" ? <p className="muted">Starts when the Mac is free.</p>
         : <button className="secondary" onClick={onRun}>{state === "failed" ? "Run it again" : "Run it"}</button>}
     </div>
@@ -603,7 +603,7 @@ function QuizResult({ acc }: { acc: NonNullable<Results["accuracy"]> }) {
           <span className="bar-val">{pct(x.r!.all_questions.acc, 1)} right</span>
         </div>
       ))}
-      <p className="note">Share of all questions answered right, each set counted by its number of questions; longer is better.</p>
+      <p className="note">Weighted by questions per set · longer is better</p>
       <details className="sets">
         <summary>Each question set</summary>
         <table>

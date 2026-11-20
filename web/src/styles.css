@@ -397,6 +397,7 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .progress-view { background: var(--panel); border: 1px solid var(--agent); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; margin: 8px 0 16px; }
 .progress-view .stepper { margin: 0; }
 .pv-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 18px; }
+.pv-grid.with-now { grid-template-columns: 2fr 1fr 1fr 1fr; }
 .pv-big { font-size: 22px; font-weight: 700; margin: 2px 0 6px; }
 .pv-big .muted { font-size: 15px; font-weight: 400; }
 .pv-size .bar { height: 10px; background: var(--gone); border-radius: 99px; overflow: hidden; margin: 4px 0 6px; }

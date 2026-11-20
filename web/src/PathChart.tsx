@@ -80,7 +80,7 @@ export function PathChart({ run, upTo }: { run: RunDetail; upTo: number }) {
         )}
       </svg>
       {flap && flap.y > yTop && (
-        <p className="note">The standard method (FLAP) at this size is off the top of the chart: {lossText(flap.y)}.</p>
+        <p className="note">FLAP, same size: {lossText(flap.y)} (off the chart)</p>
       )}
       <div className="legend">
         <span><i className="sw kept" /> Kept ideas</span>

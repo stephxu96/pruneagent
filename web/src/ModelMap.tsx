@@ -87,7 +87,6 @@ export function MapLegend() {
       <span><i className="sw part" /> Remaining parts</span>
       <span><i className="sw gone" /> Removed parts</span>
       <span><i className="sw hot" /> Latest change</span>
-      <span className="muted">Each column is one layer.</span>
     </div>
   );
 }

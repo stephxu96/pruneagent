@@ -101,3 +101,14 @@ def test_sweep_time_estimate_is_one_round_per_layer():
     t = R.time_estimate(rates, 238.0, 40, sweep_layers=28)
     assert t["rounds"] == [28, 28] and t["minutes"] == [56.0, 84.0] and t["max_rounds"] == 28
     assert R.time_estimate(rates, 238.0, 40)["rounds"] != [28, 28]  # several layers per step: from MB cut
+
+
+def test_the_live_view_sees_the_round_phase(tmp_path):
+    seen = []
+    deps, _ = setup(tmp_path, lambda n, p: v1_reply([(int(re.search(r"This round: layer (\d+)", p).group(1)), "narrow_mlp")]))
+    real = deps.store.set_now
+    deps.store.set_now = lambda now: (seen.append(now), real(now))
+    G.run(deps, run_config(search="layer_by_layer", limit_bytes=DENSE - 10 * NARROW))
+    assert {"round": 1, "layer": 0, "phase": "proposing"} in seen
+    assert {"round": 1, "layer": 0, "phase": "measuring", "plans": 1} in seen
+    assert seen[-1] is None  # nothing between rounds or after the end
