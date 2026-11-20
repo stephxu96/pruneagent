@@ -207,7 +207,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return r.json();
 }
 
-/** How the AI cuts (search strategies, src/pruneagent/search.py). The checks after a run are the same for both. */
+/** Strategies (search strategies, src/pruneagent/search.py). The checks after a run are the same for both. */
 export const SEARCHES = [
   { id: "multi_layer", label: "Several layers per step", text: "Each step may cut any number of layers at once." },
   { id: "layer_by_layer", label: "One layer per step", text: "One pass, first layer to last: for each layer the AI proposes up to 3 cut plans from a fixed bank, and the best is kept." },

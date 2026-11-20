@@ -39,7 +39,7 @@ Steph's design (2026-11-20): a proposal is a cut plan; three proposals test thre
 
 Shared by every strategy and not to be made strategy-specific: the scores and which neurons a step removes, step sizes, candidate evaluation, the gate and its per-step limit, the memory-limit stop, the checks after the run (unseen text, quiz questions), the saved model and the reports.
 
-The run's `RunConfig.search` records the strategy. It is a `pruneagent run --search` option, a field of the app's start request and of the pruning and feasibility workflows, and the app shows it on every run (“How it cuts”), in the start dialog (a choice, default several layers) and on Compare (one line per strategy).
+The run's `RunConfig.search` records the strategy. It is a `pruneagent run --search` option, a field of the app's start request and of the pruning and feasibility workflows, and the app shows it on every run (“Strategy”), in the start dialog (a choice, default several layers) and on Compare (one line per strategy).
 
 ## Consequences
 

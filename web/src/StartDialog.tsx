@@ -43,9 +43,9 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
         <dl className="sd-facts">
           <dt>Model</dt>
           <dd>{modelName(model)}</dd>
-          <dt>How the AI cuts</dt>
+          <dt>Strategy</dt>
           <dd>
-            <div className="sd-choice" role="radiogroup" aria-label="How the AI cuts">
+            <div className="sd-choice" role="radiogroup" aria-label="Strategy">
               {SEARCHES.map((s) => (
                 <label key={s.id} className={search === s.id ? "on" : ""}>
                   <input type="radio" name="search" checked={search === s.id} onChange={() => onSearch(s.id)} />
