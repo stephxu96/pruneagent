@@ -1,7 +1,7 @@
 # PruneAgent App Design
 
 - **Status:** draft for Steph's review, 2026-11-19
-- **Scope:** the web application (task 3.6 onward): who it serves, the path through it, its pages, how it runs on the
+- **Scope:** the web application (task 3.6 onward): who it serves, its two user stories, its pages, how it runs on the
   computer, and its look and wording.
 - **Relation to other documents:** ADR-008 decided *that* there is a web app on top of the tools, and that rule
   stays (the app adds no pruning or measuring logic of its own). This document designs the app itself and replaces
@@ -21,14 +21,20 @@ The main user decides the design. Researcher features stay, one level down.
 
 ### What the app must do
 
-1. **One path** from "this is my computer" to "here is the smaller model", with no step the user has to work out.
-2. **No surprises before starting:** whether the size can be reached, how long it takes and how much of the AI usage
-   limits it uses, all before anything starts.
-3. **Visible progress:** where a run is, how far it is from the target, how long is left.
-4. **A result you can trust:** quality against the original and against the standard method (FLAP), and whether it
+The app serves two separate user stories (§2):
+
+- **Model setup:** put a model on this computer, ready to prune. Once per model; can take hours.
+- **Model pruning:** make a smaller copy of a set-up model that fits a device. Once per device or size.
+
+Across both:
+
+1. **No surprises before starting:** whether it can work, how long it takes and how much of the AI usage limits
+   it uses, all before anything starts.
+2. **Visible progress:** where a long job is and how long is left.
+3. **A result you can trust:** quality against the original and against the standard method (FLAP), and whether it
    now fits.
-5. **The model in hand:** a download that runs elsewhere.
-6. **Nothing lost:** closing the lid, a usage limit, a crash or an app update never loses work; everything can be
+4. **The model in hand:** a download that runs elsewhere.
+5. **Nothing lost:** closing the lid, a usage limit, a crash or an app update never loses work; everything can be
    continued.
 
 ### Not in scope
@@ -38,51 +44,73 @@ folder on the computer (later).
 
 ---
 
-## 2. The main path
+## 2. Two user stories
+
+Maya has an AI model she likes and a Mac mini with 16 GB of memory. She wants the model to run well on that Mac mini.
+She knows nothing about pruning.
 
 ```mermaid
 flowchart LR
-    A[1 Device] --> B[2 Model] --> C[3 Size] --> D[4 Check] --> E[5 Start] --> F[6 Watch] --> G[7 Result] --> H[8 Download]
-    B -. not prepared .-> P[Prepare model] -.-> B
-    F -. lid closed, usage limit .-> X[Paused] -.-> F
+    subgraph Setup[Model setup: once per model]
+        S1[Name the model] --> S2[Check] --> S3[Set up:<br/>load the model,<br/>generate assets] --> S4[Ready]
+    end
+    subgraph Pruning[Model pruning: once per device]
+        P1[Select your model] --> P2[Where it runs] --> P3[The answer:<br/>size, quality,<br/>time, usage] --> P4[Start] --> P5[Watch] --> P6[Your model]
+    end
+    S4 -. appears in .-> P1
+    P1 -. not set up yet .-> S1
 ```
 
-| Step | The user sees | The user decides | The app does | When something's wrong |
+### 2.1 Model setup
+
+**"I want this model on my computer, ready to prune."**
+
+| Step | Maya sees | Maya decides | The app does | When something's wrong |
 |---|---|---|---|---|
-| **1 Device** | This computer's memory, read automatically, or a preset device (presets lock memory, Custom unlocks it); how much to keep free for other apps | Which device the model must fit | Works out the model space left (memory − other apps − working memory) | Device too small for any model: says so and stops here |
-| **2 Model** | Models on this computer (ready or not), and a box for a Hugging Face name | Which model | Checks a new name: supported kind, fits this computer, preparation time | Not supported, too big, needs a license, misspelled: one plain sentence and "Choose another" |
-| **Prepare** (once per model) | A checklist: sample text, part usage, cut tests; progress, time left | Start, pause, continue | Runs `pruneagent prepare` | Stopped or failed: "Continue preparing" picks up where it stopped |
-| **3 Size** | Suggested size from step 1 (fits with a buffer), as "X MB → under Y MB, Z% smaller" | Accept or adjust | — | Above 60% smaller: not offered |
-| **4 Check** | Reachable or not; time as a range plus the worst case; usage limits as % of the 5-hour and weekly limits | Go on or change the size | Runs the feasibility check (half a minute, no AI call) | Not reachable: the reason and the smallest reachable size |
-| **5 Start** | A confirmation dialog: model, size, time, usage; "keep the lid open" | Start or cancel | Queues the run, then the final check | Mac busy with another job: "waits for the Mac to be free" |
-| **6 Watch** | Progress at a glance (size against target, quality so far, round, time left); the round-by-round story below | Pause, continue | Streams each round as it lands | Lid closed, usage limit, crash: "Paused" or "Interrupted" with the reason and Continue |
-| **7 Result** | Fits ✓; quality against the original and FLAP; memory requirement; speed | — | Shows the final check's numbers | Target missed: the closest result and the gap |
-| **8 Download** | The smaller model, ready to use | — | Builds the saved model from the kept plan | — |
+| **1 Name the model** | A box for the model's name on Hugging Face; which kinds work | Which model | — | — |
+| **2 Check** | Whether it can be used here, its kind, its size, how long setup takes | Set it up, or choose another | Reads the model's details (not its weights): supported kind, fits this computer | Not supported, too big, needs a license, misspelled: one plain sentence and "Choose another" |
+| **3 Set up** | Two parts with progress and time left: **load the model** (download it) and **generate assets** (sample text in the model's own pieces, how much it uses each part, the quality cost of each cut) | Pause, continue | Runs `pruneagent setup` | Stopped or failed: "Continue setup" picks up where it stopped |
+| **4 Ready** | The model listed as ready | Prune it now, or later | — | — |
 
-Two changes from today follow from this path:
+Setup ends at "ready". Pruning is a separate story that can start right away or days later.
 
-- **The final check runs on its own after every run.** Today's time estimate already counts its 20 minutes, but the
-  user has to start it by hand on the run page, so a run never reaches step 7 unless they know to do that.
-- **Download gives the model, not only the plan.** The plan file is only useful with this tool; the model file
-  (safetensors plus plan, FR12) runs elsewhere.
+### 2.2 Model pruning
 
----
+**"I want a smaller version of my model that fits my device."**
+
+| Step | Maya sees | Maya decides | The app does | When something's wrong |
+|---|---|---|---|---|
+| **1 Select your model** | Her set-up models, with their size | Which one | — | The one she wants isn't there: a link to model setup |
+| **2 Where it runs** | This computer (read automatically) or a preset device: Mac mini, laptop, phone (presets lock memory, Custom unlocks it); how much to keep free for other apps | Which device | Works out the space the model may take: memory − other apps − working memory | Device too small for this model at any size: says so, suggests a smaller model |
+| **3 The answer** | "To fit, it must be 20% smaller. Expect about 1.7–1.9× worse than the original; the standard method would be 13× worse. About 1 h 15 min–1 h 35 min. Uses about 14% of your 5-hour limit." | Go ahead, or change the device | Picks the size from the device (with a buffer) and runs the feasibility check, both on its own. No size to choose, no check button | Can't fit: why, and what would |
+| **4 Start** | A confirmation: model, device, size, time, usage; "keep the lid open" | Start or cancel | Queues the run, then the final check | Mac busy with another job: "waits for the Mac to be free" |
+| **5 Watch** | Progress at a glance: size against target, quality so far, time left; the round-by-round story below | Pause, continue | Streams each round as it lands | Lid closed, usage limit, crash: "Paused" or "Interrupted" with the reason and Continue |
+| **6 Your model** | Fits ✓; quality against the original and FLAP; memory requirement; speed; download | — | Shows the final check; builds the saved model | Target missed: the closest result and the gap |
+
+The expected-quality range in step 3 comes from past runs at that model and size; with none yet, it says so.
+
+### 2.3 What changes from today because of the stories
+
+- **The user never chooses a percentage.** The size follows from the device. Today she picks "How much smaller?" on a
+  slider and presses "Feasibility check".
+- **The final check runs on its own** after every run. Today's time estimate already counts its 20 minutes, but the
+  user has to start it by hand, so a run never reaches "Your model" unless she knows to.
+- **Download gives the model,** not only the plan file, which works only with this tool (FR12: safetensors plus plan).
+- **Setup and pruning are separate.** Today the model page mixes them ("Make it smaller →" at the end of setup,
+  "isn't prepared yet" inside New run).
 
 ## 3. Pages and navigation
 
-| Page | Address | Holds | Today |
-|---|---|---|---|
-| **Runs** (home) | `#/` | Active runs first, each with a progress bar; then finished runs; one main button: "Shrink a model" | Run cards plus the "Your computer" panel |
-| **Shrink a model** | `#/new` | Steps 1–5 as one guided flow with a step bar (Device → Model → Size → Check → Start) | Spread over the home panel, Select your model and New run |
-| **Run** | `#/run/<id>` | While running: the progress view (step 6). When finished: the result (step 7) and download (step 8). Below both: "How it got there", the round-by-round replay | The replay, with results under it |
-| **Models** | `#/models` | Models on this computer, prepare or continue preparing, remove; reached from step 2 as well | Select your model |
-| **Compare** | `#/compare` | Every finished run against FLAP across sizes (researchers, demo) | Same |
-| **Activity** | `#/activity` | Every job (checks, runs, preparations), with outcome and system logs | The History list on New run |
+| Page | Address | Story | Holds | Today |
+|---|---|---|---|---|
+| **Runs** (home) | `#/` | Pruning | Active runs first, each with a progress bar; then finished runs; one main button: "Prune a model" | Run cards plus the "Your computer" panel |
+| **Prune a model** | `#/new` | Pruning, steps 1–4 | Step bar: Select your model → Where it runs → The answer → Start | Split between the home panel and New run |
+| **Run** | `#/run/<id>` | Pruning, steps 5–6 | While running: the progress view. When finished: the result and download. Below both: "How it got there", the round-by-round replay | The replay, with results under it |
+| **Models** | `#/models` | Setup | The models on this computer (ready, setting up, paused) and "Set up a model", which opens the setup steps | "Select your model", which mixed both stories |
+| **Compare** | `#/compare` | — | Every finished run against FLAP across sizes (researchers, demo) | Same |
+| **Activity** | `#/activity` | — | Every job (checks, runs, setups), with outcome and system logs | The History list on New run |
 
-**Navigation:** Runs · Shrink a model · Models · Compare. Activity sits in the footer: it's for fixing problems, not
-for the main path.
-
----
+**Navigation:** Runs · Prune a model · Models · Compare. Activity sits in the footer: it's for fixing problems.
 
 ## 4. How it runs on the computer
 
@@ -93,7 +121,7 @@ flowchart TB
     B[Browser] -- HTTP, live updates --> S[App server]
     S -- queue --> Q[(Job list<br/>runs/web_jobs.sqlite)]
     S -- reads --> RF[(Run folders<br/>runs/&lt;id&gt;/)]
-    S -- reads --> MS[(Model files<br/>scores, quick tests,<br/>damage tables, text)]
+    S -- reads --> MS[(Model assets<br/>scores, quick tests,<br/>damage tables, text)]
     S -- starts --> W[Job process<br/>own process group]
     W -- GPU lock --> G{{scripts/mac_gpu.sh}}
     W -- writes --> RF
@@ -104,7 +132,7 @@ flowchart TB
 | Piece | Source of truth for | Survives an app restart |
 |---|---|---|
 | **Run folder** `runs/<id>/` | Everything about a run: settings, each round, kept plans, checkpoint, final check, and (new) its own copy of the AI's instructions | Yes |
-| **Model files** (scores, quick tests, damage table, tokenized text) | Whether a model is prepared on this computer | Yes |
+| **Model assets** (scores, quick tests, damage table, sample text) | Whether a model is set up on this computer | Yes |
 | **Model list** `runs/models.json` | Which added models the user sees | Yes |
 | **Job list** `runs/web_jobs.sqlite` | What the app was asked to do, each job's log and outcome. *Not* the run's state: that is in the run folder | Yes |
 | **Job process** | Doing the work: one process group per job, started with the same command a user would type | Yes (its own process group) |
@@ -121,7 +149,7 @@ The rule that keeps it simple: **the server holds no state that matters.** It ca
 | Run | `pruneagent run` | Yes | The run folder's state: finished, paused, interrupted |
 | Continue | `pruneagent resume <id>` | Yes | Same |
 | Final check | `scripts/heldout_check.py`, `scripts/accuracy_check.py` | Yes | `heldout.json`, `accuracy.json` |
-| Prepare a model | `pruneagent prepare <model>` | Yes | The model files |
+| Model setup | `pruneagent setup <model>` | Yes | The model and its assets |
 | Build the download (new) | `pruneagent save <id>` | No | The saved model |
 
 **States:** waiting → running → finished, paused, failed. A paused job can be continued.
@@ -180,16 +208,16 @@ Every page is built from these parts and nothing else, so a dialog or a status l
 | Part | Used for | Notes |
 |---|---|---|
 | **Page header** | Title, one back link | No intro sentence unless it says something the page doesn't |
-| **Step bar** | Shrink a model; Prepare | Numbered; done steps get ✓; the current one is highlighted |
+| **Step bar** | Prune a model; Model setup | Numbered; done steps get ✓; the current one is highlighted |
 | **Panel** | Any group of controls or facts | One border style, one radius |
 | **Fact list** | Label → value pairs (dialogs, settings) | Labels are nouns: "Target size", "Time" |
 | **Tiles** | Check results: Size, Time, Usage limits | Big value, small note under it |
 | **Status badge** | Waiting, Running, Paused, Interrupted, Finished, Didn't finish, Ready | One color per state, same everywhere, always with a word |
-| **Progress bar** | Runs, preparations | Always with words: "57 of 128 cuts tested · about 55 minutes left" |
+| **Progress bar** | Runs, model setup | Always with words: "57 of 128 cuts tested · about 55 minutes left" |
 | **Dialog** | Confirmations | Browser `<dialog>`: Escape and the backdrop close it; the safe button has focus |
 | **Fold** | System logs, details | Always has an arrow; the summary says what's inside |
 | **Notice** | Information, warning, problem | One line in bold, then the reason |
-| **Buttons** | One main (filled) button per view; others outlined | The main button names the next step: "Check →", "Start run" |
+| **Buttons** | One main (filled) button per view; others outlined | The main button names the next step: "Set up this model", "Start run" |
 
 ### 5.2 Wording rules
 
@@ -199,6 +227,7 @@ Every page is built from these parts and nothing else, so a dialog or a status l
 - Usage limits as the share of the 5-hour and weekly limits this run uses.
 - "Memory requirement" for the memory a model needs while answering (memory access cost); layers numbered from 0.
 - Quality as "X% worse than the original" or "N× worse".
+- "Model setup", "Set up", "Setting up"; never "prepare" on screen.
 - No internal names on screen ("damage table", "probe", "qwen3_moe"); they stay in system logs.
 
 ### 5.3 Screens of every size
@@ -212,22 +241,23 @@ works everywhere; motion stops when the computer asks for less motion; light and
 
 | Area | Today | Designed | Task |
 |---|---|---|---|
-| Main path | Home panel, Select your model and New run are separate places | One "Shrink a model" flow with a step bar | 3.12 (new) |
-| Home | Run cards plus the computer panel | Runs, active first with progress; the computer panel moves into step 1 | 3.12 |
-| Active run | Replay controls only | A progress view at the top (§2 step 6) | 3.10 |
+| Two stories | One "Select your model" page mixes setup and pruning; New run says "isn't prepared yet" | Models page for setup (§2.1); Prune a model for pruning (§2.2) | 3.12 (new) |
+| Size | A "How much smaller?" slider and a "Feasibility check" button | Size from the device, check runs on its own; the answer in plain words | 3.12 |
+| Home | Run cards plus the computer panel | Runs, active first with progress; the computer panel becomes "Where it runs" | 3.12 |
+| Setup wording | "Prepare this model", "Preparing … for pruning"; `pruneagent prepare` | "Set up this model"; two parts: load the model, generate assets; `pruneagent setup` | 3.12 |
+| Active run | Replay controls only | A progress view at the top (§2.2 step 5) | 3.10 |
 | Final check | Started by hand on the run page | Queued on its own when a run meets its target | 3.13 (new) |
 | Download | The plan file | The saved model (plus plan) | 3.14 (new) |
 | Job history | At the bottom of New run | Activity page | 3.12 |
 | App updates | Can change a running run's instructions; restart marks jobs "Interrupted" | §4.3 rules and `scripts/deploy.sh` | 3.11 |
 | Look | Each part styled where it was first needed | The shared parts of §5.1 | 3.12 |
 
-Suggested order: **3.11** (updates stop being risky) → **3.12** (structure) → **3.10**, **3.13**, **3.14**.
+Suggested order: **3.11** (updates stop being risky) → **3.12** (two stories, structure) → **3.10**, **3.13**, **3.14**.
 
 ---
 
 ## 7. Questions for Steph
 
-1. **Name of the path.** "Shrink a model" for the guided flow, with "Select your model" as its step 2. Or another name?
-2. **Final check on its own** after every run (adds about 20 minutes of Mac time per run, already in the time
+1. **Final check on its own** after every run (adds about 20 minutes of Mac time per run, already in the time
    shown)? Recommended: yes.
-3. **Compare page:** visible to everyone, or only from a link on finished runs?
+2. **Compare page:** visible to everyone, or only from a link on finished runs?
