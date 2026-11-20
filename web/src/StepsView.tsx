@@ -35,6 +35,22 @@ function colors(el: Element) {
   return { kept: v("--part", "#aab4c0"), now: v("--agent", "#d95926"), earlier: v("--line", "#34332f"), ink: v("--ink-3", "#888") };
 }
 
+/** A CSS colour as [r, g, b], read back through the canvas (it normalises any colour to #rrggbb). */
+function toRgb(ctx: CanvasRenderingContext2D, color: string): [number, number, number] {
+  ctx.fillStyle = "#000";
+  ctx.fillStyle = color;
+  const h = String(ctx.fillStyle);
+  if (h.startsWith("#") && h.length === 7) return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
+  const m = h.match(/\d+(\.\d+)?/g)?.map(Number) ?? [128, 128, 128];
+  return [m[0], m[1], m[2]];
+}
+
+function mix(parts: [[number, number, number], number][]): string {
+  const n = parts.reduce((a, [, w]) => a + w, 0) || 1;
+  const c = [0, 1, 2].map((i) => Math.round(parts.reduce((a, [col, w]) => a + col[i] * w, 0) / n));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
 const LEFT = 92, COL = 26, GAP = 7, SQ = 5.5, NEURON_H = 240;
 
 /** Every neuron of every layer at its real position, for one step: kept, removed in this step, removed earlier. */
@@ -63,6 +79,7 @@ export function NeuronMap({ removal, prev, cur, full, caption }: {
     ctx.clearRect(0, 0, width, height);
     const c = colors(cv);
     const fill = { kept: c.kept, now: c.now, earlier: c.earlier };
+    const rgb = { kept: toRgb(ctx, c.kept), now: toRgb(ctx, c.now), earlier: toRgb(ctx, c.earlier) };
     ctx.font = "9.5px system-ui, sans-serif";
     ctx.fillStyle = c.ink;
     ctx.textAlign = "right";
@@ -94,11 +111,9 @@ export function NeuronMap({ removal, prev, cur, full, caption }: {
           else if (s === "earlier") earlier++;
         }
         const k = b - a;
-        // the most telling state wins the row: any neuron removed now shows, then removed earlier
-        ctx.fillStyle = now ? fill.now : earlier === k ? fill.earlier : fill.kept;
-        ctx.globalAlpha = now ? 0.45 + 0.55 * (now / k) : earlier && earlier < k ? 1 - 0.6 * (earlier / k) : 1;
+        // the row's colour is its neurons' colours mixed by count, so a 10% cut looks like 10%
+        ctx.fillStyle = mix([[rgb.kept, k - now - earlier], [rgb.now, now], [rgb.earlier, earlier]]);
         ctx.fillRect(x, neuronTop + y, COL, 1);
-        ctx.globalAlpha = 1;
       }
       ctx.fillStyle = c.ink;
       ctx.fillText(String(i), x + COL / 2, height - 6);
