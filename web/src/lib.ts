@@ -139,8 +139,12 @@ export function durationRange(lo: number, hi: number): string {
   return `${a}–${b}`;
 }
 
-/** The check on unseen text after a run (a measured ~20 minutes on this Mac). */
-export const FINAL_CHECK_MIN = 20;
+/** The checks after a run (unseen text and 18,904 quiz questions, for the smaller model and FLAP's) grow with the
+ * model's size. Measured on the M4: 0.6B (1.2 GB) about 1.5 h, 1.7B (3.4 GB) about 3.3 h, so 55-75 min per GB. */
+export const checksMinutes = (originalMb?: number | null): [number, number] => {
+  const gb = (originalMb ?? 1200) / 1000;
+  return [gb * 55, gb * 75];
+};
 
 /** Time left for a running run, in words; says so when the round limit comes before the goal. */
 export function timeLeftText(t: { minutes: [number, number] | null; worst_minutes: number; rounds_left: number; mb_left: number }): string {

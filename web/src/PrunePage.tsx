@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, duration, durationRange, FINAL_CHECK_MIN, mb, modelName, pct, type Compare } from "./lib";
+import { api, duration, durationRange, checksMinutes, mb, modelName, pct, type Compare } from "./lib";
 import { DEVICES, GB, NumberField, StepBar, type Feasibility, type Job, type Live, type Machine } from "./parts";
 import { StartDialog } from "./StartDialog";
 
@@ -242,9 +242,9 @@ function Answer({ model, fit, device, onBack, onStart }: {
           </div>
           <div className="f-tile">
             <div className="f-label">Time</div>
-            <div className="f-big">{r.time ? durationRange(r.time.minutes[0] + FINAL_CHECK_MIN, r.time.minutes[1] + FINAL_CHECK_MIN) : "Not known yet"}</div>
+            <div className="f-big">{r.time ? durationRange(r.time.minutes[0] + checksMinutes(model.size_mb)[0], r.time.minutes[1] + checksMinutes(model.size_mb)[1]) : "Not known yet"}</div>
             <div className="f-sub">
-              {r.time ? <>Pruning and evaluation{r.time.worst_minutes != null && <>; up to {duration(r.time.worst_minutes + FINAL_CHECK_MIN)}</>}</> : "No earlier runs of this model"}
+              {r.time ? <>Pruning and evaluation{r.time.worst_minutes != null && <>; up to {duration(r.time.worst_minutes + checksMinutes(model.size_mb)[1])}</>}</> : "No earlier runs of this model"}
             </div>
           </div>
           <div className="f-tile">

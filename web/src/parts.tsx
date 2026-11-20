@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { duration, durationRange, FINAL_CHECK_MIN, mb, modelName, pct } from "./lib";
+import { duration, durationRange, checksMinutes, mb, modelName, pct } from "./lib";
 
 // Shared parts (docs/APP_DESIGN.md §5.1): the types the pages read, and the pieces every page is built from.
 
@@ -89,6 +89,7 @@ export function FeasibilityResult({ job, model }: { job: Job; model: string }) {
   const r = job.result;
   if (!r) return <p className="warn">Check failed. See the system logs.</p>;
   const lo = r.smallest_mb, hi = r.original_mb;
+  const ck = checksMinutes(r.original_mb);
   const sizeOk = lo != null && hi != null && r.limit_mb >= lo && r.limit_mb < hi;
   const calls = r.time ? Math.ceil(r.time.rounds[1]) : r.usage?.calls;
   const t = r.time ? durationRange(r.time.minutes[0], r.time.minutes[1]) : null;
@@ -131,10 +132,10 @@ export function FeasibilityResult({ job, model }: { job: Job; model: string }) {
         {t && r.time && (
           <div className="f-tile">
             <div className="f-label">Time</div>
-            <div className="f-big">{durationRange(r.time.minutes[0] + FINAL_CHECK_MIN, r.time.minutes[1] + FINAL_CHECK_MIN)}</div>
-            <div className="f-sub">Pruning {t} + about {FINAL_CHECK_MIN} min final check</div>
+            <div className="f-big">{durationRange(r.time.minutes[0] + ck[0], r.time.minutes[1] + ck[1])}</div>
+            <div className="f-sub">Pruning {t} + checks {durationRange(ck[0], ck[1])}</div>
             {r.time.worst_minutes != null && (
-              <div className="f-sub">Up to {duration(r.time.worst_minutes + FINAL_CHECK_MIN)} if it uses all {r.time.max_rounds} rounds</div>
+              <div className="f-sub">Up to {duration(r.time.worst_minutes + ck[1])} if it uses all {r.time.max_rounds} rounds</div>
             )}
           </div>
         )}
