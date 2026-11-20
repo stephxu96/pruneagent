@@ -48,5 +48,6 @@ def test_the_app_server_starts_as_a_lone_file_like_in_the_image(tmp_path):
     shutil.copy(f.__file__, tmp_path / "front.py")  # in the image it is /app/front.py, nothing around it
     code = "import front; print(front.DEFAULT_DIST)"
     env = {"PATH": "/usr/bin:/bin", "PRUNEAGENT_DIST": "/app/dist"}
-    out = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, env=env, capture_output=True, text=True)
+    out = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, env=env, capture_output=True, text=True,
+                         check=False)
     assert out.returncode == 0 and out.stdout.strip() == "/app/dist", out.stderr
