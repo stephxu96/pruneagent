@@ -1306,30 +1306,35 @@ def limits_cmd(
     typer.echo(client.estimate_run(calls).message())
 
 
+@app.command("tools-service")
+def tools_service_cmd(
+    port: Annotated[int, typer.Option(help="Port of the tools API (listens on 127.0.0.1 only).")] = 8124,
+    root: Annotated[Path, typer.Option(help="Data root: the folder holding runs/, checkpoints/, results/.")] = Path("."),
+) -> None:
+    """The PruneAgent tools service: the tools API for the app, and the workflow runner that does the long work
+    (model setup, pruning runs, evaluation) on this machine's GPU. Runs natively, never in a container
+    (docs/APP_DESIGN.md §4.1)."""
+    from pruneagent.service import api
+    from pruneagent.service import workflows as W
+
+    root = root.resolve()
+    typer.echo(f"PruneAgent tools API on http://127.0.0.1:{port}; release {W.current_release(root) or 'development'}")
+    api.serve(port, root)
+
+
 @app.command("web")
 def web_cmd(
-    port: Annotated[int, typer.Option(help="Port on this computer (the app listens on 127.0.0.1 only).")] = 8125,
+    port: Annotated[int, typer.Option(help="Port on this computer (127.0.0.1 only).")] = 8125,
+    tools: Annotated[str, typer.Option(help="The tools API to use.")] = "http://127.0.0.1:8124",
 ) -> None:
-    """Open the PruneAgent web app: watch, replay and compare runs in the browser (needs `uv sync --extra web`
-    and a built interface: `cd web && npm run build`)."""
-    from pruneagent.web.app import serve
+    """The PruneAgent app without a container (the usual way is `scripts/start.sh`): serves the interface and
+    forwards to the tools API. Needs `uv sync --extra web` and a built interface (`cd web && npm run build`)."""
+    import uvicorn
 
-    typer.echo(f"PruneAgent web app on http://127.0.0.1:{port}  (Ctrl-C to stop)")
-    serve(port)
+    from pruneagent.web import front
 
-
-@app.command("worker")
-def worker_cmd(
-    root: Annotated[Path, typer.Option(help="Data root: the folder holding runs/, checkpoints/, results/.")] = Path("."),
-    poll: Annotated[float, typer.Option(help="Seconds between passes.")] = 1.0,
-) -> None:
-    """The background workflow service: runs model setups, pruning runs and checks submitted from the web app,
-    apart from the app, so the app can be restarted or updated at any time (docs/APP_DESIGN.md §4)."""
-    from pruneagent import workflows as W
-
-    svc = W.Service(root)
-    typer.echo(f"PruneAgent workflow service: {svc.runs / W.STORE}; release {W.current_release(svc.root) or 'development'}")
-    svc.serve()
+    typer.echo(f"PruneAgent app on http://127.0.0.1:{port}, using the tools at {tools}  (Ctrl-C to stop)")
+    uvicorn.run(front.create_front(tools), host="127.0.0.1", port=port, log_level="warning")
 
 
 @app.command("check-model")
@@ -1342,7 +1347,7 @@ def check_model_cmd(
     import json
 
     from pruneagent import models
-    from pruneagent.web import machine
+    from pruneagent.service import machine
 
     try:
         info = models.check(model, machine.machine()["memory_gb"])
@@ -1377,7 +1382,7 @@ def prepare_cmd(
     from pruneagent import data as d
     from pruneagent import models
     from pruneagent import realrun as RR
-    from pruneagent.web import machine
+    from pruneagent.service import machine
 
     try:
         models.check(model, machine.machine()["memory_gb"])

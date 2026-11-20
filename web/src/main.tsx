@@ -20,11 +20,11 @@ function useHash() {
   return hash;
 }
 
-// Long work runs in the background workflow service, apart from this app; without it nothing starts.
+// The app shows what the PruneAgent tools answer; without them there's nothing to show or start.
 function ServiceNotice() {
   const [down, setDown] = useState(false);
   useEffect(() => {
-    const read = () => api<{ running: boolean }>("/api/service").then((s) => setDown(!s.running)).catch(() => undefined);
+    const read = () => api<{ running: boolean }>("/api/service").then((s) => setDown(!s.running)).catch(() => setDown(true));
     read();
     const t = setInterval(read, 10000);
     return () => clearInterval(t);
@@ -32,8 +32,8 @@ function ServiceNotice() {
   if (!down) return null;
   return (
     <div className="service-notice" role="status">
-      <b>The background service isn't running,</b> so nothing will start. Start it in a terminal:
-      <code>uv run pruneagent worker</code>
+      <b>The PruneAgent tools aren't running,</b> so nothing can be shown or started. Start them in a terminal:
+      <code>scripts/start.sh</code>
     </div>
   );
 }

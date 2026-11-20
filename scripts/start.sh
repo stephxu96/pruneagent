@@ -1,44 +1,60 @@
 #!/usr/bin/env bash
-# Everything in one go: install what's needed, build the current release and the interface, run the web app and the
-# workflow service in the background (started at login, restarted if they stop), then open the app.
-#   scripts/start.sh            # first time, and after every update (safe to run again)
-#   scripts/start.sh --stop     # stop both and take them out of the login items
-#   scripts/start.sh --no-open  # don't open the browser
+# PruneAgent in one go (docs/APP_DESIGN.md §4.1): the tools natively on this machine (they need its GPU), the app in
+# a container. Running it again applies an update; running work is never interrupted.
+#   scripts/start.sh            start, or update and restart, both
+#   scripts/start.sh --stop     stop both (steps already running finish; the tools pick them up when started again)
+#   scripts/start.sh --no-open  don't open the browser
 set -euo pipefail
 cd "$(dirname "$0")/.."
-url="http://127.0.0.1:8125"
+tools_url="http://127.0.0.1:8124"
+app_url="http://127.0.0.1:8125"
+mkdir -p runs/service_logs
+tools_pid=runs/service_logs/tools.pid
+app_pid=runs/service_logs/app.pid   # only when the app runs without a container
+
+have_docker() { command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; }
+stop_pid() {
+  if [[ -f "$1" ]] && kill -0 "$(cat "$1")" 2>/dev/null; then
+    kill "$(cat "$1")"
+    for _ in $(seq 1 20); do kill -0 "$(cat "$1")" 2>/dev/null || break; sleep 0.5; done
+  fi
+  rm -f "$1"
+}
+wait_for() {  # url, what
+  for _ in $(seq 1 60); do curl -sf "$1" >/dev/null 2>&1 && return 0; sleep 1; done
+  echo "$2 didn't answer at $1. Log: runs/service_logs/" >&2
+  exit 1
+}
 
 if [[ "${1:-}" == "--stop" ]]; then
-  scripts/install_services.sh --remove
-  echo "Stopped. Work in progress pauses at its current step; scripts/start.sh continues it."
+  have_docker && docker compose down
+  stop_pid "$app_pid"
+  stop_pid "$tools_pid"
+  echo "Stopped."
   exit 0
 fi
 
-echo "== Packages"
+echo "== Tools (native)"
 uv sync --extra web --extra report --quiet
-[[ -d web/node_modules ]] || (cd web && npm install --silent)
+scripts/deploy.sh                      # a release of the tools: new work uses it, running work keeps its own
+stop_pid "$tools_pid"
+nohup .venv/bin/pruneagent tools-service >> runs/service_logs/tools.log 2>&1 &
+echo $! > "$tools_pid"
+wait_for "$tools_url/api/service" "The tools"
+echo "Tools API: $tools_url"
 
-echo "== Release and interface"
-scripts/deploy.sh | grep -v "isn't installed as a background service" || true
-
-echo "== Background services"
-uid="$(id -u)"
-if launchctl print "gui/$uid/com.pruneagent.web" >/dev/null 2>&1 && launchctl print "gui/$uid/com.pruneagent.worker" >/dev/null 2>&1; then
-  echo "Already installed (restarted by the deploy above)"
+echo "== App"
+if have_docker; then
+  stop_pid "$app_pid"
+  docker compose up -d --build
 else
-  scripts/install_services.sh
+  echo "Docker isn't running, so the app runs without a container for now."
+  [[ -d web/node_modules ]] || (cd web && npm install --silent)
+  (cd web && npm run build --silent >/dev/null)
+  stop_pid "$app_pid"
+  nohup .venv/bin/pruneagent web >> runs/service_logs/app.log 2>&1 &
+  echo $! > "$app_pid"
 fi
-
-echo "== Checking"
-for _ in $(seq 1 60); do
-  status="$(curl -sf "$url/api/service" 2>/dev/null || true)"
-  [[ "$status" == *'"running":true'* ]] && break
-  sleep 1
-done
-if [[ "$status" != *'"running":true'* ]]; then
-  echo "Something didn't start. Logs: runs/service_logs/web.log and runs/service_logs/worker.log" >&2
-  exit 1
-fi
-echo "Web app: $url"
-echo "Workflow service: running ($status)"
-[[ "${1:-}" == "--no-open" ]] || open "$url"
+wait_for "$app_url/api/service" "The app"
+echo "App: $app_url"
+[[ "${1:-}" == "--no-open" ]] || open "$app_url"

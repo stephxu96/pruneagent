@@ -1,0 +1,12 @@
+# The PruneAgent app in a container (docs/APP_DESIGN.md §4.1). The tools run natively (scripts/start.sh starts both).
+services:
+  app:
+    build: .
+    image: pruneagent-app
+    ports:
+      - "127.0.0.1:8125:8125"   # this computer only
+    environment:
+      PRUNEAGENT_TOOLS_URL: http://host.docker.internal:8124
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # the same name on Linux as on a Mac
+    restart: unless-stopped
