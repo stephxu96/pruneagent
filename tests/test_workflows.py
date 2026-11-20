@@ -97,7 +97,7 @@ def test_a_restarted_service_picks_up_a_step_that_is_still_running(service, tmp_
 
 def test_pruning_runs_the_final_check_after_the_run(tmp_path):
     steps = W.steps_for("pruning", {"model": "Qwen/Qwen3-0.6B-Base", "cut": 0.2, "run_id": "r1"})
-    assert [s.name for s in steps] == ["run", "heldout"]
+    assert [s.name for s in steps] == ["run", "heldout", "accuracy"]
     ctx = W.StepCtx(tmp_path, tmp_path, {"model": "m/x", "cut": 0.2, "run_id": "r1"}, W.Tools(tmp_path / "rel"),
                     continuing=False, exit_code=None, started=None, log="")
     argv = steps[0].argv(ctx)

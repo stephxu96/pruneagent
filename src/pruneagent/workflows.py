@@ -149,7 +149,9 @@ def _json_outcome(ctx: StepCtx) -> tuple[str, str | None]:
 
 WORKFLOWS: dict[str, list[StepDef]] = {
     "setup": [StepDef("setup", True, lambda c: [*c.tools.cli(), "prepare", c.params["model"]])],
-    "pruning": [StepDef("run", True, _run_step_argv, _run_step_outcome), _check_step("heldout")],
+    # run, then evaluate: the unseen-text test and the question sets, each against the original and FLAP
+    "pruning": [StepDef("run", True, _run_step_argv, _run_step_outcome), _check_step("heldout"),
+                _check_step("accuracy")],
     "check": [],  # one step, chosen by params["check"]: see steps_for
     "precheck": [StepDef("precheck", False, lambda c: [
         *c.tools.cli(), "run", "--model", c.params["model"], "--memory-cut", f"{float(c.params['cut']):.4f}",

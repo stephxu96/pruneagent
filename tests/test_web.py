@@ -62,7 +62,7 @@ def test_requests_become_workflows_of_fixed_commands(finished_run, tmp_path):
     api, store = client(finished_run, tmp_path)
     job = api.post("/api/runs", json={"cut": 0.2}).json()
     assert job["kind"] == "start" and job["status"] == "queued" and job["run_id"].endswith("-qwen3-0.6b-codex")
-    assert [s["name"] for s in job["steps"]] == ["run", "heldout"]  # the final check follows the run on its own
+    assert [s["name"] for s in job["steps"]] == ["run", "heldout", "accuracy"]  # evaluation follows on its own
     argv = argv_of(store, job["id"])
     assert argv.startswith("uv run pruneagent run") and "--memory-cut 0.2000" in argv
     assert argv.endswith(f"--run-id {job['run_id']}")
