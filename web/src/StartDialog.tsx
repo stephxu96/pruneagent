@@ -49,7 +49,7 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
               {SEARCHES.map((s) => (
                 <label key={s.id} className={search === s.id ? "on" : ""}>
                   <input type="radio" name="search" checked={search === s.id} onChange={() => onSearch(s.id)} />
-                  <span><b>{s.label}</b><span className="muted"> · {s.text}</span></span>
+                  <span title={s.text}><b>{s.label}</b></span>
                 </label>
               ))}
             </div>
@@ -64,10 +64,9 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
             {check?.time ? (
               <>
                 {durationRange(check.time.minutes[0] + ck[0], check.time.minutes[1] + ck[1])}
-                {check.time.worst_minutes != null && (
+                {check.time.worst_minutes != null && check.time.worst_minutes > check.time.minutes[1] + 1 && (
                   <span className="muted"> · up to {duration(check.time.worst_minutes + ck[1])}</span>
                 )}
-                <div className="muted">Pruning, then checks on unseen text and quiz questions ({durationRange(ck[0], ck[1])})</div>
               </>
             ) : <span className="muted">Known after the feasibility check</span>}
           </dd>
@@ -101,7 +100,7 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
         {!blocked && (
           <ul className="sd-keep">
             <li>Lid open until it finishes. Closing it stops the run; it can be continued later.</li>
-            <li>No games or other heavy apps meanwhile: they slow the run down.</li>
+            <li>Other heavy apps slow the run down.</li>
           </ul>
         )}
 
