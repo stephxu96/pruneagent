@@ -29,15 +29,21 @@ export function PrunePage() {
   }, []);
 
   const [search, setSearch] = useState<string>("multi_layer");
+  const [size, setSize] = useState<number | null>(null); // a size chosen in the Estimate step
+  useEffect(() => setSize(null), [model, device?.id, device?.memGb, device?.free]);
   if (!m || !device) return <p className="muted">Loading…</p>;
   const ready = m.models.filter((x) => x.ready);
   const sel = m.models.find((x) => x.id === model && x.ready);
   const step = !sel ? 1 : at;
   const fit = sel ? fitFor(sel, device, m.max_cut) : null;
+  // the size: what the device needs, unless chosen in the Estimate step (a model that already fits, or one the
+  // device can't take at any size, can still be pruned: those are messages, not limits)
+  const deviceCut = fit?.kind === "cut" ? fit.cut : fit?.kind === "too-small" ? Math.min(fit.cut, m.max_cut) : 0.1;
+  const cut = size ?? deviceCut;
 
   const start = () =>
     api<Job>("/api/runs", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: sel!.id, cut: fit?.kind === "cut" ? fit.cut : 0, backend: "codex", search }) })
+      body: JSON.stringify({ model: sel!.id, cut, backend: "codex", search }) })
       .then((j) => { window.location.hash = j.run_id ? `#/run/${j.run_id}` : "#/"; })
       .catch((e) => setMsg(String(e)));
 
@@ -69,20 +75,20 @@ export function PrunePage() {
             <WhereItRuns m={m} model={sel} device={device} setDevice={setDevice} />
             <div className="actions">
               <button className="secondary" onClick={() => setAt(1)}>← Model</button>
-              <button className="primary" onClick={() => setAt(3)} disabled={!fit || fit.kind === "too-small"}>Next →</button>
+              <button className="primary" onClick={() => setAt(3)} disabled={!fit}>Next →</button>
             </div>
           </>
         )}
 
         {step >= 3 && sel && fit && (
-          <Answer model={sel} fit={fit} device={device} onBack={() => setAt(2)}
+          <Answer model={sel} fit={fit} cut={cut} setCut={setSize} maxCut={m.max_cut} device={device} onBack={() => setAt(2)}
             onStart={(r) => { setChecked(r); setAsking(true); }} />
         )}
         {msg && <p className="warn">{msg}</p>}
       </section>
 
-      {sel && fit?.kind === "cut" && (
-        <StartDialog open={asking} model={sel.id} cut={fit.cut} originalMb={sel.size_mb} check={checked}
+      {sel && cut != null && (
+        <StartDialog open={asking} model={sel.id} cut={cut} originalMb={sel.size_mb} check={checked}
           search={search} onSearch={setSearch}
           onStart={start} onCheck={() => undefined} onClose={() => setAsking(false)} />
       )}
@@ -174,22 +180,52 @@ function WhereItRuns({ m, model, device, setDevice }: {
   );
 }
 
-function Answer({ model, fit, device, onBack, onStart }: {
+const SIZES = [0.1, 0.2, 0.3, 0.4];
+
+/** The size of the cut: suggested by the device, always changeable (10-40% or any whole percent up to the most
+ * the tools allow). */
+function SizeChoice({ cut, suggested, maxCut, setCut }: { cut: number; suggested: number; maxCut: number; setCut: (c: number) => void }) {
+  const [text, setText] = useState(String(Math.round(cut * 100)));
+  useEffect(() => setText(String(Math.round(cut * 100))), [cut]);
+  const options = [...new Set([...SIZES, suggested].map((x) => Math.round(x * 100) / 100))].filter((x) => x <= maxCut).sort((a, b) => a - b);
+  const settle = () => {
+    const n = Math.round(Number(text));
+    if (Number.isFinite(n) && n >= 1 && n <= maxCut * 100) setCut(n / 100);
+    else setText(String(Math.round(cut * 100)));
+  };
+  return (
+    <div className="size-choice" role="group" aria-label="Size">
+      <span className="m-label">Size cut</span>
+      {options.map((x) => (
+        <button key={x} className={`chip ${Math.abs(x - cut) < 1e-6 ? "on" : ""}`} onClick={() => setCut(x)}>
+          {pct(x)} smaller{Math.abs(x - suggested) < 1e-6 ? " (fits the device)" : ""}
+        </button>
+      ))}
+      <label className="chip custom">
+        <input type="number" min={1} max={Math.round(maxCut * 100)} step={1} value={text}
+          onChange={(e) => setText(e.target.value)} onBlur={settle} onKeyDown={(e) => { if (e.key === "Enter") settle(); }} />% smaller
+      </label>
+    </div>
+  );
+}
+
+function Answer({ model, fit, cut, setCut, maxCut, device, onBack, onStart }: {
   model: Machine["models"][number];
   fit: Fit;
+  cut: number;
+  setCut: (c: number) => void;
+  maxCut: number;
   device: Device;
   onBack: () => void;
   onStart: (r: Feasibility) => void;
 }) {
   const [check, setCheck] = useState<Job | null>(null);
   const [past, setPast] = useState<Compare | null>(null);
-  const cut = fit.kind === "cut" ? fit.cut : null;
   const where = device.id === "this" ? "this computer" : DEVICES.find((x) => x.id === device.id)?.label.split(" · ")[0] ?? "this device";
 
   // the feasibility check runs on its own for this model and size
   // (a check from the last hour for the same model and size is reused)
   useEffect(() => {
-    if (cut == null) return;
     setCheck(null);
     const recent = (j: Job) => j.kind === "precheck" && j.params.model === model.id && Math.abs((j.params.cut ?? -1) - cut) < 1e-6
       && (j.status === "done" || ["queued", "running"].includes(j.status)) && Date.now() - new Date(j.created).getTime() < 3600_000;
@@ -207,15 +243,6 @@ function Answer({ model, fit, device, onBack, onStart }: {
     return () => clearTimeout(t);
   }, [check]);
 
-  if (fit.kind === "fits") {
-    return (
-      <div className="answer">
-        <p className="answer-big ok-text">{modelName(model.id)} already fits {where} ({mb(model.size_mb)}). No pruning needed.</p>
-        <div className="actions"><button className="secondary" onClick={onBack}>← Device</button></div>
-      </div>
-    );
-  }
-  if (fit.kind !== "cut" || cut == null) return null;
   const r: Feasibility | null = check?.result ?? null;
   const checking = !check || ["queued", "running"].includes(check.status);
   const near = (past?.runs ?? []).filter((x) => x.model === model.id && Math.abs(x.cut - cut) <= NEAR);
@@ -227,8 +254,13 @@ function Answer({ model, fit, device, onBack, onStart }: {
   return (
     <div className="answer">
       <p className="answer-big">
-        To fit {where}, {modelName(model.id)} must be <b>{pct(cut)} smaller</b>: {mb(model.size_mb)} → under {mb(model.size_mb * (1 - cut))}.
+        {fit.kind === "fits" ? <>{modelName(model.id)} already fits {where} ({mb(model.size_mb)}). It can still be made smaller.</>
+          : fit.kind === "too-small" ? <>{modelName(model.id)} can't fit {where}: it would need to be {pct(fit.cut)} smaller, more than the {pct(maxCut)} the tools go to.</>
+          : <>To fit {where}, {modelName(model.id)} must be <b>{pct(fit.cut)} smaller</b>.</>}
       </p>
+      <SizeChoice cut={cut} suggested={fit.kind === "cut" ? fit.cut : fit.kind === "too-small" ? Math.min(fit.cut, maxCut) : -1}
+        maxCut={maxCut} setCut={setCut} />
+      <p className="muted">{pct(cut)} smaller: {mb(model.size_mb)} → under {mb(model.size_mb * (1 - cut))}.</p>
       {checking && <p className="muted">Checking it can be done… about half a minute</p>}
       {!checking && r && !r.feasible && <div className="sd-note bad"><b>Can't be done at this size.</b> {r.stop_reason}</div>}
       {!checking && !r && <div className="sd-note bad"><b>The check didn't finish.</b> See Activity for the logs.</div>}
