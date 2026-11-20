@@ -44,15 +44,20 @@ def main() -> None:
     gate_idx = set(ev.subset_indices(n_val, run_cfg.gate_windows))
     unseen = [i for i in range(n_val) if i not in gate_idx]
 
-    flap_model, out = baselines.flap_at_memory_limit(dense, scores.stats, run_cfg.limit_bytes)
-    models = {
-        "unpruned": (dense, sum(p.numel() * p.element_size() for p in dense.parameters())),
-        "agent": (pruner.prune(dense, final.plan, scores), final.weight_bytes),
-        "Baseline: FLAP": (flap_model, out.weight_bytes),
+    def flap_model():
+        model, out = baselines.flap_at_memory_limit(dense, scores.stats, run_cfg.limit_bytes)
+        return model, out.weight_bytes
+
+    # built one at a time, each freed before the next: at 1.7B, three models at once is ~10 GB
+    builders = {
+        "unpruned": lambda: (dense, sum(p.numel() * p.element_size() for p in dense.parameters())),
+        "agent": lambda: (pruner.prune(dense, final.plan, scores), final.weight_bytes),
+        "Baseline: FLAP": flap_model,
     }
     record = {"run": run_dir.name, "memory_limit_bytes": run_cfg.limit_bytes, "unseen_val_windows": len(unseen),
               "results": {}}
-    for name, (model, nbytes) in models.items():
+    for name, build in builders.items():
+        model, nbytes = build()
         t = time.time()
         v = ev.perplexity(model, val, seqlen, device, window_idx=unseen)
         te = ev.perplexity(model, test, seqlen, device)
@@ -60,6 +65,9 @@ def main() -> None:
                                    "seconds": round(time.time() - t, 1)}
         print(f"{name}: {nbytes / 1e6:,.1f} MB  unseen validation {v.ppl:.2f}  test {te.ppl:.2f}", flush=True)
         (run_dir / "heldout.json").write_text(json.dumps(record, indent=2) + "\n")
+        if model is not dense:
+            del model
+            ev.free_memory(device)
 
 
 if __name__ == "__main__":

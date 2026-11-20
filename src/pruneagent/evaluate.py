@@ -121,3 +121,16 @@ def load_model(model_id: str, revision: str | None, dtype: str, device: str):
     model = AutoModelForCausalLM.from_pretrained(model_id, revision=revision, dtype=DTYPES[dtype])
     model.config.use_cache = False
     return model.to(device).eval()
+
+
+def free_memory(device: str) -> None:
+    """Give a dropped model's memory back. `del model` alone keeps it: Python frees the model only on its next
+    collection and the GPU keeps the freed blocks cached, so building the next model in a check stacked on top of the
+    last one (1.7B quiz check: ~12 GB held, the Mac swapped and the second model took 4x as long)."""
+    import gc
+
+    gc.collect()
+    if device == "cuda":
+        torch.cuda.empty_cache()
+    elif device == "mps":
+        torch.mps.empty_cache()

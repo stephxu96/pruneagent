@@ -56,6 +56,7 @@ def main() -> None:
               flush=True)
         out_path.write_text(json.dumps(record, indent=2) + "\n")
         del model
+        ev.free_memory(device)
 
 
 if __name__ == "__main__":
