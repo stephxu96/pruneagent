@@ -850,9 +850,10 @@
       ],
       "done_when": "The run page offers the saved model; it reloads to the same quality",
       "gpu": "—",
-      "status": "todo",
+      "status": "done",
       "notes": [
-        "[2026-11-19 22:40] From the app design review."
+        "[2026-11-19 22:40] From the app design review.",
+        "[2026-11-20 00:45] Done: pruneagent save (rebuild from the last kept plan on the processor, strict reload, zip with plan and HOW_TO_USE.txt), pruning's last workflow step, download endpoint, app streams large files, run page Your model. Checked for real: 0.6B 10% run built and downloaded through the container (1.07 GB in 8 s)."
       ]
     },
     {
