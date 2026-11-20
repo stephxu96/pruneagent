@@ -56,13 +56,24 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   }, [id, run?.state]);
 
   const last = run?.rounds.length ?? 0;
+  // arrow keys step through the rounds (not while typing or using the slider)
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
+      if (e.key === "ArrowRight") { setPlaying(false); setAt((a) => Math.min(last, a + 1)); }
+      if (e.key === "ArrowLeft") { setPlaying(false); setAt((a) => Math.max(0, a - 1)); }
+    };
+    window.addEventListener("keydown", on);
+    return () => window.removeEventListener("keydown", on);
+  }, [last]);
   useEffect(() => {
     if (!playing) return;
     if (at >= last) {
       setPlaying(false);
       return;
     }
-    const t = setTimeout(() => setAt((a) => a + 1), 1100);
+    const t = setTimeout(() => setAt((a) => a + 1), 2500); // time to read the round's ideas below the map
     return () => clearTimeout(t);
   }, [playing, at, last]);
 
@@ -127,6 +138,10 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         <button className="primary" onClick={() => { if (at >= last) setAt(0); setPlaying(!playing); }}>
           {playing ? "Pause" : at >= last ? "Replay" : "Play"}
         </button>
+        <button className="secondary step-btn" aria-label="Previous round" disabled={at <= 0}
+          onClick={() => { setPlaying(false); setAt((a) => Math.max(0, a - 1)); }}>◀</button>
+        <button className="secondary step-btn" aria-label="Next round" disabled={at >= last}
+          onClick={() => { setPlaying(false); setAt((a) => Math.min(last, a + 1)); }}>▶</button>
         <input type="range" min={0} max={last} value={at} aria-label="Round"
           onChange={(e) => { setPlaying(false); setAt(Number(e.target.value)); }} />
         <span className="where">{at === 0 ? "Original model" : `Round ${at} of ${last}`}</span>
@@ -230,7 +245,8 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
             )}
           </>
         ) : (
-          <p className="muted">Press Play for the round-by-round replay.</p>
+          <p className="muted">Press Play, or step with ◀ ▶ (or the arrow keys): each round shows the ideas the AI
+            tried, what each cut, how much quality it cost, and which one was kept.</p>
         )}
       </section>
 
