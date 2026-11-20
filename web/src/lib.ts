@@ -6,6 +6,8 @@ export type Change = { layer: number; strategy: "narrow_mlp" | "remove_attention
 export type RunSummary = {
   id: string;
   model: string;
+  search: string; // search strategy: multi_layer | layer_by_layer
+  search_label: string;
   state: string;
   reason: string | null;
   round: number;
@@ -75,7 +77,7 @@ export type Accuracy = { all_questions: { acc: number; stderr: number; questions
 export type Results = { heldout: Record<string, Score> | null; accuracy: Record<string, Accuracy> | null };
 export type Compare = {
   runs: {
-    id: string; model: string; cut: number; agent: Score; flap: Score; original: Score;
+    id: string; model: string; cut: number; agent: Score; flap: Score; original: Score; search: string; search_label: string;
     quiz: { agent?: number; flap?: number; original?: number } | null;
   }[];
   flap_curve: { cut: number; test_error: number }[];
@@ -194,3 +196,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return r.json();
 }
+
+/** How the AI cuts (search strategies, src/pruneagent/search.py). The checks after a run are the same for both. */
+export const SEARCHES = [
+  { id: "multi_layer", label: "Several layers per step", text: "Each step may cut any number of layers at once." },
+  { id: "layer_by_layer", label: "One layer per step", text: "Each step cuts one layer; the AI picks which layer and which cut, step by step." },
+] as const;

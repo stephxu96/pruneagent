@@ -217,6 +217,13 @@ def check_candidate(raw: Any, ctx: Context, index: int = 0) -> CandidateCheck:
             reasons.append(f"{name}: layer {layer} is dropped and also given {others}; a dropped layer takes no "
                            f"other choice.")
 
+    # search strategy (search.py): how many layers one candidate may change
+    if rules.max_layers_per_candidate is not None and len(by_layer) > rules.max_layers_per_candidate:
+        layers = ", ".join(map(str, sorted(by_layer)))
+        one = "one layer" if rules.max_layers_per_candidate == 1 else f"{rules.max_layers_per_candidate} layers"
+        reasons.append(f"{name} changes {len(by_layer)} layers ({layers}); in this run a candidate changes at most "
+                       f"{one}. Put the other layers in separate candidates or later rounds.")
+
     # structure rules: drops per candidate and per run, per-layer minimums
     drops = sorted(layer for layer, c in by_layer.items() if c["drop_layer"])
     if len(drops) > rules.max_drops_per_candidate:

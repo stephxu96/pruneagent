@@ -30,6 +30,8 @@ from pydantic import (
 
 from pruneagent.estimate import REPORT_CONTEXT, DeviceTarget, Estimate, layer_cost_s, speed_machine
 from pruneagent.plan import STRATEGIES, LayerPlan
+from pruneagent.search import SearchName
+from pruneagent.search import get as search_strategy
 
 Strategy = Literal["narrow_mlp", "remove_attention_group", "drop_layer", "wanda_sparsity"]
 assert set(Strategy.__args__) == set(STRATEGIES)  # one menu (plan.STRATEGIES)
@@ -59,6 +61,7 @@ class Rules(_Model):
     """The fixed rules of §4.4. The validator and the gate read them from here."""
 
     max_same_steps: PositiveInt = 2  # same strategy on one layer, per candidate
+    max_layers_per_candidate: PositiveInt | None = None  # None: any number (search strategies, search.py)
     max_drops_per_candidate: NonNegativeInt = 1
     max_drops_per_run: NonNegativeInt = 6
     min_mlp_fraction: float = Field(0.25, ge=0, le=1)  # of the layer's original MLP width
@@ -79,6 +82,8 @@ class RunConfig(_Model):
     device: DeviceTarget
     calibration: Calibration = Calibration()
     rules: Rules = Rules()
+    # how much one candidate may change (search.py, ADR-009); sets its rules unless `rules` sets them explicitly
+    search: SearchName = "multi_layer"
     gate_windows: PositiveInt = 32  # validation windows used by the gate
     # per kept layer, added to each token's estimated time when ranking plans and checking a minimum speed (G1);
     # None: the value fitted for the M4 or the T4 (`estimate.LAYER_COST_S`), 0 for other devices
@@ -99,6 +104,14 @@ class RunConfig(_Model):
     seed: int = 0
     dtype: Literal["float16", "bfloat16", "float32"] = "float16"
     gpu: str | None = None
+
+    @model_validator(mode="after")
+    def _search_rules(self) -> RunConfig:
+        given = self.rules.model_fields_set
+        extra = {k: v for k, v in search_strategy(self.search).rules.items() if k not in given}
+        if extra:
+            self.rules = self.rules.model_copy(update=extra)
+        return self
 
     @model_validator(mode="after")
     def _cost_cap(self) -> RunConfig:
@@ -381,6 +394,7 @@ class AgentRequest(_Model):
     device: DeviceTarget
     strategy_menu: dict[Strategy, str]  # neutral, equal-detail description of one step of each
     rules: Rules
+    search: SearchName = "multi_layer"  # search strategy (search.py): what one candidate may change
     sensitivity: SensitivityTable
     plan: Plan
     dense_weight_bytes: PositiveInt

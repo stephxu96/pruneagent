@@ -28,6 +28,7 @@ export function PrunePage() {
     }).catch((e) => setMsg(String(e)));
   }, []);
 
+  const [search, setSearch] = useState<string>("multi_layer");
   if (!m || !device) return <p className="muted">Loading…</p>;
   const ready = m.models.filter((x) => x.ready);
   const sel = m.models.find((x) => x.id === model && x.ready);
@@ -36,7 +37,7 @@ export function PrunePage() {
 
   const start = () =>
     api<Job>("/api/runs", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: sel!.id, cut: fit?.kind === "cut" ? fit.cut : 0, backend: "codex" }) })
+      body: JSON.stringify({ model: sel!.id, cut: fit?.kind === "cut" ? fit.cut : 0, backend: "codex", search }) })
       .then((j) => { window.location.hash = j.run_id ? `#/run/${j.run_id}` : "#/"; })
       .catch((e) => setMsg(String(e)));
 
@@ -82,6 +83,7 @@ export function PrunePage() {
 
       {sel && fit?.kind === "cut" && (
         <StartDialog open={asking} model={sel.id} cut={fit.cut} originalMb={sel.size_mb} check={checked}
+          search={search} onSearch={setSearch}
           onStart={start} onCheck={() => undefined} onClose={() => setAsking(false)} />
       )}
     </div>

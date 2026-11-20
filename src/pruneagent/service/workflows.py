@@ -113,7 +113,8 @@ def _run_step_argv(ctx: StepCtx) -> list[str]:
     if ctx.continuing or p.get("resume"):
         return [*ctx.tools.cli(), "resume", p["run_id"]]
     return [*ctx.tools.cli(), "run", "--model", p["model"], "--memory-cut", f"{float(p['cut']):.4f}", "--device",
-            "mps", "--backend", p.get("backend", "codex"), "--run-id", p["run_id"]]
+            "mps", "--backend", p.get("backend", "codex"), "--search", p.get("search", "multi_layer"),
+            "--run-id", p["run_id"]]
 
 
 def _run_step_outcome(ctx: StepCtx) -> tuple[str, str | None]:
@@ -158,7 +159,8 @@ WORKFLOWS: dict[str, list[StepDef]] = {
     "check": [],  # one step, chosen by params["check"]: see steps_for
     "precheck": [StepDef("precheck", False, lambda c: [
         *c.tools.cli(), "run", "--model", c.params["model"], "--memory-cut", f"{float(c.params['cut']):.4f}",
-        "--device", "mps", "--backend", c.params.get("backend", "codex"), "--dry-run", "--json-result"],
+        "--device", "mps", "--backend", c.params.get("backend", "codex"), "--search",
+        c.params.get("search", "multi_layer"), "--dry-run", "--json-result"],
         _json_outcome)],
 }
 

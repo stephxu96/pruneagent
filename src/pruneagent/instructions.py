@@ -20,6 +20,7 @@ from pathlib import Path
 from pruneagent import plan as P
 from pruneagent import validator as V
 from pruneagent.schema import AgentRequest, PastRound, Rules
+from pruneagent.search import get as search_strategy
 
 VERSION = "v1"
 TEMPLATE_PATH = Path(__file__).with_name("prompts") / "instructions_v1.txt"
@@ -95,6 +96,9 @@ def limits_text(rules: Rules, n_layers: int, mlp_width: int, n_groups: int) -> s
     return " ".join([
         f"Layers are numbered 0 to {n_layers - 1}; write \"layer 12\".",
         f"Give 1 to {rules.max_candidates} candidates, each with at least one choice.",
+        *(["Every choice in one candidate names the same layer."] if rules.max_layers_per_candidate == 1 else
+          [f"One candidate changes at most {rules.max_layers_per_candidate} layers."]
+          if rules.max_layers_per_candidate else []),
         f"In one candidate, the same method on the same layer at most {V._times(rules.max_same_steps)}.",
         (f"At most {rules.max_drops_per_candidate} drop_layer per candidate and {rules.max_drops_per_run} in the "
         f"whole run; a dropped layer takes no other choice, now or later."),
@@ -230,6 +234,7 @@ def values(req: AgentRequest) -> dict[str, str]:
         "current_ppl": _ppl(req.current_ppl),
         "history": history_text(req),
         "limits": limits_text(rules, n_layers, width, groups),
+        "candidate_rule": search_strategy(req.search).candidate_rule,
     }
 
 

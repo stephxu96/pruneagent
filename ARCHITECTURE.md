@@ -351,7 +351,8 @@ class PruneState(TypedDict, total=False):
 
 | Rule | Default |
 |---|---|
-| Per layer per step | One step per chosen (layer, strategy), sizes as in §4.2; at most 2 steps of the same strategy on one layer per candidate |
+| Search strategy (ADR-009) | `multi_layer` (default): a candidate may change any number of layers. `layer_by_layer`: a candidate changes one layer, and the row below allows 4 steps instead of 2 |
+| Per layer per step | One step per chosen (layer, strategy), sizes as in §4.2; at most 2 steps of the same strategy on one layer per candidate (4 with `layer_by_layer`) |
 | Layers dropped per step / per run | ≤ 1 / ≤ 6 |
 | Minimum per remaining layer | ≥ 25% of MLP width; ≥ 1 key/value group; Wanda sparsity ≤ 70% |
 | Per-step limit | Reject a candidate if validation perplexity rises > 15% over the last accepted plan |
@@ -574,6 +575,7 @@ sequenceDiagram
 | [ADR-006](adr/ADR-006-measured-memory.md) | Memory limit required, with early and final warnings; compare with Baseline: FLAP at the same memory limit; speed estimated for the target device during search, measured on the M4 and T4 at the end |
 | [ADR-007](adr/ADR-007-structured-pruning.md) | Per-layer strategy menu (MLP neurons, attention groups, whole layers, unstructured Wanda), described neutrally; quantization deferred |
 | [ADR-008](adr/ADR-008-web-application.md) | Web application (React interface + FastAPI server) on top of the existing tools; no logic of its own; local, single user; also the live demo |
+| [ADR-009](adr/ADR-009-search-strategies.md) | Search strategy is a run setting that changes only what one candidate may contain (several layers, or one layer per step); evaluation, gate and checks are shared |
 
 ---
 

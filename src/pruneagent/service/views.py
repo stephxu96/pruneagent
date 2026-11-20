@@ -16,6 +16,7 @@ from pathlib import Path
 from pruneagent import estimate as E
 from pruneagent import mc
 from pruneagent import runstore as R
+from pruneagent.search import get as search_strategy
 
 MB = 1e6
 log = logging.getLogger(__name__)
@@ -45,6 +46,8 @@ def _summary(store: R.RunStore) -> dict:
     return {
         "id": info.run_id,
         "model": cfg.model_id,
+        "search": cfg.search,
+        "search_label": search_strategy(cfg.search).label,
         "state": info.state,
         "reason": info.reason,
         "round": info.round,
@@ -201,7 +204,8 @@ def compare(root: Path, curve_file: Path) -> dict:
         held, acc = res["heldout"], res["accuracy"] or {}
         quiz = {k: acc[name]["all_questions"]["acc"] for k, name in
                 (("agent", "agent"), ("flap", "Baseline: FLAP"), ("original", "unpruned")) if name in acc}
-        runs.append({"id": s["id"], "model": s["model"], "cut": s["cut"],
+        runs.append({"id": s["id"], "model": s["model"], "cut": s["cut"], "search": s["search"],
+                     "search_label": s["search_label"],
                      "agent": held.get("agent"), "flap": held.get("Baseline: FLAP"),
                      "original": held.get("unpruned"), "quiz": quiz or None})
     curve = _read_json(curve_file)
@@ -242,7 +246,7 @@ def _ranks(path: str, _mtime: float) -> dict:
     import torch
     from safetensors import safe_open
 
-    def rank(score: "torch.Tensor") -> list[list[int]]:
+    def rank(score: torch.Tensor) -> list[list[int]]:
         order = torch.sort(score.float(), dim=1, descending=True, stable=True).indices  # same rule as pruner.top_mask
         r = torch.empty_like(order)
         r.scatter_(1, order, torch.arange(order.shape[1]).expand_as(order))

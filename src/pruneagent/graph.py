@@ -340,6 +340,7 @@ def agent_request(cfg, state: dict) -> AgentRequest:
     save = agent_round.step_savings(cfg)
     rounds_left = max(0, min(run.rules.max_rounds - state["round"], run.max_agent_calls - state["usage"].calls))
     return AgentRequest(objective=agent_round.OBJECTIVE, device=run.device, strategy_menu=menu, rules=run.rules,
+                        search=run.search,
                         sensitivity=state["sensitivity"], plan=plan,
                         dense_weight_bytes=dense_est.weight_bytes, current_weight_bytes=est.weight_bytes,
                         limit_bytes=run.limit_bytes, est_decode_tok_s=est.est_decode_tok_s,

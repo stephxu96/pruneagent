@@ -44,7 +44,7 @@ def test_template_is_the_approved_text_with_the_three_edits():
     assert ('To go back, answer {"rollback_to": <index of an earlier kept plan>} instead of candidates.') in flat
     assert set(I.placeholders(text)) == {
         "limit", "flap_ppl", "dense_ppl", "rejection_rule", "selection_rule", "rounds_left", "stop_rule", "x",
-        "n_groups", "y", "z", "current_mb", "mb_to_free", "current_ppl", "history", "limits"}
+        "n_groups", "y", "z", "current_mb", "mb_to_free", "current_ppl", "history", "limits", "candidate_rule"}
 
 
 # ------------------------------------------------------------------------------------------- the rendering
