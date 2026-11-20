@@ -19,27 +19,30 @@ Both ways are worth measuring, on the same evidence, the same evaluation and the
 |---|---|---|
 | A. Replace several-layers steps with one-layer steps | Rules and one instruction sentence | Throws away the comparison; earlier runs no longer match the system |
 | B. A second copy of the search (graph, prompt, validator) | Everything | The copies drift; evaluation could differ and runs would no longer compare |
-| **C. A search strategy setting that changes only what one candidate may contain** | `search.py`; one rule; one placeholder in the instructions | None found |
+| **C. A search strategy setting that changes only what one candidate may contain and the layer order** | `search.py`; one rule; three placeholders in the instructions; the sweep's layer order and end | None found |
 
 ## Decision
 
 **C.** `src/pruneagent/search.py` defines each search strategy as data:
 - the `Rules` fields it sets (unless a run sets them itself), which the validator enforces, and
-- the one sentence of the agent's instructions that says what a candidate is (`{candidate_rule}`).
+- the sentences of the agent's instructions that differ: what a candidate is (`{candidate_rule}`), whether earlier plans can be returned to (`{return_rule}`, `{rollback_line}`);
+- the order of layers (`order`: free, or a sweep).
 
 | Strategy | Rules | Instructions |
 |---|---|---|
-| `multi_layer` (default: every run so far) | none: any number of layers per candidate, ≤ 2 steps of a method on a layer | The v1 sentence, word for word: the prompt is byte-identical to before (tested) |
-| `layer_by_layer` | ≤ 1 layer per candidate (`max_layers_per_candidate`); ≤ 4 steps of a method on that layer | "Each candidate changes one layer only…" |
+| `multi_layer` (default: every run so far) | none: any number of layers per candidate, ≤ 2 steps of a method on a layer | The v1 sentences, word for word: the prompt is byte-identical to before (tested) |
+| `layer_by_layer` | ≤ 1 layer per candidate (`max_layers_per_candidate`); ≤ 7 steps of a method on it (the bank); sweep order | Goes through the layers in order; each candidate is a cut plan for this round's layer; no candidates = leave it; no going back |
 
-Up to 4 steps on the one layer, instead of 2: one step on one layer frees little (Qwen3-0.6B: about 2 MB slimming, 1.6 MB per attention unit, about 30 MB removing the layer), and the step size stays fixed so the agent still never sets amounts. Each round still offers up to 3 candidates, each on its own layer, and the gate keeps one, so every kept step changes exactly one layer.
+`layer_by_layer` is a **sweep**: one pass through the model, first layer to last, so a run has exactly one round per layer (28 for Qwen3-0.6B and 1.7B). Round k decides layer k only. The prompt adds a "This round" section: the layer, the memory still to free and the layers left (an even share per layer, to pace the cuts), and the **bank** for that layer: slim 1 to 7 steps, remove 1 to 7 attention units, remove the whole layer, or no candidates to leave it as it is. The step size stays fixed, so the agent picks and combines bank entries but never sets an amount. It proposes up to 3 cut plans for the layer; code measures each and the shared gate keeps the best within the per-step limit, or none (the layer stays). A reply that breaks a rule is refused and the same layer is asked again (up to 3 times in a row). The run ends when the memory limit is met or after the last layer; the rounds-without-a-kept-step and round limits don't apply, and rolling back is not offered.
 
-Shared by every strategy and not to be made strategy-specific: the scores and which neurons a step removes, step sizes, candidate evaluation, the gate, stop rules, the checks after the run (unseen text, quiz questions), the saved model and the reports.
+Steph's design (2026-11-20): a proposal is a cut plan; three proposals test three cut plans; the cut plans come from a bank the AI picks from and combines. The first version of this strategy (any layer each round, revisits allowed) was replaced the same day before any run used it.
+
+Shared by every strategy and not to be made strategy-specific: the scores and which neurons a step removes, step sizes, candidate evaluation, the gate and its per-step limit, the memory-limit stop, the checks after the run (unseen text, quiz questions), the saved model and the reports.
 
 The run's `RunConfig.search` records the strategy. It is a `pruneagent run --search` option, a field of the app's start request and of the pruning and feasibility workflows, and the app shows it on every run (“How it cuts”), in the start dialog (a choice, default several layers) and on Compare (one line per strategy).
 
 ## Consequences
 
 - Positive: the two ways of pruning are measured with identical evaluation; earlier runs stay valid and reproducible (same prompt, same rules); a third strategy is one more entry.
-- Negative: a one-layer run needs more rounds for the same memory cut; at 1.7B, 20% smaller is estimated at about 23 rounds of the 40 allowed.
+- Negative: a sweep may end short of the memory limit if the agent under-cuts early layers; it then reports the gap.
 - Neutral: the agent-answer cache never mixes strategies, since their prompts differ.

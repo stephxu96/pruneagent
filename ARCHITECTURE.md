@@ -351,8 +351,8 @@ class PruneState(TypedDict, total=False):
 
 | Rule | Default |
 |---|---|
-| Search strategy (ADR-009) | `multi_layer` (default): a candidate may change any number of layers. `layer_by_layer`: a candidate changes one layer, and the row below allows 4 steps instead of 2 |
-| Per layer per step | One step per chosen (layer, strategy), sizes as in §4.2; at most 2 steps of the same strategy on one layer per candidate (4 with `layer_by_layer`) |
+| Search strategy (ADR-009) | `multi_layer` (default): a candidate may change any number of layers. `layer_by_layer`: one pass, first layer to last, one round per layer; candidates are cut plans for that layer from its bank (up to 7 steps of a method, or the layer, or leave it); ends after the last layer |
+| Per layer per step | One step per chosen (layer, strategy), sizes as in §4.2; at most 2 steps of the same strategy on one layer per candidate (7 with `layer_by_layer`) |
 | Layers dropped per step / per run | ≤ 1 / ≤ 6 |
 | Minimum per remaining layer | ≥ 25% of MLP width; ≥ 1 key/value group; Wanda sparsity ≤ 70% |
 | Per-step limit | Reject a candidate if validation perplexity rises > 15% over the last accepted plan |

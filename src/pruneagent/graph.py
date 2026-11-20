@@ -91,6 +91,7 @@ from pruneagent.schema import (
     Usage,
     normalize_reply,
 )
+from pruneagent.search import get as search_strategy
 
 if TYPE_CHECKING:  # the evaluator needs torch; the graph itself does not
     from pruneagent.candidate_eval import Evaluation
@@ -326,6 +327,17 @@ def past_round(rec: StepRecord, accepted: list[AcceptedPlan], step_limit: float)
     return PastRound(round=rec.round, candidates=rows)
 
 
+SWEEP_DECIDED = ("ACCEPT", "ROLLBACK", "LEFT")  # a sweep round that decided its layer (INVALID asks again)
+
+
+def sweep_layer(run: RunConfig, state: dict) -> int | None:
+    """For a sweep strategy (search.py), the layer this round decides: one per decided round, first to last.
+    None for other strategies."""
+    if search_strategy(run.search).order != "sweep":
+        return None
+    return sum(r.outcome in SWEEP_DECIDED for r in state.get("history", []))
+
+
 def agent_request(cfg, state: dict) -> AgentRequest:
     """What the agent is shown for the next round, from the graph state (after `baseline`): `Deps.build_prompt`
     turns it into the prompt."""
@@ -340,7 +352,7 @@ def agent_request(cfg, state: dict) -> AgentRequest:
     save = agent_round.step_savings(cfg)
     rounds_left = max(0, min(run.rules.max_rounds - state["round"], run.max_agent_calls - state["usage"].calls))
     return AgentRequest(objective=agent_round.OBJECTIVE, device=run.device, strategy_menu=menu, rules=run.rules,
-                        search=run.search,
+                        search=run.search, layer_at=sweep_layer(run, state),
                         sensitivity=state["sensitivity"], plan=plan,
                         dense_weight_bytes=dense_est.weight_bytes, current_weight_bytes=est.weight_bytes,
                         limit_bytes=run.limit_bytes, est_decode_tok_s=est.est_decode_tok_s,
@@ -436,11 +448,20 @@ def build_graph(deps: Deps, checkpointer=None):
         if raw is None:
             check = CheckResult(ok=False, reasons=[
                 f"The reply could not be read ({state.get('read_error')}); reply with one JSON object only."])
+        elif (layer := sweep_layer(run, state)) is not None and raw.get("candidates") == [] and not raw.get(
+                "action") and raw.get("rollback_to") is None:
+            # a sweep round may leave its layer as it is: no candidates, nothing to measure
+            left = CheckResult(ok=True, reasons=[])
+            return {"check": left, "action": None, "gate": None, "feedback": None, "invalid_in_row": 0,
+                    **record(state, "LEFT", check=left)}
         else:
+            sweep = layer is not None
+            actions = V.ACTIONS if run.agent_extra_actions else V1_ACTIONS
             ctx = V.Context(cfg, state["plan"], run.limit_bytes, run.rules,
                             tried=tuple(c.plan for c in state.get("candidates", [])),
                             n_accepted=len(state["accepted"]), strategies=P.AGENT_STRATEGIES,
-                            actions=V.ACTIONS if run.agent_extra_actions else V1_ACTIONS)
+                            actions=tuple(a for a in actions if a != "rollback") if sweep else actions,
+                            only_layer=layer)
             check = V.check_reply(raw, ctx)
             if check.ok and raw.get("action") == "start_from_flap":
                 flap = flap_allocation(state["baseline"], cfg)
@@ -540,14 +561,18 @@ def build_graph(deps: Deps, checkpointer=None):
 
     def stop_check(state: GraphState) -> dict:
         run, rules = state["run"], state["run"].rules
+        # a sweep ends after its last layer: the rounds-without-a-kept-step and round limits don't apply
+        sweep = search_strategy(run.search).order == "sweep"
         reason = None
         if E.weight_bytes(cfg, state["plan"]) <= run.limit_bytes:
             reason = "memory limit met"
         elif state["invalid_in_row"] >= rules.max_invalid_in_row:
             reason = f"{state['invalid_in_row']} invalid replies in a row"
-        elif state["since_accept"] >= rules.max_rounds_without_accept:
+        elif sweep and sweep_layer(run, state) >= len(state["plan"]):
+            reason = f"every layer decided ({len(state['plan'])} layers, first to last)"
+        elif not sweep and state["since_accept"] >= rules.max_rounds_without_accept:
             reason = f"{state['since_accept']} rounds without an accepted step"
-        elif state["round"] >= rules.max_rounds:
+        elif not sweep and state["round"] >= rules.max_rounds:
             reason = f"{state['round']} rounds"
         elif state["usage"].calls >= run.max_agent_calls:
             reason = f"agent call cap reached ({run.max_agent_calls} calls)"

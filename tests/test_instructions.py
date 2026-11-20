@@ -13,6 +13,7 @@ from pruneagent import agent_round
 from pruneagent import graph as G
 from pruneagent import instructions as I
 from pruneagent import plan as P
+from pruneagent import search as S
 from pruneagent import validator as V
 from pruneagent.schema import AgentReply, Rules, normalize_reply
 
@@ -32,8 +33,19 @@ def mb(n_bytes):  # MB as the prompt prints them
 # ------------------------------------------------------------------------------------------------ the text
 
 
+def approved_text(version="v1"):
+    """The template with the several-layers strategy's sentences in place: the approved v1 text (search.py keeps
+    those sentences word for word)."""
+    m = S.get("multi_layer")
+    text = I.template(version).replace("{candidate_rule}", m.candidate_rule)
+    for k, v in m.texts.items():
+        text = text.replace("{" + k + "}", v)
+    return text
+
+
 def test_template_is_the_approved_text_with_the_three_edits():
-    text = I.template()
+    assert set(I.placeholders(I.template())) >= {"candidate_rule", "return_rule", "rollback_line"}
+    text = approved_text()
     assert text.startswith("Your job. You are pruning a language model so its weights fit within a memory\n")
     assert "wanda" not in text.lower()  # (a)
     flat = " ".join(text.split())
@@ -44,7 +56,7 @@ def test_template_is_the_approved_text_with_the_three_edits():
     assert ('To go back, answer {"rollback_to": <index of an earlier kept plan>} instead of candidates.') in flat
     assert set(I.placeholders(text)) == {
         "limit", "flap_ppl", "dense_ppl", "rejection_rule", "selection_rule", "rounds_left", "stop_rule", "x",
-        "n_groups", "y", "z", "current_mb", "mb_to_free", "current_ppl", "history", "limits", "candidate_rule"}
+        "n_groups", "y", "z", "current_mb", "mb_to_free", "current_ppl", "history", "limits"}
 
 
 # ------------------------------------------------------------------------------------------- the rendering
@@ -180,7 +192,7 @@ def test_reply_schema_matches_the_instructions():
     assert choice["properties"]["method"]["enum"] == ["narrow_mlp", "remove_attention_group", "drop_layer"]
     assert schema["properties"]["rollback_to"]["type"] == ["integer", "null"]
     # the answer format in the text names the same fields
-    text = I.template()
+    text = approved_text()
     assert all(f'"{k}"' in text for k in ("candidates", "choices", "layer", "method", "reason", "rollback_to"))
 
 

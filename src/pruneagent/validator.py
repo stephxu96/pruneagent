@@ -72,6 +72,7 @@ class Context:
     rules: Rules = field(default_factory=Rules)
     tried: tuple = ()
     n_accepted: int = 1
+    only_layer: int | None = None  # sweep strategies: the one layer this round may change
     strategies: tuple = P.AGENT_STRATEGIES
     actions: tuple = V1_ACTIONS
 
@@ -217,7 +218,11 @@ def check_candidate(raw: Any, ctx: Context, index: int = 0) -> CandidateCheck:
             reasons.append(f"{name}: layer {layer} is dropped and also given {others}; a dropped layer takes no "
                            f"other choice.")
 
-    # search strategy (search.py): how many layers one candidate may change
+    # search strategy (search.py): which layers, and how many, one candidate may change
+    if ctx.only_layer is not None and set(by_layer) - {ctx.only_layer}:
+        others = ", ".join(map(str, sorted(set(by_layer) - {ctx.only_layer})))
+        reasons.append(f"{name} changes layer {others}; this round decides layer {ctx.only_layer} only. Every choice "
+                       f"names layer {ctx.only_layer}.")
     if rules.max_layers_per_candidate is not None and len(by_layer) > rules.max_layers_per_candidate:
         layers = ", ".join(map(str, sorted(by_layer)))
         one = "one layer" if rules.max_layers_per_candidate == 1 else f"{rules.max_layers_per_candidate} layers"

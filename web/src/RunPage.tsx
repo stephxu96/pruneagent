@@ -4,7 +4,7 @@ import { Neurons3D } from "./Neurons3D";
 import { PathChart } from "./PathChart";
 import { NeuronMap, StepGrid, type Removal } from "./StepsView";
 import {
-  api, changedLayers, changesText, duration, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText, timeLeftText,
+  api, changedLayers, changesText, duration, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText, sweepLayer, timeLeftText,
   type Results, type RunDetail,
 } from "./lib";
 import { StepBar, type Job } from "./parts";
@@ -232,7 +232,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         {round ? (
           <>
             <h2>
-              Round {round.round}: <span className={`outcome ${round.outcome?.toLowerCase()}`}>{outcomeText[round.outcome ?? ""] ?? "no change"}</span>
+              Round {round.round}{sweepLayer(run, round.round) != null && <> · layer {sweepLayer(run, round.round)}</>}: <span className={`outcome ${round.outcome?.toLowerCase()}`}>{outcomeText[round.outcome ?? ""] ?? "no change"}</span>
             </h2>
             {round.candidates.length > 0 ? (
               <ol className="ideas">
@@ -254,7 +254,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
                 ))}
               </ol>
             ) : (
-              <p className="muted">{round.refused_reasons.join(" ") || "No ideas this round."}</p>
+              <p className="muted">{round.outcome === "LEFT" ? "The AI left this layer as it is." : round.refused_reasons.join(" ") || "No ideas this round."}</p>
             )}
           </>
         ) : (
@@ -414,8 +414,17 @@ function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }
           <div className="g-note">than the original, on the sample text</div>
         </div>
         <div>
-          <div className="g-label">Rounds</div>
-          <div className="pv-big">{run.round} <span className="muted">of up to {run.settings.max_rounds}</span></div>
+          {run.search === "layer_by_layer" ? (
+            <>
+              <div className="g-label">Layers decided</div>
+              <div className="pv-big">{run.rounds.filter((r) => ["ACCEPT", "ROLLBACK", "LEFT"].includes(r.outcome ?? "")).length} <span className="muted">of {run.settings.max_rounds}</span></div>
+            </>
+          ) : (
+            <>
+              <div className="g-label">Rounds</div>
+              <div className="pv-big">{run.round} <span className="muted">of up to {run.settings.max_rounds}</span></div>
+            </>
+          )}
           <div className="g-note">{run.kept_steps} steps kept</div>
         </div>
       </div>

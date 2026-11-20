@@ -16,8 +16,7 @@ You have {rounds_left} rounds left. {stop_rule}
 
 Candidates are your experiments: make them test different ideas, not small
 variations of one idea. Small steps let you re-measure before committing
-further. You can return to an earlier kept plan, but a later step cannot undo
-the damage of an earlier one.
+further. {return_rule}
 
 The three methods (one step each):
 - narrow_mlp: removes 10% of the layer's original feed-forward width. Frees
@@ -51,5 +50,4 @@ that breaks a rule is discarded.
 Answer format. JSON only:
 {"candidates": [{"choices": [{"layer": "<layer name>", "method": "narrow_mlp"}],
                  "reason": "one sentence naming the evidence you used"}]}
-To go back, answer {"rollback_to": <index of an earlier kept plan>} instead of
-candidates.
+{rollback_line}

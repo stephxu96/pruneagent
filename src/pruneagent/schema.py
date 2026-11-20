@@ -395,6 +395,7 @@ class AgentRequest(_Model):
     strategy_menu: dict[Strategy, str]  # neutral, equal-detail description of one step of each
     rules: Rules
     search: SearchName = "multi_layer"  # search strategy (search.py): what one candidate may change
+    layer_at: NonNegativeInt | None = None  # sweep strategies: the one layer this round decides
     sensitivity: SensitivityTable
     plan: Plan
     dense_weight_bytes: PositiveInt
@@ -509,7 +510,8 @@ class StepRecord(_Model):
     check: CheckResult | None = None
     candidates: list[CandidateResult] = []
     gate: GateResult | None = None
-    outcome: Literal["ACCEPT", "ROLLBACK", "INVALID"] | None = None  # None for probe, rollback and stop
+    # LEFT: a sweep round where the agent left its layer as it is (no candidates)
+    outcome: Literal["ACCEPT", "ROLLBACK", "INVALID", "LEFT"] | None = None  # None for probe, rollback and stop
     strategies_used: dict[Strategy, NonNegativeInt] = {}
     llm_tokens: NonNegativeInt = 0
     llm_seconds: NonNegativeFloat = 0.0

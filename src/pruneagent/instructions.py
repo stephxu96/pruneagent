@@ -90,6 +90,13 @@ def stop_rule(rules: Rules, max_calls: int, since_kept: int) -> str:
             f"replies in a row.")
 
 
+def sweep_stop_rule(rules: Rules, max_calls: int) -> str:
+    """`graph.stop_check`'s conditions for a sweep (search.py), in its order."""
+    return (f"The run ends as soon as a kept step brings the model within the memory limit, or after the last "
+            f"layer. It also ends after {max_calls} replies in all, or after {rules.max_invalid_in_row} unusable "
+            f"replies in a row.")
+
+
 def limits_text(rules: Rules, n_layers: int, mlp_width: int, n_groups: int) -> str:
     """The validator's rules (`validator.check_candidate`, `check_candidates`), in plain words."""
     min_mlp = -(-mlp_width * rules.min_mlp_fraction // 1)
@@ -223,8 +230,9 @@ def values(req: AgentRequest) -> dict[str, str]:
         "dense_ppl": _ppl(req.dense_ppl),
         "rejection_rule": rejection_rule(rules, req.current_ppl),
         "selection_rule": selection_rule(),
-        "rounds_left": str(rounds_left),
-        "stop_rule": stop_rule(rules, req.max_agent_calls, req.since_kept),
+        "rounds_left": str(rounds_left if req.layer_at is None else n_layers - req.layer_at),
+        "stop_rule": (stop_rule(rules, req.max_agent_calls, req.since_kept) if req.layer_at is None
+                      else sweep_stop_rule(rules, req.max_agent_calls)),
         "x": _mb(req.step_bytes["narrow_mlp"]),
         "y": _mb(req.step_bytes["remove_attention_group"]),
         "z": _mb(req.step_bytes["drop_layer"]),
@@ -235,6 +243,7 @@ def values(req: AgentRequest) -> dict[str, str]:
         "history": history_text(req),
         "limits": limits_text(rules, n_layers, width, groups),
         "candidate_rule": search_strategy(req.search).candidate_rule,
+        **search_strategy(req.search).texts,
     }
 
 
@@ -264,11 +273,46 @@ def render(req: AgentRequest, text: str | None = None, version: str = VERSION) -
     return "\n".join(line.rstrip() for line in out.splitlines())
 
 
+def this_round_lines(req: AgentRequest) -> list[str]:
+    """Sweep strategies (search.py): the layer this round decides, the pace, and the bank of cuts for that layer
+    (what code can do to it under the rules; the agent picks and combines)."""
+    if req.layer_at is None:
+        return []
+    layer, rules = req.layer_at, req.rules
+    n_layers = req.n_layers or len(req.plan)
+    left = n_layers - layer
+    p = req.plan[layer]
+    width, groups = req.mlp_width or p["mlp_keep"], req.n_groups or p["groups_keep"]
+    step_n = P.mlp_step(width)
+    min_mlp = -(-width * rules.min_mlp_fraction // 1)
+    slim = min(rules.max_same_steps, max(0, int((p["mlp_keep"] - min_mlp) // step_n)))
+    heads = min(rules.max_same_steps, max(0, p["groups_keep"] - rules.min_groups))
+    drops = sum(q["dropped"] for q in req.plan.values())
+    to_free = max(0, req.current_weight_bytes - req.limit_bytes)
+    bank = [f"- narrow_mlp: 1 to {slim} steps, {_mb(req.step_bytes['narrow_mlp'])} MB each "
+            f"({step_n:,} of its {width:,} feed-forward neurons per step)" if slim else
+            "- narrow_mlp: not possible (the layer is at its minimum width)",
+            f"- remove_attention_group: 1 to {heads} steps, {_mb(req.step_bytes['remove_attention_group'])} MB each "
+            f"(1 of its {groups} attention groups per step)" if heads else
+            "- remove_attention_group: not possible (the layer keeps its minimum)",
+            f"- drop_layer: the whole layer, {_mb(req.step_bytes['drop_layer'])} MB; it takes no other choice"
+            if drops < rules.max_drops_per_run else
+            f"- drop_layer: not possible ({rules.max_drops_per_run} layers already dropped)",
+            "- or no candidates: the layer stays as it is"]
+    head = (f"This round: {layer_name(layer)} (layer {layer + 1} of {n_layers}, first to last). Still to free: "
+            f"{_mb(to_free)} MB over the {left} layers left including this one (about {_mb(to_free / left)} MB each "
+            f"if spread evenly). The bank of cuts for {layer_name(layer)}; a candidate is any combination:")
+    return [textwrap.fill(head, WIDTH, break_on_hyphens=False),
+            *(textwrap.fill(b, WIDTH, subsequent_indent="  ", break_on_hyphens=False) for b in bank)]
+
+
 def build_prompt(req: AgentRequest, feedback: str | None = None, version: str = VERSION) -> str:
     """`graph.Deps.build_prompt`: the rendered instructions, the data for this round, and the reasons an
     unusable last reply was rejected."""
     parts = [render(req, version=version).rstrip(), "", f"Data for round {req.round}.", "", *model_now(req), "",
              *quick_test_lines(req), "", *measured_lines(req)]
+    if req.layer_at is not None:
+        parts += ["", *this_round_lines(req)]
     if feedback:
         parts += ["", "About your previous reply.", feedback]
     return "\n".join(parts) + "\n"
