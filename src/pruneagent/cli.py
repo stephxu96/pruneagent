@@ -1360,15 +1360,17 @@ def check_model_cmd(
         raise typer.Exit(1)
 
 
-@app.command("prepare")
+@app.command("setup")
+@app.command("prepare", hidden=True)
 def prepare_cmd(
     model: Annotated[str, typer.Argument(help="Hugging Face model id.")],
     device: Annotated[str, typer.Option(help="mps, cuda or cpu.")] = "mps",
     dtype: Annotated[str, typer.Option(help="float16 or bfloat16.")] = "float16",
     root: Annotated[Path, typer.Option(help="Directory holding the runs (the model list is kept there).")] = Path("runs"),
 ) -> None:
-    """Prepare a model for runs on this computer (FR17): its text, neuron scores, quick tests and measured damage
-    table. Each step reuses what an earlier, stopped preparation saved."""
+    """Set up a model on this computer (FR17): load it and generate the assets pruning needs: its sample text,
+    neuron scores, quick tests and measured damage table. Each part reuses what an earlier, stopped setup saved.
+    (`prepare` is the old name.)"""
     import subprocess
     import sys
 

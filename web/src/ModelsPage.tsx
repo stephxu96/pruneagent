@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { api, duration, durationRange, mb, modelName } from "./lib";
 
-// Bring your own model (FR17), as a guided flow: choose a model, check it, prepare it on this computer, then
-// prune it. The flow follows the server's state, so leaving and coming back shows where things stand.
+// Model setup (docs/APP_DESIGN.md §2.1, FR17): put a model on this computer, ready to prune. Name it, check it, set it
+// up (load the model, generate the assets pruning needs), ready. Pruning is a separate story (PrunePage). The flow
+// follows the workflow service's state, so leaving and coming back shows where things stand.
 
 type Check =
   | { id: string; ok: false; reason: string }
@@ -16,11 +17,11 @@ type PrepJob = {
 type ModelRow = { id: string; ready: boolean; built_in: boolean; size_mb: number };
 
 const ACTIVE = ["queued", "running"];
-const STEPS = ["Choose", "Check", "Prepare", "Ready"];
-// the preparation's three parts, in the order the tool runs them (text; scores and quick tests; damage table)
+const STEPS = ["Name", "Check", "Set up", "Ready"];
+// setup's three parts, in the order the tool runs them (text; scores and quick tests; damage table)
 const PARTS = [
   { title: "Sample text", text: "Download text samples and split them into pieces the way this model reads." },
-  { title: "Part usage", text: "Run the samples through the model and see how much it uses each part." },
+  { title: "Model and part usage", text: "Load the model, run the samples through it and see how much it uses each part." },
   { title: "Cut tests", text: "Try each kind of cut on each layer and measure how much quality drops." },
 ];
 
@@ -61,11 +62,11 @@ export function ModelsPage() {
     setMsg(null);
   };
 
-  // the latest preparation job for each model (jobs come newest first)
+  // the latest setup for each model (jobs come newest first)
   const latest = new Map<string, PrepJob>();
   for (const j of jobs ?? []) if (j.params.model && !latest.has(j.params.model)) latest.set(j.params.model, j);
 
-  // open on what's happening: the model named in the address, else a preparation under way
+  // open on what's happening: the model named in the address, else a setup under way
   useEffect(() => {
     if (jobs === null || selected) return;
     if (asked) choose(asked);
@@ -90,7 +91,9 @@ export function ModelsPage() {
   return (
     <div className="models-page">
       <a href="#/" className="back">← All runs</a>
-      <h1>Select your model</h1>
+      <h1>Models</h1>
+      <ModelList rows={rows} latest={latest} onOpen={choose} />
+      <h2>Set up a model</h2>
 
       <ol className="stepper">
         {STEPS.map((s, i) => (
@@ -103,7 +106,7 @@ export function ModelsPage() {
 
       <section className="wizard">
         {step === 1 && (
-          <ChooseStep name={name} setName={setName} rows={rows} onChoose={choose} />
+          <ChooseStep name={name} setName={setName} onChoose={choose} />
         )}
         {step === 2 && (
           checking || !check ? <p className="muted">Checking {selected}…</p>
@@ -116,8 +119,8 @@ export function ModelsPage() {
           <div className="ready-step">
             <p className="ready-big">✓ {modelName(selected)} is ready for pruning.</p>
             <div className="actions">
-              <a className="primary" href={`#/new?model=${encodeURIComponent(selected)}`}>Make it smaller →</a>
-              <button className="secondary" onClick={restart}>Choose another model</button>
+              <a className="primary" href={`#/new?model=${encodeURIComponent(selected)}`}>Prune it →</a>
+              <button className="secondary" onClick={restart}>Set up another model</button>
             </div>
           </div>
         )}
@@ -127,10 +130,9 @@ export function ModelsPage() {
   );
 }
 
-function ChooseStep({ name, setName, rows, onChoose }: {
+function ChooseStep({ name, setName, onChoose }: {
   name: string;
   setName: (s: string) => void;
-  rows: ModelRow[];
   onChoose: (id: string) => void;
 }) {
   return (
@@ -138,24 +140,42 @@ function ChooseStep({ name, setName, rows, onChoose }: {
       <label>
         <span className="m-label">Model name on Hugging Face</span>
         <div className="add-row">
-          <input type="text" value={name} placeholder="e.g. HuggingFaceTB/SmolLM2-360M" spellCheck={false} autoFocus
+          <input type="text" value={name} placeholder="e.g. HuggingFaceTB/SmolLM2-360M" spellCheck={false}
             onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onChoose(name); }} />
           <button className="primary" onClick={() => onChoose(name)} disabled={!name.trim()}>Check →</button>
         </div>
       </label>
       <p className="muted">Works with Qwen3, Qwen2, Llama and Mistral models.</p>
-      {rows.length > 0 && (
-        <div className="on-computer">
-          <span className="m-label">Or one already on this computer</span>
-          <div className="chips">
-            {rows.map((r) => (
-              <button key={r.id} className="chip" onClick={() => onChoose(r.id)}>
-                {modelName(r.id)} <span className="muted">· {mb(r.size_mb)}{r.ready ? " · ready ✓" : ""}</span>
-              </button>
-            ))}
+    </div>
+  );
+}
+
+/** The models on this computer: ready ones can be pruned; others show their setup. */
+function ModelList({ rows, latest, onOpen }: { rows: ModelRow[]; latest: Map<string, PrepJob>; onOpen: (id: string) => void }) {
+  return (
+    <div className="model-list">
+      {rows.map((r) => {
+        const job = latest.get(r.id);
+        const active = job && ACTIVE.includes(job.status);
+        const paused = job && ["stopped", "failed"].includes(job.status);
+        return (
+          <div key={r.id} className="model-line">
+            <span className="ml-name">{modelName(r.id)}</span>
+            <span className="muted">{mb(r.size_mb)}{r.built_in ? "" : " · added by you"}</span>
+            <span className="ml-state">
+              {r.ready ? (
+                <><span className="badge done">Ready ✓</span><a href={`#/new?model=${encodeURIComponent(r.id)}`}>Prune it →</a></>
+              ) : active ? (
+                <><span className="badge running">Setting up · {Math.round((job.progress?.share ?? 0) * 100)}%</span>
+                  <button className="small" onClick={() => onOpen(r.id)}>Show</button></>
+              ) : (
+                <><span className="badge stopped">{paused ? "Setup paused" : "Not set up"}</span>
+                  <button className="small" onClick={() => onOpen(r.id)}>{paused ? "Continue setup" : "Set up"}</button></>
+              )}
+            </span>
           </div>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -190,13 +210,13 @@ function CheckStep({ check, onPrepare, onBack }: { check: Check; onPrepare: () =
           <div className="f-big">{mb(check.size_mb)}</div>
         </div>
         <div className="f-tile">
-          <div className="f-label">Preparation time</div>
+          <div className="f-label">Setup time</div>
           <div className="f-big">{durationRange(lo, hi)}</div>
           <div className="f-sub">Once, on this computer</div>
         </div>
       </div>
       <div className="actions">
-        <button className="primary" onClick={onPrepare}>Start preparing</button>
+        <button className="primary" onClick={onPrepare}>Set up this model</button>
         <button className="secondary" onClick={onBack}>← Choose another model</button>
       </div>
     </div>
@@ -222,7 +242,7 @@ function PrepareStep({ id, job, onPause, onContinue }: {
   const left = active ? timeLeft(job) : null;
   return (
     <div className="prepare-step">
-      <p className="prep-head">Preparing <b>{modelName(id)}</b> for pruning</p>
+      <p className="prep-head">Setting up <b>{modelName(id)}</b>: loading the model and generating what pruning needs</p>
       <ol className="checklist">
         {PARTS.map((part, i) => {
           const n = i + 1;
@@ -252,7 +272,7 @@ function PrepareStep({ id, job, onPause, onContinue }: {
           </span>
           {active
             ? <button className="secondary" onClick={onPause}>{job.status === "running" ? "Pause" : "Cancel"}</button>
-            : <button className="primary" onClick={onContinue}>Continue preparing</button>}
+            : <button className="primary" onClick={onContinue}>Continue setup</button>}
         </div>
       </div>
       <details className="raw">
