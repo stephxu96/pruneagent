@@ -116,40 +116,41 @@ The expected-quality range in step 3 comes from past runs at that model and size
 
 ## 4. How it runs on the computer
 
-### 4.1 Two separate services
+### 4.1 Two products: the tools and the app
 
-Everything that takes longer than a page load (model setup, pruning runs, final checks, building a download) runs in
-a **background workflow service**, separate from the **web app**. They share files, not a process, and each is
-started, stopped and updated on its own.
+PruneAgent is two pieces of software with one boundary between them.
 
 ```mermaid
-flowchart TB
-    subgraph App[Web app: restart or update at any time]
-        B[Browser] -- HTTP --> S[App server]
+flowchart LR
+    subgraph AppC[PruneAgent app: a container, runs anywhere]
+        B[Browser] -- pages --> F[App server<br/>serves the interface,<br/>forwards /api]
     end
-    subgraph Worker[Workflow service: runs on its own]
-        WS[Workflow runner] -- one step at a time --> P[Step process]
-        P -- GPU lock --> G{{scripts/mac_gpu.sh}}
+    subgraph Tools[PruneAgent tools: native, on the machine with the GPU]
+        API[Tools API<br/>127.0.0.1:8124] --> WS[Workflow runner]
+        WS -- one GPU step at a time --> P[Step process<br/>pruneagent run / setup / checks]
+        API -- reads --> D[(Run folders, model assets,<br/>workflow store, releases)]
+        P -- writes --> D
+        T[Terminal] -- same commands --> P
     end
-    S -- submit, pause, cancel --> Q[(Workflow store<br/>runs/workflows.sqlite)]
-    WS -- picks up, records progress --> Q
-    S -- reads --> Q
-    S -- reads --> F[(Run folders,<br/>model assets)]
-    P -- writes --> F
-    T[Terminal] -- same commands --> P
+    F -- HTTP: the tools API only --> API
 ```
 
-| Part | Does | Owns | Started by | Updated |
-|---|---|---|---|---|
-| **Web app** (app server + browser interface) | Shows things; turns clicks into requests | Nothing that matters: it reads the workflow store and the files | `pruneagent web` | Any time, restart included; nothing running notices |
-| **Workflow service** | Runs workflows step by step, one GPU step at a time; records progress; retries and resumes | The workflow store | macOS on login (a launchd agent), so it runs without the app open | Only between workflows (§4.3) |
-| **Workflow store** `runs/workflows.sqlite` | Every workflow, its steps, their state and logs | — | — | — |
-| **Run folders** `runs/<id>/` | Everything about a run: settings, rounds, kept plans, checkpoint, final check, its own copy of the AI's instructions | — | — | — |
-| **Model assets** (scores, quick tests, damage table, sample text) | Whether a model is set up | — | — | — |
+| | **PruneAgent tools** | **PruneAgent app** |
+|---|---|---|
+| What it is | The `pruneagent` commands, and the **tools service** that runs them as workflows and answers the tools API | The web interface and a small server that serves it and forwards its requests |
+| Runs where | Natively, on the machine with the GPU: macOS here (the Mac GPU works only outside containers), Linux with NVIDIA elsewhere | In a container (`docker compose up`), anywhere |
+| Owns | Run folders, model assets, the workflow store, releases, the GPU, the hardware details | Nothing: no files, no state |
+| Talks through | Offers the **tools API** (HTTP, `127.0.0.1:8124`): submit, pause, continue, cancel; runs, run details, results, comparison; models and setup; this machine; usage limits | Uses only the tools API: never files, never commands |
+| Started by | `scripts/start.sh` (the tools service), or any `pruneagent` command by hand | `scripts/start.sh` (`docker compose up -d`) |
+| Updated | A new tools release (§4.3); running workflows finish on theirs | Rebuild and restart its container; nothing on the tools side notices |
 
-The app talks to the service only through the workflow store: it writes a request ("set up this model", "pause
-this run") and reads state back. If the app is closed, restarting or being updated, workflows carry on. If the
-service is stopped, nothing is lost: on start it picks every workflow up at its last finished step.
+The rule: **the app never reaches past the tools API.** Everything it shows comes from an API answer, and every
+action is an API request. So the app can be closed, restarted, updated or moved without touching running work, and
+the same app could point at a Linux GPU machine's tools API.
+
+Inside the tools service, the API and the workflow runner share the workflow store (`runs/workflows.sqlite`). If the
+service stops, nothing is lost: steps run as their own processes, write their own exit codes, and the service picks
+every workflow up again when it starts.
 
 ### 4.2 Workflows
 
@@ -168,21 +169,20 @@ continued from the step it stopped at; or failed, with the error in one line and
 **One GPU step at a time**, across workflows and the terminal (the GPU lock). Workflows wait in the order they were
 started; the app shows what each is waiting for.
 
-### 4.3 Updates never reach a running workflow
+### 4.3 Updates never reach running work
 
 | What is updated | How |
 |---|---|
-| **Web app** (pages, app server) | Build the interface into a new folder and swap it in; restart the app server. Workflows don't notice |
-| **Workflow code** (runs, setup, checks, AI instructions) | Each workflow runs from the **release** it started with: a fixed copy of the code, kept under `releases/<commit>/`. An update adds a new release; new workflows use it, running ones finish on theirs. Each run folder records its release |
-| **Python packages** | Each release has its own environment, so an update can't change a running workflow's packages |
-| **Workflow service itself** | Rarely changes. When it does, it's restarted between steps: it stops taking new steps, waits for the running step to finish, restarts and carries on |
+| **The app** (interface, app server) | `docker compose up -d --build`: a new container replaces the old one. The tools don't notice |
+| **Tool code** (runs, setup, checks, AI instructions) | Each workflow runs on the **release** it was submitted with: a fixed copy of the code with its own environment, under `releases/<commit>/`. An update adds a release; new workflows use it, running ones finish on theirs. Each run folder records its release |
+| **The tools service itself** | Restarted at any time: running steps carry on as their own processes and are picked up again |
 
-**One command does an update:** `scripts/deploy.sh` builds a new release, swaps in the new interface and restarts
-the app server. The workflow service is left alone unless the service itself changed.
+**One command:** `scripts/start.sh` builds the tools release, (re)starts the tools service and (re)builds and starts
+the app container. Running it again is how an update is applied.
 
 ### 4.4 Live updates
 
-The run page gets each round as it lands (server-sent events, as today), read from the run folder. Workflow progress
+The run page gets each round as it lands (server-sent events from the tools API, passed through by the app server). Workflow progress
 on the Runs, Models and Activity pages refreshes every 3 seconds from the workflow store. That's fast enough for steps
 that take minutes.
 
@@ -194,12 +194,14 @@ that take minutes.
 | Usage limit reached | "Paused: usage limit, resets at 16:41" | Continue after the reset |
 | A job fails | "Didn't finish", with the last error in one line; system logs in a fold | Continue, or report the logs |
 | Another workflow is using the GPU | "Waiting for the Mac to be free (busy with: …)" | Wait, or cancel |
-| App closed, restarted or updated | Nothing changes: workflows carry on in the workflow service | Open the app again |
+| App closed, restarted or updated | Nothing changes: workflows carry on in the tools service | Open the app again |
+| Tools service not running | The app says so, with the command to start it | `scripts/start.sh` |
 | A model needs a license or isn't supported | One plain sentence, at step 2 | Choose another model |
 
 ### 4.6 Safety
 
-Local and single-user: the server listens on 127.0.0.1 only. The browser never sends a command line, only checked
+Local and single-user: the tools API listens on 127.0.0.1 only, and the app container's port is published on
+127.0.0.1 only. The browser never sends a command line, only checked
 fields (model name pattern, size between 1% and 60%, run id pattern). Keys and the Codex login stay on the server.
 
 ---
@@ -254,7 +256,7 @@ works everywhere; motion stops when the computer asks for less motion; light and
 | Evaluate | Two buttons on the run page, pressed by hand | A step of the story, run on its own after the run: unseen text, then question sets; its own progress and time | 3.13 |
 | Download | The plan file | The saved model (plus plan) | 3.14 (new) |
 | Job history | At the bottom of New run | Activity page: workflows and their steps | 3.12 |
-| Long-running work | Started and watched by the web app's server; an app restart loses track, an update can change a running run's instructions | A separate workflow service with releases (§4.1–4.3); the app only submits and reads | 3.11 |
+| Software boundary | The web server reads run folders, the hardware and the workflow store directly | Tools (native) offer the tools API; the app (container) uses only that API (§4.1) | 3.11 |
 | Look | Each part styled where it was first needed | The shared parts of §5.1 | 3.12 |
 
 Suggested order: **3.11** (the workflow service; updates stop being risky) → **3.12** (two stories, structure) → **3.10**, **3.13**, **3.14**.
