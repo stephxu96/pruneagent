@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { duration, durationRange, FINAL_CHECK_MIN, mb, modelName } from "./lib";
+import { duration, durationRange, checksMinutes, mb, modelName } from "./lib";
 
 // The confirmation before a real run: what it will do, how long, how much of the usage limits, and what to keep in
 // mind while it runs. Built on <dialog>, so Escape, focus and the backdrop behave as the browser's own.
@@ -32,6 +32,7 @@ export function StartDialog({ open, model, cut, originalMb, check, onStart, onCh
 
   const calls = check?.time ? Math.ceil(check.time.rounds[1]) : check?.usage?.calls;
   const blocked = check != null && !check.feasible;
+  const ck = checksMinutes(originalMb);
   return (
     <dialog ref={ref} className="start-dialog" onClose={onClose}
       onClick={(e) => { if (e.target === ref.current) onClose(); }}>
@@ -49,10 +50,11 @@ export function StartDialog({ open, model, cut, originalMb, check, onStart, onCh
           <dd>
             {check?.time ? (
               <>
-                {durationRange(check.time.minutes[0] + FINAL_CHECK_MIN, check.time.minutes[1] + FINAL_CHECK_MIN)}
+                {durationRange(check.time.minutes[0] + ck[0], check.time.minutes[1] + ck[1])}
                 {check.time.worst_minutes != null && (
-                  <span className="muted"> · up to {duration(check.time.worst_minutes + FINAL_CHECK_MIN)}</span>
+                  <span className="muted"> · up to {duration(check.time.worst_minutes + ck[1])}</span>
                 )}
+                <div className="muted">Pruning, then checks on unseen text and quiz questions ({durationRange(ck[0], ck[1])})</div>
               </>
             ) : <span className="muted">Known after the feasibility check</span>}
           </dd>
