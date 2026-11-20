@@ -9,6 +9,7 @@ const GAP = 7;
 const SQ = 5.5;
 const BAR_H = 120;
 const TOP = 18;
+const LEFT = 92; // row labels: what each row of a column is
 
 export function ModelMap({
   layers,
@@ -23,15 +24,19 @@ export function ModelMap({
   highlight?: string;
   caption?: string;
 }) {
-  const width = layers.length * (COL + GAP) - GAP + 8;
+  const width = LEFT + layers.length * (COL + GAP) - GAP + 8;
   const sqTop = TOP;
   const barTop = sqTop + 2 * (SQ + 1.5) + 8;
   const height = barTop + BAR_H + 22;
   return (
     <figure className="map">
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={caption ?? "The model's layers"}>
+        <text x={LEFT - 10} y={sqTop + SQ + 3} className="row-label" textAnchor="end">Attention units</text>
+        <text x={LEFT - 10} y={barTop + BAR_H / 2 - 4} className="row-label" textAnchor="end">Knowledge</text>
+        <text x={LEFT - 10} y={barTop + BAR_H / 2 + 9} className="row-label" textAnchor="end">part</text>
+        <text x={LEFT - 10} y={height - 6} className="row-label" textAnchor="end">Layer →</text>
         {layers.map((l, i) => {
-          const x = 4 + i * (COL + GAP);
+          const x = LEFT + 4 + i * (COL + GAP);
           const hot = changed.has(i);
           const share = l.dropped ? 0 : l.mlp / full.mlp;
           const fillH = BAR_H * share;
@@ -82,7 +87,7 @@ export function MapLegend() {
       <span><i className="sw part" /> Remaining parts</span>
       <span><i className="sw gone" /> Removed parts</span>
       <span><i className="sw hot" /> Latest change</span>
-      <span className="muted">Squares: attention units. Bar: the layer's knowledge part. Numbers: layers.</span>
+      <span className="muted">Each column is one layer.</span>
     </div>
   );
 }
