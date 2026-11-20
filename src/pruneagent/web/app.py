@@ -18,12 +18,17 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from pruneagent import models as MD
 from pruneagent import runstore as R
 from pruneagent.web import jobs as J
 from pruneagent.web import machine as M
 from pruneagent.web import views as V
 
 REPO = Path(__file__).resolve().parents[3]
+
+
+class PrepareModel(BaseModel):
+    model: str
 
 
 class NewRun(BaseModel):
@@ -38,7 +43,8 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunne
     root, repo = Path(root), Path(repo)
     curve = curve or repo / "results" / "flap_curve" / "qwen3-0.6b-base.json"
     root.mkdir(parents=True, exist_ok=True)
-    runner = runner or J.JobRunner(root / "web_jobs.sqlite", repo, root / "web_jobs")
+    runner = runner or J.JobRunner(root / "web_jobs.sqlite", repo, root / "web_jobs",
+                                   build=lambda kind, params: J.command(kind, params, known=MD.known(root)))
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -84,7 +90,29 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, runner: J.JobRunne
     @app.get("/api/machine")
     def this_machine() -> dict:
         """This computer's chip and memory, and each model's original size."""
-        return {"machine": M.machine(), "models": M.model_sizes(), "max_cut": J.MAX_CUT, "free_share": M.FREE_SHARE}
+        return {"machine": M.machine(), "models": M.model_sizes(MD.known(root)), "max_cut": J.MAX_CUT,
+                "free_share": M.FREE_SHARE}
+
+    # ---------------------------------------------------------------- bring your own model (FR17)
+
+    @app.get("/api/models/check")
+    def check_model(id: str) -> dict:
+        """Whether a Hugging Face model can be prepared and pruned here; reads its details, not its weights."""
+        try:
+            info = MD.check(id, M.machine()["memory_gb"])
+        except MD.ModelError as e:
+            return {"id": id, "ok": False, "reason": str(e)}
+        return {**info, "ok": True, "prepared": M.ready(id), "added": id in MD.known(root)}
+
+    @app.post("/api/models/prepare")
+    def prepare(req: PrepareModel) -> dict:
+        """Add the model to this computer's list and queue its preparation (resumes a stopped one)."""
+        try:
+            MD.check(req.model, M.machine()["memory_gb"])
+        except MD.ModelError as e:
+            raise HTTPException(422, str(e)) from None
+        MD.add(root, req.model)
+        return submit("prepare", {"model": req.model})
 
     @app.get("/api/machine/live")
     def machine_live() -> dict:

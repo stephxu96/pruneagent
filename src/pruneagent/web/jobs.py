@@ -22,7 +22,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-MODELS = ("Qwen/Qwen3-0.6B-Base", "Qwen/Qwen3-1.7B-Base")
+from pruneagent import models as MD
+
+MODELS = MD.BUILT_IN
 MAX_CUT = 0.6  # largest size cut the app offers; the run's own early warning says if it is reachable
 RUN_ID = re.compile(r"^[A-Za-z0-9._-]{1,120}$")
 GPU = ["scripts/mac_gpu.sh"]
@@ -39,12 +41,18 @@ def _run_id(run_id: str) -> str:
     return run_id
 
 
-def command(kind: str, params: dict) -> list[str]:
-    """The command line for one job. Only these kinds exist; every field is checked."""
+def command(kind: str, params: dict, known: tuple[str, ...] | list[str] = MODELS) -> list[str]:
+    """The command line for one job. Only these kinds exist; every field is checked. `known` is the models a run
+    may use (the built-in ones plus those the user added)."""
+    if kind == "prepare":
+        model = params.get("model", "")
+        if not MD.valid_id(model):
+            raise JobError("not a Hugging Face model name")
+        return [*GPU, "caffeinate", "-i", *UV, "pruneagent", "prepare", model]
     if kind in ("start", "precheck"):
         model = params.get("model", MODELS[0])
-        if model not in MODELS:
-            raise JobError(f"model must be one of {', '.join(MODELS)}")
+        if model not in known:
+            raise JobError(f"model must be one of {', '.join(known)}")
         try:
             cut = float(params["cut"])
         except (KeyError, TypeError, ValueError):
@@ -83,16 +91,42 @@ class Job:
 
     def public(self, tail: int = 4000) -> dict:
         try:
-            text = Path(self.log).read_text(errors="replace")[-tail:]
+            full = Path(self.log).read_text(errors="replace")
         except FileNotFoundError:
-            text = ""
+            full = ""
+        text = full[-tail:]
         out = {"id": self.id, "kind": self.kind, "run_id": self.run_id, "status": self.status,
                "params": json.loads(self.params) if self.params else {},
                "created": self.created, "started": self.started, "ended": self.ended,
                "exit_code": self.exit_code, "output": text, "result": None}
         if self.kind == "precheck" and self.status in ("done", "failed"):
             out["result"] = _last_json(text)
+        if self.kind == "prepare":
+            out["progress"] = prepare_progress(full)
         return out
+
+
+PREPARE_STEPS = 3
+_STEP = re.compile(r"Step (\d+) of (\d+): (.+)")
+_ENTRY = re.compile(r"\[(\d+)/(\d+)\]")
+
+
+def prepare_progress(text: str) -> dict:
+    """How far a model preparation is, from its output: the step (1 text, 2 scores and quick tests, 3 damage table)
+    and, in step 3, the damage-table entries measured. `share` is the whole job's share done (step 3 is most of
+    the time)."""
+    steps = _STEP.findall(text)
+    step = int(steps[-1][0]) if steps else 0
+    label = steps[-1][2].strip() if steps else "starting"
+    done = total = 0
+    if step == PREPARE_STEPS:
+        tail = text[text.rfind(f"Step {PREPARE_STEPS} of"):]
+        entries = _ENTRY.findall(tail)
+        if entries:
+            done, total = int(entries[-1][0]), int(entries[-1][1])
+    weight = {0: 0.0, 1: 0.0, 2: 0.03, 3: 0.1}[min(step, 3)]
+    share = weight + (0.9 * done / total if total else 0.0)
+    return {"step": step, "of": PREPARE_STEPS, "label": label, "done": done, "total": total, "share": min(share, 1.0)}
 
 
 def _last_json(text: str) -> dict | None:

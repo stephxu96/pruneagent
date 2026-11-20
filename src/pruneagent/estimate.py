@@ -196,6 +196,8 @@ class _Dims:
     tied: bool
     attention_bias: bool
     mlp_bias: bool
+    qk_norm: bool = True  # Qwen3 normalizes queries and keys per head; Llama, Mistral and Qwen2 do not
+    qkv_bias: bool = False  # Qwen2 has q/k/v biases (no o_proj bias) without an attention_bias setting
 
 
 def _dims(config) -> _Dims:
@@ -204,7 +206,9 @@ def _dims(config) -> _Dims:
     return _Dims(vocab=c["vocab_size"], hidden=c["hidden_size"], width=c["intermediate_size"], groups=groups,
                  heads_per_group=heads // groups, head_dim=c.get("head_dim") or c["hidden_size"] // heads,
                  tied=bool(c.get("tie_word_embeddings", False)), attention_bias=bool(c.get("attention_bias", False)),
-                 mlp_bias=bool(c.get("mlp_bias", False)))
+                 mlp_bias=bool(c.get("mlp_bias", False)),
+                 qk_norm=str(c.get("model_type", "qwen3")).startswith("qwen3"),
+                 qkv_bias=c.get("model_type") == "qwen2")
 
 
 def _layer_counts(d: _Dims, p: P.LayerPlan) -> tuple[int, int]:
@@ -212,11 +216,14 @@ def _layer_counts(d: _Dims, p: P.LayerPlan) -> tuple[int, int]:
     q = p["groups_keep"] * d.heads_per_group * d.head_dim
     kv, m, h = p["groups_keep"] * d.head_dim, p["mlp_keep"], d.hidden
     linear = h * q + 2 * h * kv + q * h + 3 * h * m
-    other = 2 * d.head_dim + 2 * h  # q_norm, k_norm, input and post-attention layer norms
+    other = 2 * h + (2 * d.head_dim if d.qk_norm else 0)  # input and post-attention layer norms (+ q_norm, k_norm)
     if d.attention_bias:
         other += q + 2 * kv + h
-    elif p["groups_keep"] < d.groups:
-        other += h  # o_proj compensation bias
+    else:
+        if d.qkv_bias:
+            other += q + 2 * kv
+        if p["groups_keep"] < d.groups:
+            other += h  # o_proj compensation bias
     if d.mlp_bias:
         other += 2 * m + h
     elif p["mlp_keep"] < d.width:
