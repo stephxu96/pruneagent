@@ -35,7 +35,7 @@ Open a round directly with `#/run/<run-id>/<round>`, e.g. `http://127.0.0.1:8125
 
 ### Your own model
 
-Any Qwen3, Qwen2, Llama or Mistral model from Hugging Face can be used. In the app, open **Your models**, type the
+Any Qwen3, Qwen2, Llama or Mistral model from Hugging Face can be used. In the app, open **Select your model**, type the
 model's name (e.g. `HuggingFaceTB/SmolLM2-360M`), and press **Check**: it says whether the model fits this computer
 and how long preparing it takes. **Prepare this model** then measures it once on this computer (its text, how much
 each part is used, and the quality cost of each cut); this can be paused and continued. From the command line:
