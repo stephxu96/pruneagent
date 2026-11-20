@@ -124,3 +124,14 @@ def test_a_step_that_ended_while_the_service_was_off_reports_its_own_exit_code(s
     fresh = W.Service(tmp_path, tmp_path / "runs", poll=0.05, gpu_wrap=[])
     out = run_until(fresh, wf.id, ("failed", "finished"))
     assert out.state == "failed" and out.steps[0]["exit_code"] == 3 and out.reason == "no space left"
+
+
+def test_a_step_that_cannot_start_fails_without_stopping_the_service(service, tmp_path, monkeypatch):
+    monkeypatch.setitem(W.WORKFLOWS, "nope", [W.StepDef("x", False, lambda c: [str(tmp_path / "missing-program")])])
+    service.gpu_wrap = []
+    wf = service.store.submit("nope", {}, release="abc")  # a release that was never built
+    service.step()
+    out = service.store.get(wf.id)
+    assert out.state == "failed" and "Release abc is missing" in out.reason
+    ok = service.store.submit("two", {})
+    assert run_until(service, ok.id, ("finished",)).state == "finished"

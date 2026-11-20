@@ -16,14 +16,16 @@ if [[ -n "$(git status --porcelain -- src scripts pyproject.toml uv.lock)" ]]; t
 fi
 sha="$(git rev-parse --short=12 HEAD)"
 rel="releases/$sha"
-if [[ -d "$rel" ]]; then
+if [[ -f "$rel/.ready" ]]; then
   echo "Release $sha already built"
 else
+  # built in place (an environment records its own path), and marked ready only when complete
   echo "Building release $sha"
-  rm -rf "$rel.partial" && mkdir -p "$rel.partial"
-  git archive HEAD | tar -x -C "$rel.partial"
-  (cd "$rel.partial" && uv sync --frozen --extra web --extra report --quiet)
-  mv "$rel.partial" "$rel"
+  rm -rf "$rel" && mkdir -p "$rel"
+  git archive HEAD | tar -x -C "$rel"
+  (cd "$rel" && uv sync --frozen --extra web --extra report --quiet)
+  "$rel/.venv/bin/pruneagent" version >/dev/null
+  touch "$rel/.ready"
 fi
 # point releases/current at it in one step (rename over the old link)
 python3 -c "import os, sys; os.symlink(sys.argv[1], 'releases/current.new'); os.replace('releases/current.new', 'releases/current')" "$sha"

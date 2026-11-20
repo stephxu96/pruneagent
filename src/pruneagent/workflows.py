@@ -181,9 +181,9 @@ def last_json(text: str) -> dict | None:
 
 
 def current_release(root: Path) -> str | None:
-    """The release new workflows use (`releases/current`), or None in development."""
+    """The release new workflows use (`releases/current`, when complete), or None in development."""
     link = Path(root) / RELEASES / CURRENT
-    return link.resolve().name if link.exists() else None
+    return link.resolve().name if (link / ".ready").exists() else None
 
 
 @dataclass
@@ -442,11 +442,21 @@ class Service:
         exit_file = Path(f"{log}.exit")
         exit_file.unlink(missing_ok=True)
         argv = ["/bin/bash", "-c", 'trap "true" INT; "$@"; c=$?; echo $c > "$0"; exit $c', str(exit_file), *argv]
+        release = self._tools(wf).release
+        if release is not None and not (release / ".ready").exists():
+            self.store.set_step(wf.id, idx, state="failed", log=str(log), attempts=attempts, ended=_now())
+            self.store.set(wf.id, state="failed", reason=f"Release {wf.release} is missing; run scripts/deploy.sh")
+            return
         with open(log, "a") as out:
             out.write(f"$ {' '.join(argv)}\n")
             out.flush()
-            proc = subprocess.Popen(argv, cwd=self.root, stdout=out, stderr=subprocess.STDOUT,
-                                    stdin=subprocess.DEVNULL, start_new_session=True)
+            try:
+                proc = subprocess.Popen(argv, cwd=self.root, stdout=out, stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL, start_new_session=True)
+            except OSError as e:  # one bad step never stops the service
+                self.store.set_step(wf.id, idx, state="failed", log=str(log), attempts=attempts, ended=_now())
+                self.store.set(wf.id, state="failed", reason=f"Could not start: {e}")
+                return
         self._procs[(wf.id, idx)] = proc
         self.store.set_step(wf.id, idx, state="running", pid=proc.pid, started=_now(), ended=None, exit_code=None,
                             log=str(log), attempts=attempts)
@@ -460,8 +470,13 @@ class Service:
 
     def serve(self) -> None:
         signal.signal(signal.SIGTERM, lambda *_: self._stop.set())
+        import traceback
+
         while not self._stop.is_set():
-            self.step()
+            try:
+                self.step()
+            except Exception:  # noqa: BLE001  a bad pass is logged; the service keeps running
+                traceback.print_exc()
             self._stop.wait(self.poll)
 
     def stop(self) -> None:
