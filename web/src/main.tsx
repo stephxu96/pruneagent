@@ -38,7 +38,25 @@ function ServiceNotice() {
   );
 }
 
+// The deployed app updates itself: every few seconds it asks for the page and, when a new version has been deployed
+// (the page names a different script), reloads, except while a popup is open or a field is being typed in.
+function useNewVersionReload() {
+  useEffect(() => {
+    const mine = document.querySelector<HTMLScriptElement>('script[src*="/assets/index-"]')?.src.split("/").pop();
+    if (!mine) return; // the development server (hot reload of its own)
+    const look = () =>
+      fetch("/", { cache: "no-store" }).then((r) => r.text()).then((html) => {
+        const now = html.match(/\/assets\/(index-[^"]+\.js)/)?.[1];
+        const busy = document.querySelector("dialog[open]") || ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName ?? "");
+        if (now && now !== mine && !busy) window.location.reload();
+      }).catch(() => undefined);
+    const t = setInterval(look, 5000);
+    return () => clearInterval(t);
+  }, []);
+}
+
 function App() {
+  useNewVersionReload();
   const hash = useHash();
   const run = hash.match(/^#\/run\/([\w.-]+)(?:\/(\d+))?/);
   let page;
