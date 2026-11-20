@@ -197,12 +197,17 @@ def compare(root: Path, curve_file: Path) -> dict:
     for s in list_runs(root):
         if not s["has_heldout"]:
             continue
-        held = run_results(root, s["id"])["heldout"]
+        res = run_results(root, s["id"])
+        held, acc = res["heldout"], res["accuracy"] or {}
+        quiz = {k: acc[name]["all_questions"]["acc"] for k, name in
+                (("agent", "agent"), ("flap", "Baseline: FLAP"), ("original", "unpruned")) if name in acc}
         runs.append({"id": s["id"], "model": s["model"], "cut": s["cut"],
                      "agent": held.get("agent"), "flap": held.get("Baseline: FLAP"),
-                     "original": held.get("unpruned")})
+                     "original": held.get("unpruned"), "quiz": quiz or None})
     curve = _read_json(curve_file)
     flap_curve = [] if not curve else sorted(
         ({"cut": v["memory_cut"], "test_error": v["test_ppl"]} for v in curve["results"].values()),
         key=lambda p: p["cut"])
-    return {"runs": sorted(runs, key=lambda r: r["cut"] or 0), "flap_curve": flap_curve}
+    # the curve is measured on one model; the chart puts only that model's runs next to it
+    return {"runs": sorted(runs, key=lambda r: (r["model"], r["cut"] or 0)), "flap_curve": flap_curve,
+            "curve_model": curve.get("model") if curve else None}

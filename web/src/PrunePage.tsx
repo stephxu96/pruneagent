@@ -42,14 +42,14 @@ export function PrunePage() {
 
   return (
     <div className="prune-page">
-      <a href="#/" className="back">← All runs</a>
+      <a href="#/" className="back">← Past runs</a>
       <h1>Prune a model</h1>
       <StepBar steps={STEPS} at={asking ? 4 : step} />
 
       <section className="wizard">
         {step === 1 && (
           <div className="choose-step">
-            <span className="m-label">Your models</span>
+            <span className="m-label">Ready to prune</span>
             {ready.length === 0 && <p className="muted">No models set up yet.</p>}
             <div className="model-picks">
               {ready.map((x) => (

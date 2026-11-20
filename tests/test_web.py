@@ -45,7 +45,7 @@ def test_runs_detail_and_results_come_from_the_run_files(finished_run, tmp_path)
     res = api.get("/api/runs/r1/results").json()
     assert res["heldout"]["agent"]["test_error"] == 12.0 and res["accuracy"] is None
     comp = api.get("/api/compare").json()
-    assert comp["runs"][0]["flap"]["test_error"] == 15.0
+    assert comp["runs"][0]["flap"]["test_error"] == 15.0 and comp["runs"][0]["quiz"] is None
     assert api.get("/api/runs/nope").status_code == 404
     assert api.get("/api/runs/..%2Fetc").status_code == 404
 

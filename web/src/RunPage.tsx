@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import { MapLegend, ModelMap } from "./ModelMap";
 import { Neurons3D } from "./Neurons3D";
 import { PathChart } from "./PathChart";
@@ -16,7 +16,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   const [playing, setPlaying] = useState(false);
   const [showFlap, setShowFlap] = useState(false);
   const [follow, setFollow] = useState(true);
-  const [threeD, setThreeD] = useState(true);
+  const [threeD, setThreeD] = useState(CAN_3D);
 
   const [pending, setPending] = useState<Job | null>(null); // requested, but the run hasn't started yet
   const load = () =>
@@ -80,7 +80,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   if (pending && !run) {
     return (
       <div className="run">
-        <a href="#/" className="back">← All runs</a>
+        <a href="#/" className="back">← Past runs</a>
         <h1>{modelName(pending.params.model ?? "")}{pending.params.cut != null ? `, ${pct(pending.params.cut)} smaller` : ""}</h1>
         <p className="status">
           <span className={`badge ${pending.status === "failed" ? "failed" : ""}`}>
@@ -104,7 +104,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   return (
     <div className="run">
       <header className="run-head">
-        <a href="#/" className="back">← All runs</a>
+        <a href="#/" className="back">← Past runs</a>
         <h1>
           Making {modelName(run.model)} {run.cut != null ? pct(run.cut) : ""} smaller
         </h1>
@@ -173,17 +173,19 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
           )}
         </div>
 
-        <div className="view-toggle" role="group" aria-label="View">
-          <button className={threeD ? "on" : ""} onClick={() => setThreeD(true)}>3D neurons</button>
-          <button className={threeD ? "" : "on"} onClick={() => setThreeD(false)}>Flat</button>
-        </div>
+        {CAN_3D && (
+          <div className="view-toggle" role="group" aria-label="View">
+            <button className={threeD ? "on" : ""} onClick={() => setThreeD(true)}>3D neurons</button>
+            <button className={threeD ? "" : "on"} onClick={() => setThreeD(false)}>Flat</button>
+          </div>
+        )}
         {threeD ? (
-          <Neurons3D
+          <Fallback onError={() => setThreeD(false)}><Neurons3D
             layers={showFlap && run.flap ? run.flap.layers : step.layers}
             prev={showFlap ? undefined : prev?.layers}
             full={{ mlp: run.shape.mlp_full, groups: run.shape.groups_full }}
             caption={showFlap ? "What the standard method (FLAP) cuts to reach the same size." : undefined}
-          />
+          /></Fallback>
         ) : (
           <>
             <ModelMap
@@ -290,6 +292,29 @@ export function ResultBars({ held }: { held: NonNullable<Results["heldout"]> }) 
       <p className="note">Quality lost compared with the original model; shorter is better. Both models are the same size.</p>
     </div>
   );
+}
+
+// The 3D view needs WebGL; without it (some browsers, remote desktops) the page shows the flat map instead.
+const CAN_3D = (() => {
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") ?? c.getContext("webgl"));
+  } catch {
+    return false;
+  }
+})();
+
+class Fallback extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onError();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
 }
 
 const STAGES = [
