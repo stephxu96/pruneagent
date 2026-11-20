@@ -774,11 +774,12 @@
       ],
       "done_when": "A running run shows its progress at a glance, updated live",
       "gpu": "—",
-      "status": "todo",
+      "status": "done",
       "notes": [
         "[2026-11-19 21:34] Requested by Steph; queued after 3.9.",
         "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed.",
-        "[2026-11-19 22:40] After 3.11 and 3.12 (docs/APP_DESIGN.md §6)."
+        "[2026-11-19 22:40] After 3.11 and 3.12 (docs/APP_DESIGN.md §6).",
+        "[2026-11-20 00:25] Done: progress panel at the top of an active run (stages, size against target, quality so far, rounds, time left, pause/continue); tests started on their own show their stage and time left from their progress line."
       ]
     },
     {
@@ -814,9 +815,10 @@
       ],
       "done_when": "Both stories work end to end in the browser; no size slider or check button; interface tests pass",
       "gpu": "—",
-      "status": "todo",
+      "status": "done",
       "notes": [
-        "[2026-11-19 22:40] From the app design review."
+        "[2026-11-19 22:40] From the app design review.",
+        "[2026-11-20 00:25] Done: two stories (Models for setup, Prune a model for pruning), size from the device with the check run on its own, Runs home with work under way, Activity page, setup in two parts (load the model as its own step, then generate assets), one shared step bar. Not done: a full restyle of every part to §5.1 (each part already looks the same across pages)."
       ]
     },
     {
