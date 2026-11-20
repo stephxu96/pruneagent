@@ -36,7 +36,7 @@ sparse_logs/
 .claude/worktrees/
 
 # web app (task 3.6)
-web/node_modules/
+web/node_modules
 web/*.tsbuildinfo
 
 # releases made by scripts/deploy.sh; interface builds being swapped in
