@@ -792,13 +792,14 @@
       ],
       "done_when": "Restarting or updating the web app during a run changes nothing in the run; a workflow continues after the service restarts; a new release doesn't change a running workflow",
       "gpu": "—",
-      "status": "doing",
+      "status": "done",
       "notes": [
         "[2026-11-19 21:45] Raised by Steph: deploying should not depend on whether a run is going. Today the run re-reads instruction files every round and a restart marks running jobs 'Interrupted'.",
         "[2026-11-19 21:55] On hold until docs/APP_DESIGN.md is reviewed.",
         "[2026-11-19 22:05] Steph: long-running work must be a background workflow, separate from the app; deployment must not affect it. Design in docs/APP_DESIGN.md §4.1-4.3. On hold until the design is reviewed.",
         "[2026-11-19 22:40] Design accepted; building it now (feature work resumes).",
-        "[2026-11-19 23:55] Built and live in main. Steph: proper software boundary between the user app and the command-line tools; containers for the app (a container can't use the Mac GPU, so the tools stay native). Checked end to end: browser → app → tools API → workflow runner → release b7b46…. macOS launch agents dropped (blocked by Documents privacy). Left: build and run the app container, once Docker is installed (not on this Mac yet); until then start.sh runs the app natively."
+        "[2026-11-19 23:55] Built and live in main. Steph: proper software boundary between the user app and the command-line tools; containers for the app (a container can't use the Mac GPU, so the tools stay native). Checked end to end: browser → app → tools API → workflow runner → release b7b46…. macOS launch agents dropped (blocked by Documents privacy). Left: build and run the app container, once Docker is installed (not on this Mac yet); until then start.sh runs the app natively.",
+        "[2026-11-20 00:10] App container built and running (pruneagent-app, 244 MB, no PyTorch or data), reaching the native tools API at host.docker.internal:8124; scripts/start.sh does both. Restart/update safety checked by tests (re-attach, own exit codes, releases); the next live run confirms it in practice."
       ]
     },
     {
