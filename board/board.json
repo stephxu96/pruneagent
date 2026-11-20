@@ -820,16 +820,17 @@
       "id": "3.13",
       "type": "task",
       "phase": 3,
-      "title": "Final check runs on its own as the pruning workflow's second step",
+      "title": "Evaluate as a step of the pruning story: unseen-text test and question sets run on their own after the run, with progress, time in the estimate, and results against the original and FLAP",
       "owner": "Coding agent",
       "deps": [
         "3.11"
       ],
-      "done_when": "A run that meets its target gets heldout.json and accuracy.json with no click",
+      "done_when": "A run that meets its target gets heldout.json and accuracy.json with no click; the run page shows the evaluation's progress, then its results",
       "gpu": "M4",
       "status": "todo",
       "notes": [
-        "[2026-11-19 22:40] From the app design review (open question 1: recommended yes)."
+        "[2026-11-19 22:40] From the app design review (open question 1: recommended yes).",
+        "[2026-11-19 22:55] Steph: evaluate is part of the UI user flow. Workflow side done in 3.11 (pruning = run → unseen-text test → question sets); page and time estimate left."
       ]
     },
     {

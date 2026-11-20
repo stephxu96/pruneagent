@@ -55,7 +55,7 @@ flowchart LR
         S1[Name the model] --> S2[Check] --> S3[Set up:<br/>load the model,<br/>generate assets] --> S4[Ready]
     end
     subgraph Pruning[Model pruning: once per device]
-        P1[Select your model] --> P2[Where it runs] --> P3[The answer:<br/>size, quality,<br/>time, usage] --> P4[Start] --> P5[Watch] --> P6[Your model]
+        P1[Select your model] --> P2[Where it runs] --> P3[The answer:<br/>size, quality,<br/>time, usage] --> P4[Start] --> P5[Watch] --> P6[Evaluate] --> P7[Your model]
     end
     S4 -. appears in .-> P1
     P1 -. not set up yet .-> S1
@@ -85,7 +85,8 @@ Setup ends at "ready". Pruning is a separate story that can start right away or 
 | **3 The answer** | "To fit, it must be 20% smaller. Expect about 1.7–1.9× worse than the original; the standard method would be 13× worse. About 1 h 15 min–1 h 35 min. Uses about 14% of your 5-hour limit." | Go ahead, or change the device | Picks the size from the device (with a buffer) and runs the feasibility check, both on its own. No size to choose, no check button | Can't fit: why, and what would |
 | **4 Start** | A confirmation: model, device, size, time, usage; "keep the lid open" | Start or cancel | Queues the run, then the final check | Mac busy with another job: "waits for the Mac to be free" |
 | **5 Watch** | Progress at a glance: size against target, quality so far, time left; the round-by-round story below | Pause, continue | Streams each round as it lands | Lid closed, usage limit, crash: "Paused" or "Interrupted" with the reason and Continue |
-| **6 Your model** | Fits ✓; quality against the original and FLAP; memory requirement; speed; download | — | Shows the final check; builds the saved model | Target missed: the closest result and the gap |
+| **6 Evaluate** | Two tests, each with progress: **unseen text** (how well it predicts text it never saw) and **question sets** (how many quiz questions it gets right), each for the smaller model, the original and FLAP at the same size | — | Runs both tests on its own after the run | A test fails: which one and why; Continue runs it again |
+| **7 Your model** | Fits ✓; quality against the original and FLAP on both tests (questions: one weighted score, then each set); memory requirement; speed; download | — | Shows the evaluation; builds the saved model | Target missed: the closest result and the gap |
 
 The expected-quality range in step 3 comes from past runs at that model and size; with none yet, it says so.
 
@@ -93,8 +94,9 @@ The expected-quality range in step 3 comes from past runs at that model and size
 
 - **The user never chooses a percentage.** The size follows from the device. Today she picks "How much smaller?" on a
   slider and presses "Feasibility check".
-- **The final check runs on its own** after every run. Today's time estimate already counts its 20 minutes, but the
-  user has to start it by hand, so a run never reaches "Your model" unless she knows to.
+- **Evaluation is a step of the story,** run on its own after every run: the unseen-text test and the question sets.
+  Today both are buttons on the run page that the user has to know to press, and the time estimate counts only the
+  first.
 - **Download gives the model,** not only the plan file, which works only with this tool (FR12: safetensors plus plan).
 - **Setup and pruning are separate.** Today the model page mixes them ("Make it smaller →" at the end of setup,
   "isn't prepared yet" inside New run).
@@ -105,7 +107,7 @@ The expected-quality range in step 3 comes from past runs at that model and size
 |---|---|---|---|---|
 | **Runs** (home) | `#/` | Pruning | Active runs first, each with a progress bar; then finished runs; one main button: "Prune a model" | Run cards plus the "Your computer" panel |
 | **Prune a model** | `#/new` | Pruning, steps 1–4 | Step bar: Select your model → Where it runs → The answer → Start | Split between the home panel and New run |
-| **Run** | `#/run/<id>` | Pruning, steps 5–6 | While running: the progress view. When finished: the result and download. Below both: "How it got there", the round-by-round replay | The replay, with results under it |
+| **Run** | `#/run/<id>` | Pruning, steps 5–7 | While running: the progress view, then the evaluation's progress. When finished: the result and download. Below both: "How it got there", the round-by-round replay | The replay, with results under it |
 | **Models** | `#/models` | Setup | The models on this computer (ready, setting up, paused) and "Set up a model", which opens the setup steps | "Select your model", which mixed both stories |
 | **Compare** | `#/compare` | — | Every finished run against FLAP across sizes (researchers, demo) | Same |
 | **Activity** | `#/activity` | — | Every workflow and its steps, with outcome and system logs | The History list on New run |
@@ -157,7 +159,7 @@ and each step saves its result before the next starts, so a workflow can stop af
 | Workflow | Steps | Uses the GPU |
 |---|---|---|
 | **Model setup** | Load the model → sample text → part usage (scores, quick tests) → cut tests (damage table) | Yes, except loading |
-| **Model pruning** | Run (`pruneagent run`, rounds until the target) → final check (held-out, question sets) → build the download (`pruneagent save`) | Yes, except the download |
+| **Model pruning** | Run (`pruneagent run`, rounds until the target) → evaluate: unseen-text test (`heldout_check.py`), question sets (`accuracy_check.py`) → build the download (`pruneagent save`) | Yes, except the download |
 | **Feasibility check** | One step: `pruneagent run --dry-run --json-result` | No; answered in about half a minute, so it can also run straight from the app |
 
 **States:** waiting → running → finished; or paused (by the user, a usage limit or sleep), with the reason, and
@@ -249,7 +251,7 @@ works everywhere; motion stops when the computer asks for less motion; light and
 | Home | Run cards plus the computer panel | Runs, active first with progress; the computer panel becomes "Where it runs" | 3.12 |
 | Setup wording | "Prepare this model", "Preparing … for pruning"; `pruneagent prepare` | "Set up this model"; two parts: load the model, generate assets; `pruneagent setup` | 3.12 |
 | Active run | Replay controls only | A progress view at the top (§2.2 step 5) | 3.10 |
-| Final check | Started by hand on the run page | Queued on its own when a run meets its target | 3.13 (new) |
+| Evaluate | Two buttons on the run page, pressed by hand | A step of the story, run on its own after the run: unseen text, then question sets; its own progress and time | 3.13 |
 | Download | The plan file | The saved model (plus plan) | 3.14 (new) |
 | Job history | At the bottom of New run | Activity page: workflows and their steps | 3.12 |
 | Long-running work | Started and watched by the web app's server; an app restart loses track, an update can change a running run's instructions | A separate workflow service with releases (§4.1–4.3); the app only submits and reads | 3.11 |
@@ -261,6 +263,4 @@ Suggested order: **3.11** (the workflow service; updates stop being risky) → *
 
 ## 7. Questions for Steph
 
-1. **Final check on its own** after every run (adds about 20 minutes of Mac time per run, already in the time
-   shown)? Recommended: yes.
-2. **Compare page:** visible to everyone, or only from a link on finished runs?
+1. **Compare page:** visible to everyone, or only from a link on finished runs?
