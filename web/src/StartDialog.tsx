@@ -4,12 +4,15 @@ import { checksMinutes, duration, durationRange, mb, modelName, SEARCHES } from 
 // The confirmation before a real run: what it will do, how long, how much of the usage limits, and what to keep in
 // mind while it runs. Built on <dialog>, so Escape, focus and the backdrop behave as the browser's own.
 
+type Time = { minutes: [number, number]; rounds: [number, number]; worst_minutes?: number; max_rounds?: number };
+
 export type CheckResult = {
   feasible: boolean;
   stop_reason: string | null;
   limit_mb: number;
   usage: { windows?: { name: string; pct_per_call: number }[]; calls: number } | null;
-  time?: { minutes: [number, number]; rounds: [number, number]; worst_minutes?: number; max_rounds?: number } | null;
+  time?: Time | null;
+  time_by_search?: Record<string, Time | null>; // every strategy's estimate (checks from before have only `time`)
 };
 
 export function StartDialog({ open, model, cut, originalMb, check, search, onSearch, onStart, onCheck, onClose }: {
@@ -32,7 +35,8 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
     if (!open && d.open) d.close();
   }, [open]);
 
-  const calls = check?.time ? Math.ceil(check.time.rounds[1]) : check?.usage?.calls;
+  const time = check?.time_by_search?.[search] ?? check?.time; // the chosen strategy's estimate
+  const calls = time ? Math.ceil(time.rounds[1]) : check?.usage?.calls;
   const blocked = check != null && !check.feasible;
   const ck = checksMinutes(originalMb);
   return (
@@ -61,11 +65,11 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
           </dd>
           <dt>Time</dt>
           <dd>
-            {check?.time ? (
+            {time ? (
               <>
-                {durationRange(check.time.minutes[0] + ck[0], check.time.minutes[1] + ck[1])}
-                {check.time.worst_minutes != null && check.time.worst_minutes > check.time.minutes[1] + 1 && (
-                  <span className="muted"> · up to {duration(check.time.worst_minutes + ck[1])}</span>
+                {durationRange(time.minutes[0] + ck[0], time.minutes[1] + ck[1])}
+                {time.worst_minutes != null && time.worst_minutes > time.minutes[1] + 1 && (
+                  <span className="muted"> · up to {duration(time.worst_minutes + ck[1])}</span>
                 )}
               </>
             ) : <span className="muted">Known after the feasibility check</span>}
