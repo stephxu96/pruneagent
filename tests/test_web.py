@@ -202,7 +202,7 @@ def test_the_smaller_model_is_built_zipped_and_downloaded(finished_run, tmp_path
 
     from pruneagent.cli import app as cli
 
-    api, store = client(finished_run, tmp_path)
+    api, _ = client(finished_run, tmp_path)
     assert api.get("/api/runs/r1/download/model").status_code == 404  # not built yet
     assert api.get("/api/runs/r1/download/plan").status_code == 200
     job = api.post("/api/runs/r1/save").json()
