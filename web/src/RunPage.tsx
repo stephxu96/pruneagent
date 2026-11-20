@@ -100,8 +100,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   const needed = orig - run.limit_mb;
   const savedNow = orig - step.size_mb;
   const progress = Math.min(1, savedNow / needed);
-  const held = results?.heldout;
-
+  
   return (
     <div className="run">
       <header className="run-head">
@@ -236,14 +235,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         <PathChart run={run} upTo={at} />
       </section>
 
-      {held && (
-        <section>
-          <h2>Unseen-text test</h2>
-          <p className="muted">Both models, same size, on text neither saw during the run.</p>
-          <ResultBars held={held} />
-          {results?.accuracy && <QuizLine acc={results.accuracy} />}
-        </section>
-      )}
+      {run.state === "finished" && <Evaluation runId={id} results={results} onResults={setResults} />}
     </div>
   );
 }
@@ -297,14 +289,128 @@ export function ResultBars({ held }: { held: NonNullable<Results["heldout"]> }) 
   );
 }
 
-function QuizLine({ acc }: { acc: NonNullable<Results["accuracy"]> }) {
-  const a = acc.agent?.all_questions;
-  const f = acc["Baseline: FLAP"]?.all_questions;
-  if (!a || !f) return null;
+const SET_NAMES: Record<string, [string, string]> = {
+  hellaswag: ["HellaSwag", "the most sensible ending for an everyday situation"],
+  boolq: ["BoolQ", "yes/no questions about a passage"],
+  arc_easy: ["ARC-Easy", "grade-school science"],
+  winogrande: ["WinoGrande", "who “he” or “it” refers to"],
+  arc_challenge: ["ARC-Challenge", "harder grade-school science"],
+  openbookqa: ["OpenBookQA", "science facts plus common sense"],
+  rte: ["RTE", "does one sentence imply another"],
+};
+
+type EvalState = "done" | "running" | "waiting" | "failed" | "none";
+
+/** Evaluation, the step after the run (docs/APP_DESIGN.md §2.2): the unseen-text test (perplexity) and the quiz
+ * questions (accuracy), each against the original model and the standard method at the same size. */
+function Evaluation({ runId, results, onResults }: {
+  runId: string;
+  results: Results | null;
+  onResults: (r: Results) => void;
+}) {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const refresh = () => {
+    api<Job[]>("/api/jobs").then(setJobs).catch(() => undefined);
+    api<Results>(`/api/runs/${runId}/results`).then(onResults).catch(() => undefined);
+  };
+  useEffect(() => {
+    api<Job[]>("/api/jobs").then(setJobs).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId]);
+  const stateOf = (kind: "heldout" | "accuracy", done: boolean): EvalState => {
+    if (done) return "done";
+    // a check of its own, or the matching step of this run's pruning workflow
+    const j = jobs.find((x) => x.run_id === runId && (x.kind === kind
+      || ((x.kind === "start" || x.kind === "resume") && x.steps?.some((st) => st.name === kind && st.state !== "done"))));
+    if (!j) return "none";
+    if (j.status === "running" && (j.kind === kind || j.steps?.[j.step ?? 0]?.name === kind)) return "running";
+    if (j.status === "queued" || j.status === "running") return "waiting";
+    if (j.status === "failed") return "failed";
+    return "none";
+  };
+  const text = stateOf("heldout", !!results?.heldout);
+  const quiz = stateOf("accuracy", !!results?.accuracy);
+  const busy = [text, quiz].some((x) => x === "running" || x === "waiting");
+  useEffect(() => {
+    if (!busy) return;
+    const t = setInterval(refresh, 5000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, runId]);
+  const start = (kind: string) => api(`/api/runs/${runId}/checks/${kind}`, { method: "POST" }).then(refresh).catch(() => undefined);
   return (
-    <p className="quiz">
-      Quiz questions ({a.questions.toLocaleString()}): PruneAgent got <b>{pct(a.acc, 1)}</b> right, the standard method{" "}
-      <b>{pct(f.acc, 1)}</b>.
-    </p>
+    <section className="evaluation">
+      <h2>Evaluation</h2>
+      <p className="muted">Two tests of the finished model, each against the original and the standard method (FLAP) at the same size.</p>
+      <div className="eval-grid">
+        <EvalCard title="Unseen-text test" what="How well it predicts text it never saw (perplexity)" state={text} onRun={() => start("heldout")}>
+          {results?.heldout && <ResultBars held={results.heldout} />}
+        </EvalCard>
+        <EvalCard title="Quiz questions" what="How many of 18,904 multiple-choice questions it gets right (accuracy)" state={quiz} onRun={() => start("accuracy")}>
+          {results?.accuracy && <QuizResult acc={results.accuracy} />}
+        </EvalCard>
+      </div>
+    </section>
+  );
+}
+
+function EvalCard({ title, what, state, onRun, children }: {
+  title: string;
+  what: string;
+  state: EvalState;
+  onRun: () => void;
+  children: React.ReactNode;
+}) {
+  const badge = { done: ["done", "Done ✓"], running: ["running", "Running"], waiting: ["", "Waiting for the Mac"],
+                  failed: ["failed", "Didn't finish"], none: ["", "Not run"] }[state];
+  return (
+    <div className="eval-card">
+      <div className="eval-head">
+        <div>
+          <div className="eval-title">{title}</div>
+          <div className="muted">{what}</div>
+        </div>
+        <span className={`badge ${badge[0]}`}>{badge[1]}</span>
+      </div>
+      {state === "done" ? children
+        : state === "running" ? <p className="muted">Testing the original, this model and the standard method in turn. This page updates on its own.</p>
+        : state === "waiting" ? <p className="muted">Starts when the Mac is free.</p>
+        : <button className="secondary" onClick={onRun}>{state === "failed" ? "Run it again" : "Run it"}</button>}
+    </div>
+  );
+}
+
+function QuizResult({ acc }: { acc: NonNullable<Results["accuracy"]> }) {
+  const rows = [
+    { name: "Original", cls: "orig", r: acc.unpruned },
+    { name: "PruneAgent", cls: "agent", r: acc.agent },
+    { name: "Standard method (FLAP)", cls: "flap", r: acc["Baseline: FLAP"] },
+  ].filter((x) => x.r?.all_questions);
+  const sets = Object.keys(acc.agent?.sets ?? {});
+  return (
+    <div className="bars">
+      {rows.map((x) => (
+        <div key={x.name} className="bar-row">
+          <span className="bar-name">{x.name}</span>
+          <span className="bar-track"><span className={`bar-fill ${x.cls}`} style={{ width: `${x.r!.all_questions.acc * 100}%` }} /></span>
+          <span className="bar-val">{pct(x.r!.all_questions.acc, 1)} right</span>
+        </div>
+      ))}
+      <p className="note">Share of all questions answered right, each set counted by its number of questions; longer is better.</p>
+      <details className="sets">
+        <summary>Each question set</summary>
+        <table>
+          <thead><tr><th>Set</th>{rows.map((x) => <th key={x.name}>{x.name}</th>)}</tr></thead>
+          <tbody>
+            {sets.map((k) => (
+              <tr key={k}>
+                <td><b>{SET_NAMES[k]?.[0] ?? k}</b> <span className="muted">{SET_NAMES[k]?.[1] ?? ""}</span></td>
+                {rows.map((x) => <td key={x.name}>{x.r!.sets[k] ? pct(x.r!.sets[k].acc, 1) : "—"}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+    </div>
   );
 }
