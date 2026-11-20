@@ -385,12 +385,20 @@ def past_rates(root: Path | str, model_id: str) -> list[dict]:
     return out
 
 
-def time_estimate(rates: list[dict], to_free_mb: float, max_rounds: int) -> dict | None:
+def time_estimate(rates: list[dict], to_free_mb: float, max_rounds: int, sweep_layers: int | None = None) -> dict | None:
     """How long a new run will take. `minutes` is the usual range (fastest and slowest past pace per MB cut);
     `worst_minutes` is the round cap at the slowest past pace per round, which a run reaches when it undoes its own
-    work or stalls near the limit. Both are capped by the round cap."""
+    work or stalls near the limit. Both are capped by the round cap.
+
+    A sweep (search.py) has exactly one round per layer (`sweep_layers`), so its range is that many rounds at the
+    fastest and slowest past pace per round."""
     if not rates:
         return None
+    if sweep_layers:
+        paces = [r["minutes_per_round"] for r in rates]
+        return {"minutes": [min(paces) * sweep_layers, max(paces) * sweep_layers],
+                "rounds": [sweep_layers, sweep_layers], "worst_minutes": max(paces) * sweep_layers,
+                "max_rounds": sweep_layers, "based_on_runs": len(rates)}
     per_round = max(r["minutes_per_round"] for r in rates)
     worst = max_rounds * per_round
     return {"minutes": [min(min(r["minutes_per_mb"] for r in rates) * to_free_mb, worst),
@@ -401,6 +409,13 @@ def time_estimate(rates: list[dict], to_free_mb: float, max_rounds: int) -> dict
 
 
 RECENT_ROUNDS = 10
+
+
+def _sweep_layers(cfg, kept) -> int | None:
+    """The number of layers when the run is a sweep (search.py: one round per layer), else None."""
+    from pruneagent.search import get
+
+    return len(kept[0].plan) if kept and get(cfg.search).order == "sweep" else None
 
 
 def time_left(store: RunStore, rates: list[dict]) -> dict | None:
@@ -415,6 +430,12 @@ def time_left(store: RunStore, rates: list[dict]) -> dict | None:
     left_mb = max(0.0, kept[-1].weight_bytes / 1e6 - limit_mb)
     recent = log[-RECENT_ROUNDS:]
     per_round = sum(r.llm_seconds + r.gpu_seconds for r in recent) / 60 / len(recent)
+    sweep = _sweep_layers(cfg, kept)
+    if sweep:  # one round per layer: what's left is the layers not yet decided
+        decided = sum(r.outcome in ("ACCEPT", "ROLLBACK", "LEFT") for r in log)
+        rounds_left = max(0, sweep - decided)
+        return {"minutes": [rounds_left * per_round, rounds_left * per_round], "worst_minutes": rounds_left * per_round,
+                "rounds_left": rounds_left, "mb_left": left_mb}
     rounds_left = max(0, cfg.rules.max_rounds - len(log))
     cap = rounds_left * per_round
     cut_mb = (kept[0].weight_bytes - kept[-1].weight_bytes) / 1e6

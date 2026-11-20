@@ -3,8 +3,9 @@ several-layers runs is unchanged, and everything after a candidate (evaluation, 
 
 
 import itertools
+import re
 
-from test_graph import CFG, outcomes, run_config, setup
+from test_graph import CFG, DENSE, NARROW, outcomes, run_config, setup
 from test_instructions import prompts_of, v1_reply
 
 from pruneagent import graph as G
@@ -19,7 +20,7 @@ ORIGINAL = ("Each candidate is a list\nof (layer, method) choices, applied toget
 def test_strategy_sets_its_rules_unless_the_run_sets_them():
     assert run_config().rules.max_layers_per_candidate is None and run_config().search == "multi_layer"
     lbl = run_config(search="layer_by_layer").rules
-    assert lbl.max_layers_per_candidate == 1 and lbl.max_same_steps == 4
+    assert lbl.max_layers_per_candidate == 1 and lbl.max_same_steps == 7
     assert run_config(search="layer_by_layer", rules=Rules(max_same_steps=3)).rules.max_same_steps == 3
     # a saved run reads back the same rules
     cfg = run_config(search="layer_by_layer")
@@ -43,24 +44,60 @@ def test_prompt_states_the_strategy(tmp_path):
     policy = lambda n, p: v1_reply([((n - 1) % 4, "narrow_mlp")])
     _, multi = prompts_of(tmp_path / "m", policy, max_agent_calls=2)
     _, single = prompts_of(tmp_path / "s", policy, max_agent_calls=2, search="layer_by_layer")
-    assert ORIGINAL in multi[0] and "names the same layer" not in multi[0]
+    assert ORIGINAL in multi[0] and "This round:" not in multi[0]
     flat = " ".join(single[0].split())
     assert S.get("layer_by_layer").candidate_rule in flat and "Every choice in one candidate names the same layer." in flat
-    assert "at most four times" in flat or "at most 4" in flat
+    assert "This round: layer 0 (layer 1 of 4, first to last)" in flat
+    assert "- narrow_mlp: 1 to" in single[0] and "- or no candidates: the layer stays as it is" in single[0]
+    assert "This round: layer 1 (layer 2 of 4" in " ".join(single[1].split())  # the next round, the next layer
+    # nothing in a sweep's prompt offers going back, or a round count it doesn't use
+    assert "return to an earlier kept plan" not in flat and "rollback_to" not in flat
+    assert 'To leave the layer as it is, answer {"candidates": []}.' in single[0] and "You have 4 rounds left." in flat
 
 
-def test_layer_by_layer_run_changes_one_layer_per_kept_step(tmp_path):
-    # rounds 1-3: two one-layer ideas, each on its own layer; the gate keeps one of them, so one layer changes
-    deps, _ = setup(tmp_path, lambda n, p: v1_reply([((n - 1) % 4, "narrow_mlp")], [(n % 4, "narrow_mlp")]))
-    state = G.run(deps, run_config(search="layer_by_layer"))
-    assert outcomes(state).count("ACCEPT") >= 2
+def sweep(tmp_path, policy, **kw):
+    deps, backend = setup(tmp_path, policy, **kw)
+    # a limit within the rules' reach that these policies (at most 2 steps a layer) never reach
+    return G.run(deps, run_config(search="layer_by_layer", limit_bytes=DENSE - 10 * NARROW)), backend
+
+
+def test_sweep_decides_each_layer_once_in_order(tmp_path):
+    # round k: cut plans for layer k only; layer 2 is left as it is
+    def policy(n, p):
+        layer = int(re.search(r"This round: layer (\d+)", p).group(1))
+        return {"candidates": []} if layer == 2 else v1_reply([(layer, "narrow_mlp")], [(layer, "narrow_mlp")] * 2)
+    state, backend = sweep(tmp_path, policy)
+    assert len(backend.prompts) == 4  # exactly one decision per layer
+    assert outcomes(state) == ["ACCEPT", "ACCEPT", "LEFT", "ACCEPT"]
+    assert state["stop_reason"] == "every layer decided (4 layers, first to last)"
     plans = [a.plan for a in state["accepted"]]
-    for before, after in itertools.pairwise(plans):
-        assert sum(after[i] != before[i] for i in after) == 1
+    changed = [[i for i in after if after[i] != before[i]] for before, after in itertools.pairwise(plans)]
+    assert changed == [[0], [1], [3]]
 
 
-def test_a_two_layer_idea_is_refused_with_the_reason(tmp_path):
-    deps, backend = setup(tmp_path, lambda n, p: v1_reply([(0, "narrow_mlp"), (1, "narrow_mlp")]), max_calls=2)
-    state = G.run(deps, run_config(search="layer_by_layer", max_agent_calls=2))
-    assert outcomes(state)[0] == "INVALID"
-    assert "changes 2 layers (0, 1)" in backend.prompts[1]  # the agent is told why
+def test_sweep_refuses_other_layers_and_asks_again(tmp_path):
+    def policy(n, p):
+        layer = int(re.search(r"This round: layer (\d+)", p).group(1))
+        return v1_reply([(layer + 1, "narrow_mlp")]) if n == 1 else v1_reply([(layer, "narrow_mlp")])
+    state, backend = sweep(tmp_path, policy)
+    assert outcomes(state)[:2] == ["INVALID", "ACCEPT"]
+    assert "this round decides layer 0 only" in backend.prompts[1]
+    assert "This round: layer 0 " in " ".join(backend.prompts[1].split())  # the same layer again
+    assert len([o for o in outcomes(state) if o != "INVALID"]) == 4
+
+
+def test_sweep_stops_early_when_the_limit_is_met(tmp_path):
+    deps, backend = setup(tmp_path, lambda n, p: v1_reply(
+        [(int(re.search(r"This round: layer (\d+)", p).group(1)), "narrow_mlp")] * 3))
+    state = G.run(deps, run_config(search="layer_by_layer"))  # the test limit: about three slimming steps
+    assert state["stop_reason"] == "memory limit met" and len(backend.prompts) < 4
+
+
+def test_sweep_time_estimate_is_one_round_per_layer():
+    from pruneagent import runstore as R
+
+    rates = [{"minutes_per_mb": 0.5, "rounds_per_mb": 0.1, "minutes_per_round": 2.0},
+             {"minutes_per_mb": 0.3, "rounds_per_mb": 0.2, "minutes_per_round": 3.0}]
+    t = R.time_estimate(rates, 238.0, 40, sweep_layers=28)
+    assert t["rounds"] == [28, 28] and t["minutes"] == [56.0, 84.0] and t["max_rounds"] == 28
+    assert R.time_estimate(rates, 238.0, 40)["rounds"] != [28, 28]  # several layers per step: from MB cut

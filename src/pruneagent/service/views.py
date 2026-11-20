@@ -66,7 +66,9 @@ def _summary(store: R.RunStore) -> dict:
             "agent": " ".join(x for x in (cfg.agent_backend.capitalize(), cfg.agent_model, cfg.agent_reasoning_effort) if x),
             "ideas_per_round": cfg.rules.max_candidates,
             "max_drop_per_step": cfg.rules.step_limit,
-            "max_rounds": cfg.rules.max_rounds,
+            # a sweep (search.py) has exactly one round per layer
+            "max_rounds": (len(kept[0].plan) if kept and search_strategy(cfg.search).order == "sweep"
+                           else cfg.rules.max_rounds),
             "max_ai_calls": cfg.max_agent_calls,
             "max_layers_removed": cfg.rules.max_drops_per_run,
             "min_layer_width": cfg.rules.min_mlp_fraction,

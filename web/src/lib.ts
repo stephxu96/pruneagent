@@ -51,7 +51,7 @@ export type Candidate = {
 
 export type Round = {
   round: number;
-  outcome: "ACCEPT" | "ROLLBACK" | "INVALID" | null;
+  outcome: "ACCEPT" | "ROLLBACK" | "INVALID" | "LEFT" | null;
   why: string;
   chosen: number | null;
   candidates: Candidate[];
@@ -159,8 +159,18 @@ export function timeLeftText(t: { minutes: [number, number] | null; worst_minute
 export const outcomeText: Record<string, string> = {
   ACCEPT: "Kept",
   ROLLBACK: "Nothing kept (too much quality loss)",
-  INVALID: "Refused (repeated ideas)",
+  INVALID: "Refused (broke a rule; the AI was asked again)",
+  LEFT: "Left as it is",
 };
+
+/** One-layer-per-step runs go through the layers in order: the layer a round decided (rounds the AI had to redo
+ * don't count), or null for other runs. */
+export function sweepLayer(run: { search: string; rounds: { round: number; outcome: string | null }[] }, round: number) {
+  if (run.search !== "layer_by_layer") return null;
+  const r = run.rounds.find((x) => x.round === round);
+  if (!r || r.outcome === "INVALID") return null;
+  return run.rounds.filter((x) => x.round < round && ["ACCEPT", "ROLLBACK", "LEFT"].includes(x.outcome ?? "")).length;
+}
 
 /** Which layers changed between two kept steps (for highlighting). */
 export function changedLayers(before: Layer[] | undefined, after: Layer[]): Set<number> {
@@ -200,5 +210,5 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 /** How the AI cuts (search strategies, src/pruneagent/search.py). The checks after a run are the same for both. */
 export const SEARCHES = [
   { id: "multi_layer", label: "Several layers per step", text: "Each step may cut any number of layers at once." },
-  { id: "layer_by_layer", label: "One layer per step", text: "Each step cuts one layer; the AI picks which layer and which cut, step by step." },
+  { id: "layer_by_layer", label: "One layer per step", text: "One pass, first layer to last: for each layer the AI proposes up to 3 cut plans from a fixed bank, and the best is kept." },
 ] as const;
