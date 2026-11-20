@@ -354,3 +354,26 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .sd-keep li::before { content: "•"; position: absolute; left: 4px; color: var(--agent); }
 .sd-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .sd-actions .primary:disabled { opacity: .45; cursor: not-allowed; }
+
+/* the background service is off */
+.service-notice { margin: 12px auto 0; max-width: 1008px; padding: 10px 14px; border-radius: 10px; font-size: 14px; background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--ink); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.service-notice code { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+@media (max-width: 1040px) { .service-notice { margin: 12px 16px 0; } }
+
+/* app structure (docs/APP_DESIGN.md §3): home, prune a model, footer */
+.hero { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.hero h1 { margin: 0; }
+.card.active { border-color: var(--agent); }
+.card .bar { height: 8px; background: var(--gone); border-radius: 99px; overflow: hidden; }
+.card .bar .fill { height: 100%; background: var(--agent); border-radius: 99px; transition: width .6s ease; }
+.foot { max-width: 1040px; margin: 0 auto; padding: 0 16px 32px; font-size: 13px; }
+.foot a { color: var(--ink-3); }
+.prune-page .wizard { gap: 16px; }
+.model-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.pick { display: grid; gap: 4px; text-align: left; font: inherit; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.pick:hover, .pick.on { border-color: var(--agent); }
+.where-step { display: grid; gap: 16px; }
+.answer { display: grid; gap: 14px; }
+.answer-big { font-size: 18px; margin: 0; }
+.answer .actions, .prune-page .wizard > .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.ok-text { color: var(--good); font-weight: 600; }

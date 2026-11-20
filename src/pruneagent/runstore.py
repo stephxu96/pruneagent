@@ -104,11 +104,17 @@ def _now() -> str:
 
 def make_run_id(run_cfg: RunConfig, root: Path | str = DEFAULT_ROOT, now: datetime | None = None) -> str:
     """`<yyyymmdd-hhmm>-<model>-<backend>`, e.g. `20261116-1432-qwen3-0.6b-codex`; `-2`, `-3` ... when taken."""
+    return new_run_id(run_cfg.model_id, run_cfg.agent_backend, root, now)
+
+
+def new_run_id(model_id: str, backend: str, root: Path | str = DEFAULT_ROOT, now: datetime | None = None,
+               taken: set[str] | frozenset[str] = frozenset()) -> str:
+    """A free run id for this model and backend (`make_run_id`); `taken` adds ids reserved but not yet on disk."""
     now = now or datetime.now()
-    model = run_cfg.model_id.rsplit("/", 1)[-1].lower().removesuffix("-base")
-    base = re.sub(r"[^a-z0-9.\-]+", "-", f"{now:%Y%m%d-%H%M}-{model}-{run_cfg.agent_backend}")
+    model = model_id.rsplit("/", 1)[-1].lower().removesuffix("-base")
+    base = re.sub(r"[^a-z0-9.\-]+", "-", f"{now:%Y%m%d-%H%M}-{model}-{backend}")
     run_id, n = base, 1
-    while (Path(root) / run_id).exists():
+    while (Path(root) / run_id).exists() or run_id in taken:
         n += 1
         run_id = f"{base}-{n}"
     return run_id

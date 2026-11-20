@@ -23,15 +23,23 @@ See [`board/README.md`](board/README.md).
 
 ## Web app
 
-Watch the AI cut a model down, round by round, and compare it with the standard method (FLAP).
+Watch the AI cut a model down, round by round, and compare it with the standard method (FLAP). It has two parts
+that run in the background on this Mac: the **web app** (what the browser shows) and the **workflow service**
+(model setup, pruning runs and evaluation). Closing the browser, restarting the app or updating it never stops
+work in progress (docs/APP_DESIGN.md §4).
 
 ```bash
-uv sync --extra web
-(cd web && npm install && npm run build)   # once, and after changing the interface
-uv run --extra web pruneagent web          # http://127.0.0.1:8125
+scripts/start.sh          # everything: packages, release, interface, both services; opens http://127.0.0.1:8125
+scripts/start.sh --stop   # stop both
 ```
 
-Open a round directly with `#/run/<run-id>/<round>`, e.g. `http://127.0.0.1:8125/#/run/20261118-1016-qwen3-0.6b-codex/14`. The app only calls the same commands as the CLI and reads their files (ADR-008); it runs on this computer only. For interface work, `cd web && npm run dev` serves it on :5173 with the API forwarded.
+**Updating:** after merging, run `scripts/start.sh` again (or just `scripts/deploy.sh`). It makes a new release (a fixed copy of the code with its own
+environment, in `releases/`), swaps in the new interface and restarts both services. Work already running finishes on
+the release it started with.
+
+Without the background services: `uv run pruneagent worker` and `uv run --extra web pruneagent web` in two
+terminals. `scripts/install_services.sh --remove` takes the services out. Open a round directly with
+`#/run/<run-id>/<round>`. For interface work, `cd web && npm run dev` serves it on :5173 with the API forwarded.
 
 ### Your own model
 

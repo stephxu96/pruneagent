@@ -1318,6 +1318,20 @@ def web_cmd(
     serve(port)
 
 
+@app.command("worker")
+def worker_cmd(
+    root: Annotated[Path, typer.Option(help="Data root: the folder holding runs/, checkpoints/, results/.")] = Path("."),
+    poll: Annotated[float, typer.Option(help="Seconds between passes.")] = 1.0,
+) -> None:
+    """The background workflow service: runs model setups, pruning runs and checks submitted from the web app,
+    apart from the app, so the app can be restarted or updated at any time (docs/APP_DESIGN.md §4)."""
+    from pruneagent import workflows as W
+
+    svc = W.Service(root)
+    typer.echo(f"PruneAgent workflow service: {svc.runs / W.STORE}; release {W.current_release(svc.root) or 'development'}")
+    svc.serve()
+
+
 @app.command("check-model")
 def check_model_cmd(
     model: Annotated[str, typer.Argument(help="Hugging Face model id, like Qwen/Qwen3-0.6B-Base.")],
@@ -1346,15 +1360,17 @@ def check_model_cmd(
         raise typer.Exit(1)
 
 
-@app.command("prepare")
+@app.command("setup")
+@app.command("prepare", hidden=True)
 def prepare_cmd(
     model: Annotated[str, typer.Argument(help="Hugging Face model id.")],
     device: Annotated[str, typer.Option(help="mps, cuda or cpu.")] = "mps",
     dtype: Annotated[str, typer.Option(help="float16 or bfloat16.")] = "float16",
     root: Annotated[Path, typer.Option(help="Directory holding the runs (the model list is kept there).")] = Path("runs"),
 ) -> None:
-    """Prepare a model for runs on this computer (FR17): its text, neuron scores, quick tests and measured damage
-    table. Each step reuses what an earlier, stopped preparation saved."""
+    """Set up a model on this computer (FR17): load it and generate the assets pruning needs: its sample text,
+    neuron scores, quick tests and measured damage table. Each part reuses what an earlier, stopped setup saved.
+    (`prepare` is the old name.)"""
     import subprocess
     import sys
 

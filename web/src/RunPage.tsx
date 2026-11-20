@@ -6,6 +6,7 @@ import {
   api, changedLayers, changesText, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText, timeLeftText,
   type Results, type RunDetail,
 } from "./lib";
+import type { Job } from "./parts";
 
 export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   const [run, setRun] = useState<RunDetail | null>(null);
@@ -17,11 +18,27 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   const [follow, setFollow] = useState(true);
   const [threeD, setThreeD] = useState(true);
 
+  const [pending, setPending] = useState<Job | null>(null); // requested, but the run hasn't started yet
   const load = () =>
     api<RunDetail>(`/api/runs/${id}`).then((r) => {
       setRun(r);
+      setPending(null);
       if (follow && r.state === "running") setAt(r.rounds.length);
-    }).catch((e) => setErr(String(e)));
+    }).catch((e) => {
+      api<Job[]>("/api/jobs").then((js) => {
+        const j = js.find((x) => x.run_id === id && (x.kind === "start" || x.kind === "resume"));
+        if (j) setPending(j);
+        else setErr(String(e));
+      }).catch(() => setErr(String(e)));
+    });
+
+  // until the run exists, look again every few seconds
+  useEffect(() => {
+    if (!pending) return;
+    const t = setTimeout(load, 3000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending]);
 
   useEffect(() => {
     load();
@@ -60,6 +77,21 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   }, [run, at]);
 
   if (err) return <p className="error">Could not load this run: {err}</p>;
+  if (pending && !run) {
+    return (
+      <div className="run">
+        <a href="#/" className="back">← All runs</a>
+        <h1>{modelName(pending.params.model ?? "")}{pending.params.cut != null ? `, ${pct(pending.params.cut)} smaller` : ""}</h1>
+        <p className="status">
+          <span className={`badge ${pending.status === "failed" ? "failed" : ""}`}>
+            {pending.status === "queued" ? "Waiting for the Mac to be free" : pending.status === "failed" ? "Didn't start" : "Starting"}
+          </span>
+          {pending.status === "failed" && pending.reason}
+        </p>
+        <p className="muted">It starts as soon as the Mac is free. This page follows it on its own.</p>
+      </div>
+    );
+  }
   if (!run || !view) return <p className="muted">Loading…</p>;
 
   const base = run.original_error ?? 1;
