@@ -214,3 +214,11 @@ export const SEARCHES = [
   { id: "multi_layer", label: "Several layers per step", text: "Each step may cut any number of layers at once." },
   { id: "layer_by_layer", label: "One layer per step", text: "One pass, first layer to last: for each layer the AI proposes up to 3 cut plans from a fixed bank, and the best is kept." },
 ] as const;
+
+/** The cheaper strategy in AI calls (the usage limits), from the feasibility check: one layer per step always takes
+ * one call per layer; several layers per step takes a number that grows with the cut. When its usual count reaches
+ * the layer count, one layer per step costs no more and is fixed. Null without a check. */
+export function recommendedSearch(rounds: [number, number] | undefined, layers: number | undefined): string | null {
+  if (!rounds || !layers) return null;
+  return Math.ceil(rounds[1]) < layers ? "multi_layer" : "layer_by_layer";
+}

@@ -83,7 +83,7 @@ export function PrunePage() {
       </section>
 
       {sel && startCut != null && (
-        <StartDialog open={asking} model={sel.id} cut={startCut} originalMb={sel.size_mb} check={checked}
+        <StartDialog open={asking} model={sel.id} cut={startCut} originalMb={sel.size_mb} layers={sel.layers} check={checked}
           search={search} onSearch={setSearch}
           onStart={start} onCheck={() => undefined} onClose={() => setAsking(false)} />
       )}

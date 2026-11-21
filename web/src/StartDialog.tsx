@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { checksMinutes, duration, durationRange, mb, modelName, SEARCHES } from "./lib";
+import { checksMinutes, duration, durationRange, mb, modelName, recommendedSearch, SEARCHES } from "./lib";
 
 // The confirmation before a real run: what it will do, how long, how much of the usage limits, and what to keep in
 // mind while it runs. Built on <dialog>, so Escape, focus and the backdrop behave as the browser's own.
@@ -15,11 +15,12 @@ export type CheckResult = {
   time_by_search?: Record<string, Time | null>; // every strategy's estimate (checks from before have only `time`)
 };
 
-export function StartDialog({ open, model, cut, originalMb, check, search, onSearch, onStart, onCheck, onClose }: {
+export function StartDialog({ open, model, cut, originalMb, layers, check, search, onSearch, onStart, onCheck, onClose }: {
   open: boolean;
   model: string;
   cut: number; // 0.10 = 10% smaller
   originalMb: number | undefined;
+  layers?: number; // the model's layer count: one AI call per layer in a one-layer-per-step run
   check: CheckResult | null; // the latest feasibility check for this model and size, if any
   search: string;
   onSearch: (id: string) => void;
@@ -39,6 +40,14 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
   const calls = time ? Math.ceil(time.rounds[1]) : check?.usage?.calls;
   const blocked = check != null && !check.feasible;
   const ck = checksMinutes(originalMb);
+  const multi = check?.time_by_search?.multi_layer;
+  const best = recommendedSearch(multi?.rounds, layers);
+  // AI calls, the cost against the usage limits: fixed (one per layer) or growing with the cut
+  const cost = search === "layer_by_layer"
+    ? (layers ? `${layers} AI calls, fixed` : "One AI call per layer, fixed")
+    : multi
+      ? `About ${Math.ceil(multi.rounds[0])}${Math.ceil(multi.rounds[1]) > Math.ceil(multi.rounds[0]) ? `–${Math.ceil(multi.rounds[1])}` : ""} AI calls, up to ${multi.max_rounds}`
+      : "AI calls vary with the cut";
   return (
     <dialog ref={ref} className="start-dialog" onClose={onClose}
       onClick={(e) => { if (e.target === ref.current) onClose(); }}>
@@ -54,9 +63,11 @@ export function StartDialog({ open, model, cut, originalMb, check, search, onSea
                 <label key={s.id} className={search === s.id ? "on" : ""}>
                   <input type="radio" name="search" checked={search === s.id} onChange={() => onSearch(s.id)} />
                   <span title={s.text}>{s.label}</span>
+                  {best === s.id && <span className="sd-rec">Recommended</span>}
                 </label>
               ))}
             </div>
+            <div className="sd-cost muted">{cost}</div>
           </dd>
           <dt>Target size</dt>
           <dd>

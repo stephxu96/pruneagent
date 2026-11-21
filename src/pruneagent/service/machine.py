@@ -49,7 +49,8 @@ def _size(model_id: str) -> dict | None:
     # working memory while answering: the model's notes on the conversation so far (key/value cache),
     # for a conversation of WORKING_CONTEXT tokens, unpruned (an upper bound for any cut)
     return {"size_mb": E.weight_bytes(cfg, dense) / 1e6,
-            "working_mb": E.kv_cache_bytes(cfg, dense, context=WORKING_CONTEXT) / 1e6}
+            "working_mb": E.kv_cache_bytes(cfg, dense, context=WORKING_CONTEXT) / 1e6,
+            "layers": len(dense)}  # one AI call per layer in a one-layer-per-step run
 
 
 def model_sizes(ids: tuple[str, ...] | list[str] | None = None) -> list[dict]:
