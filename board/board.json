@@ -934,7 +934,8 @@
       "gpu": "A100",
       "status": "doing",
       "notes": [
-        "[2026-11-20 19:22] Steph started it from the app: Qwen3-1.7B, 20% smaller, several layers per step (run 20261120-1922-qwen3-1.7b-codex, release aecf2b55b882, instructions v1). Queued behind the 0.6B run's quiz check; starts ~19:45. Instructions as of this release count as frozen for it."
+        "[2026-11-20 19:22] Steph started it from the app: Qwen3-1.7B, 20% smaller, several layers per step (run 20261120-1922-qwen3-1.7b-codex, release aecf2b55b882, instructions v1). Queued behind the 0.6B run's quiz check; starts ~19:45. Instructions as of this release count as frozen for it.",
+        "[2026-11-21 08:35] Run 20261120-1922 finished 23:44 (14 rounds, all kept, 2,752.3 MB). Unseen text: agent 15.27, FLAP 29.51, unpruned 9.89. Accuracy (question-weighted): agent 45.0%, FLAP 45.5%: FLAP equal or ahead on 5 of 7 sets, winogrande 53.6 vs 58.7. First result where the agent does not lead on accuracy."
       ]
     },
     {
