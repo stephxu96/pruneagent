@@ -1,4 +1,5 @@
-"""Multiple-choice accuracy of a finished run's final plan against Baseline: FLAP at the same memory limit.
+"""Multiple-choice accuracy of a finished run's final plan against Baseline: FLAP at the same size (the memory
+limit, or the model's own size if the run ended over it).
 
     scripts/mac_gpu.sh uv run python scripts/accuracy_check.py runs/<run-id>
 
@@ -50,14 +51,18 @@ def main() -> None:
     )
 
     out_path = run_dir / "accuracy.json"
+    target = baselines.flap_target_bytes(run_cfg.limit_bytes, final.weight_bytes)  # same size as the agent's
     record = (
         json.loads(out_path.read_text())
         if out_path.exists()
         else {"run": run_dir.name, "memory_limit_bytes": run_cfg.limit_bytes, "device": device, "results": {}}
     )
+    if record.get("flap_target_bytes", record["memory_limit_bytes"]) != target:  # FLAP scored at another size
+        record["results"].pop("Baseline: FLAP", None)
+    record["flap_target_bytes"] = target
     builders = {
         "agent": lambda: (pruner.prune(dense, final.plan, scores), final.weight_bytes),
-        "Baseline: FLAP": lambda: flap(dense, scores, run_cfg.limit_bytes),
+        "Baseline: FLAP": lambda: flap(dense, scores, target),
     }
     for name, build in builders.items():
         if name in record["results"]:

@@ -50,7 +50,10 @@ export function HomePage() {
             <div className={`badge ${r.state}`}>{stateText[r.state] ?? r.state}</div>
             <dl>
               <dt>Size</dt>
-              <dd>{r.original_mb && r.now_mb ? `${mb(r.original_mb)} → ${mb(r.now_mb)}` : "—"}</dd>
+              <dd>
+                {r.original_mb && r.now_mb ? `${mb(r.original_mb)} → ${mb(r.now_mb)}` : "—"}
+                {r.state === "finished" && r.now_mb != null && r.now_mb > r.limit_mb && <span className="warn"> · limit not met</span>}
+              </dd>
               <dt>Quality lost</dt>
               <dd>{r.now_error && r.original_error ? lossText(qualityLoss(r.now_error, r.original_error)) : "—"}</dd>
               <dt>Rounds</dt>

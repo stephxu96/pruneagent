@@ -158,3 +158,10 @@ def test_collect_on_few_long_samples():
     for t in (stats.attn_fluct, stats.attn_mean, stats.mlp_fluct, stats.mlp_mean):
         assert t.shape[0] == 3 and torch.isfinite(t).all()
     assert (stats.mlp_fluct > 0).all()
+
+
+def test_flap_target_is_the_agents_size_when_the_limit_is_not_met():
+    from pruneagent.baselines import flap_target_bytes
+
+    assert flap_target_bytes(2_752_919_961, 2_752_299_520) == 2_752_919_961  # limit met: the limit
+    assert flap_target_bytes(2_752_919_961, 2_815_272_960) == 2_815_272_960  # over it: the model's own size
