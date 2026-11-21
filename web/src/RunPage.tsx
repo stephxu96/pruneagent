@@ -354,8 +354,8 @@ class Fallback extends Component<{ onError: () => void; children: ReactNode }, {
 
 const STAGES = [
   { key: "run", label: "Pruning" },
-  { key: "heldout", label: "Unseen-text test" },
-  { key: "accuracy", label: "Quiz questions" },
+  { key: "heldout", label: "Perplexity check" },
+  { key: "accuracy", label: "Accuracy check" },
   { key: "done", label: "Done" },
 ];
 
@@ -557,10 +557,10 @@ function Evaluation({ runId, results, onResults }: {
     <section className="evaluation">
       <h2>Evaluation</h2>
       <div className="eval-grid">
-        <EvalCard title="Unseen-text test" what="Perplexity" state={text} onRun={() => start("heldout")}>
+        <EvalCard title="Perplexity check" what="Unseen text" state={text} onRun={() => start("heldout")}>
           {results?.heldout && <ResultBars held={results.heldout} />}
         </EvalCard>
-        <EvalCard title="Quiz questions" what="Accuracy · 18,904 questions" state={quiz} onRun={() => start("accuracy")}>
+        <EvalCard title="Accuracy check" what="18,904 questions" state={quiz} onRun={() => start("accuracy")}>
           {results?.accuracy && <QuizResult acc={results.accuracy} />}
         </EvalCard>
       </div>
