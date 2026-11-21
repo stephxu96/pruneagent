@@ -52,7 +52,7 @@ export function HomePage() {
               <dt>Size</dt>
               <dd>
                 {r.original_mb && r.now_mb ? `${mb(r.original_mb)} → ${mb(r.now_mb)}` : "—"}
-                {r.state === "finished" && r.now_mb != null && r.now_mb > r.limit_mb && <span className="warn"> · limit not met</span>}
+                {r.state === "finished" && r.now_mb != null && r.now_mb > r.limit_mb && <span className="warn"> (over the limit)</span>}
               </dd>
               <dt>Quality lost</dt>
               <dd>{r.now_error && r.original_error ? lossText(qualityLoss(r.now_error, r.original_error)) : "—"}</dd>
