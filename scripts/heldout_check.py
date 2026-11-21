@@ -44,8 +44,10 @@ def main() -> None:
     gate_idx = set(ev.subset_indices(n_val, run_cfg.gate_windows))
     unseen = [i for i in range(n_val) if i not in gate_idx]
 
+    target = baselines.flap_target_bytes(run_cfg.limit_bytes, final.weight_bytes)  # same size as the agent's
+
     def flap_model():
-        model, out = baselines.flap_at_memory_limit(dense, scores.stats, run_cfg.limit_bytes)
+        model, out = baselines.flap_at_memory_limit(dense, scores.stats, target)
         return model, out.weight_bytes
 
     # built one at a time, each freed before the next: at 1.7B, three models at once is ~10 GB
@@ -54,9 +56,16 @@ def main() -> None:
         "agent": lambda: (pruner.prune(dense, final.plan, scores), final.weight_bytes),
         "Baseline: FLAP": flap_model,
     }
-    record = {"run": run_dir.name, "memory_limit_bytes": run_cfg.limit_bytes, "unseen_val_windows": len(unseen),
-              "results": {}}
+    out_path = run_dir / "heldout.json"
+    old = json.loads(out_path.read_text()) if out_path.exists() else {}
+    record = {"run": run_dir.name, "memory_limit_bytes": run_cfg.limit_bytes, "flap_target_bytes": target,
+              "unseen_val_windows": len(unseen), "results": {}}
+    if old.get("unseen_val_windows") == len(unseen):  # resume: keep what is already measured the same way
+        record["results"] = {k: v for k, v in old.get("results", {}).items()
+                             if k != "Baseline: FLAP" or old.get("flap_target_bytes", old.get("memory_limit_bytes")) == target}
     for name, build in builders.items():
+        if name in record["results"]:
+            continue
         model, nbytes = build()
         t = time.time()
         v = ev.perplexity(model, val, seqlen, device, window_idx=unseen)
@@ -64,7 +73,7 @@ def main() -> None:
         record["results"][name] = {"weight_bytes": nbytes, "val_unseen_ppl": v.ppl, "test_ppl": te.ppl,
                                    "seconds": round(time.time() - t, 1)}
         print(f"{name}: {nbytes / 1e6:,.1f} MB  unseen validation {v.ppl:.2f}  test {te.ppl:.2f}", flush=True)
-        (run_dir / "heldout.json").write_text(json.dumps(record, indent=2) + "\n")
+        out_path.write_text(json.dumps(record, indent=2) + "\n")
         if model is not dense:
             del model
             ev.free_memory(device)

@@ -88,6 +88,12 @@ def smallest_fitting_ratio(
     return out  # out.ratio is hi: the last ratio that fitted
 
 
+def flap_target_bytes(limit_bytes: int, agent_bytes: int) -> int:
+    """The size FLAP is cut to when compared with a run's model: the run's memory limit, or the model's own size when
+    the run ended over the limit (a one-layer-per-step run can), so both models are always the same size."""
+    return max(limit_bytes, agent_bytes)
+
+
 def flap_at_memory_limit(dense, stats, limit_bytes: int, hi: float = 0.6, tol: float = 0.001):
     """Baseline: FLAP: FLAP cut to a weight-memory limit (bytes of all parameters, as `memory`), at the smallest
     ratio that fits. `dense` is left unchanged; `stats` come from `flap.collect` on it. Returns (pruned model or

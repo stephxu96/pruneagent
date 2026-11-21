@@ -178,7 +178,9 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
             <div className="g-label">Size</div>
             <div className="g-value">{mb(step.size_mb)}</div>
             <div className="bar"><div className="fill" style={{ width: `${progress * 100}%` }} /></div>
-            <div className="g-note">{progress >= 1 ? "Goal met ✓" : `${mb(Math.max(0, step.size_mb - run.limit_mb))} still to cut`}</div>
+            <div className="g-note">{progress >= 1 ? "Goal met ✓" : run.state === "finished" && at === last
+              ? <span className="warn">Limit not met · {mb(step.size_mb - run.limit_mb)} over</span>
+              : `${mb(Math.max(0, step.size_mb - run.limit_mb))} still to cut`}</div>
           </div>
           <div className="gauge">
             <div className="g-label">Quality loss</div>
