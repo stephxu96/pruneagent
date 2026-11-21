@@ -45,4 +45,5 @@ The run's `RunConfig.search` records the strategy. It is a `pruneagent run --sea
 
 - Positive: the two ways of pruning are measured with identical evaluation; earlier runs stay valid and reproducible (same prompt, same rules); a third strategy is one more entry.
 - Negative: a sweep may end short of the memory limit if the agent under-cuts early layers; it then reports the gap.
+- Result (2026-11-20, [docs/strategy/finding.md](../docs/strategy/finding.md)): on Qwen3-0.6B at 20% smaller, one layer per step got 40.2% of quiz questions right and several layers per step 40.6% (FLAP 34.6%). Both stay; several layers per step stays the default, and the start popup recommends the one with fewer AI calls (one per layer, fixed, vs the check's estimate).
 - Neutral: the agent-answer cache never mixes strategies, since their prompts differ.
