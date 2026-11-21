@@ -151,8 +151,8 @@ export const JOB_KIND: Record<string, string> = {
   precheck: "Feasibility check",
   start: "Run",
   resume: "Run resume",
-  heldout: "Unseen-text test",
-  accuracy: "Quiz check",
+  heldout: "Perplexity check",
+  accuracy: "Accuracy check",
   prepare: "Model setup",
 };
 
