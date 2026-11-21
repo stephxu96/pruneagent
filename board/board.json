@@ -931,8 +931,10 @@
       ],
       "done_when": "Run complete; log and plan saved",
       "gpu": "A100",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": [
+        "[2026-11-20 19:22] Steph started it from the app: Qwen3-1.7B, 20% smaller, several layers per step (run 20261120-1922-qwen3-1.7b-codex, release aecf2b55b882, instructions v1). Queued behind the 0.6B run's quiz check; starts ~19:45. Instructions as of this release count as frozen for it."
+      ]
     },
     {
       "id": "4.3",
