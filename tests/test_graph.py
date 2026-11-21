@@ -60,12 +60,14 @@ class FakeBackend:
     def __init__(self, policy):
         self.policy = policy
         self.prompts: list[str] = []
+        self.schemas: list[dict] = []
 
     def identity(self):
         return {"backend": self.name, "model": self.model}
 
     def complete(self, prompt, schema, timeout):
         self.prompts.append(prompt)
+        self.schemas.append(schema)
         out = self.policy(len(self.prompts), prompt)
         text = out if isinstance(out, str) else json.dumps(out)
         return AC.BackendResult(text=text, usage=AC.Usage(input_tokens=100, output_tokens=20), model=self.model)

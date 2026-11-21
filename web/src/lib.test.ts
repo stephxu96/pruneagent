@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedLayers, changesText, duration, durationRange, lossText, qualityLoss, timeLeftText } from "./lib";
+import { changedLayers, changesText, duration, durationRange, lossText, qualityLoss, recommendedSearch, timeLeftText } from "./lib";
 
 describe("plain-language wording", () => {
   it("groups changes by kind and counts layers from 1", () => {
@@ -37,5 +37,14 @@ describe("time wording", () => {
     expect(timeLeftText({ minutes: [20, 30], worst_minutes: 60, rounds_left: 20, mb_left: 40 })).toBe(
       "About 20–30 minutes left, at most 1 h (20 rounds left)",
     );
+  });
+});
+
+describe("strategy recommendation", () => {
+  it("picks the fewer AI calls; a tie goes to the fixed cost", () => {
+    expect(recommendedSearch([13.8, 13.8], 28)).toBe("multi_layer"); // 1.7B, 20% smaller
+    expect(recommendedSearch([30, 39], 28)).toBe("layer_by_layer");
+    expect(recommendedSearch([20, 28], 28)).toBe("layer_by_layer");
+    expect(recommendedSearch(undefined, 28)).toBeNull();
   });
 });

@@ -116,6 +116,9 @@ REPLY_SCHEMA = {
         "rollback_to": {"type": ["integer", "null"]},
     },
 }
+# a sweep (search.py) also asks for the round's reason, so a layer left as it is is explained in the step log
+SWEEP_REPLY_SCHEMA = {**REPLY_SCHEMA, "required": [*REPLY_SCHEMA["required"], "reason"],
+                      "properties": {**REPLY_SCHEMA["properties"], "reason": {"type": ["string", "null"]}}}
 REPLY_REQUIRED: tuple[str, ...] = ()  # {"rollback_to": n} alone is a whole reply
 
 
@@ -428,7 +431,8 @@ def build_graph(deps: Deps, checkpointer=None):
         prompt = deps.build_prompt(agent_request(cfg, state), state.get("feedback"))
         start = time.perf_counter()
         try:
-            reply = deps.agent.propose(AC.AgentRequest(prompt, REPLY_SCHEMA, tag=f"round {n}",
+            schema = SWEEP_REPLY_SCHEMA if search_strategy(state["run"].search).order == "sweep" else REPLY_SCHEMA
+            reply = deps.agent.propose(AC.AgentRequest(prompt, schema, tag=f"round {n}",
                                                        required=REPLY_REQUIRED))
         except AC.UsageLimitReached as e:  # also the API cost cap: pause; this round is replayed on resume
             raise RunPaused(str(e), e.resets_at) from e
@@ -457,7 +461,14 @@ def build_graph(deps: Deps, checkpointer=None):
                 f"The reply could not be read ({state.get('read_error')}); reply with one JSON object only."])
         elif (layer := sweep_layer(run, state)) is not None and raw.get("candidates") == [] and not raw.get(
                 "action") and raw.get("rollback_to") is None:
-            # a sweep round may leave its layer as it is: no candidates, nothing to measure
+            # a sweep round may leave its layer as it is: no candidates, nothing to measure, but a reason
+            if not (isinstance(raw.get("rationale"), str) and raw["rationale"].strip()):
+                check = CheckResult(ok=False, reasons=[
+                    f"Give the reason for leaving layer {layer} as it is: "
+                    '{"candidates": [], "reason": "<one sentence naming the evidence>"}.'])
+                return {"check": check, "action": None, "gate": None, "feedback": check.feedback(),
+                        "invalid_in_row": state["invalid_in_row"] + 1, "since_accept": state["since_accept"] + 1,
+                        **record(state, "INVALID", check=check)}
             left = CheckResult(ok=True, reasons=[])
             return {"check": left, "action": None, "gate": None, "feedback": None, "invalid_in_row": 0,
                     **record(state, "LEFT", check=left)}

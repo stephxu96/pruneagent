@@ -27,7 +27,7 @@ export type Job = {
 
 export type Machine = {
   machine: { name: string; chip: string; memory_gb: number | null };
-  models: { id: string; ready: boolean; built_in: boolean; size_mb: number; working_mb: number }[];
+  models: { id: string; ready: boolean; built_in: boolean; size_mb: number; working_mb: number; layers?: number }[];
   max_cut: number;
   free_share: number;
 };

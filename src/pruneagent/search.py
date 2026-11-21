@@ -68,7 +68,8 @@ STRATEGIES: dict[str, SearchStrategy] = {
         texts={
             "return_rule": "A later step cannot undo the damage of an earlier one, so pace the cuts: the memory "
                            "still to free is shared by the layers left.",
-            "rollback_line": 'To leave the layer as it is, answer {"candidates": []}.',
+            "rollback_line": 'Add "reason": one sentence on why these plans for this layer. To leave the layer as it '
+                             'is, answer {"candidates": [], "reason": "<why, naming the evidence>"}.',
         },
         order="sweep",
     ),
