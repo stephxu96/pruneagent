@@ -84,7 +84,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   }, [playing, at, last]);
 
   const view = useMemo(() => {
-    if (!run) return null;
+    if (!run || run.steps.length === 0) return null;
     const steps = run.steps.filter((s) => s.round <= at);
     const step = steps[steps.length - 1];
     const prev = steps[steps.length - 2];
@@ -106,6 +106,17 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
           {pending.status === "failed" && pending.reason}
         </p>
         <p className="muted">It starts as soon as the Mac is free. This page follows it on its own.</p>
+      </div>
+    );
+  }
+  if (run && run.steps.length === 0) {
+    // the run has started but the original model is not measured yet: nothing to draw
+    return (
+      <div className="run">
+        <a href="#/" className="back">← Past runs</a>
+        <h1>{modelName(run.model)}{run.cut != null ? `, ${pct(run.cut)} smaller` : ""}</h1>
+        <p className="status"><span className="badge running">Starting</span></p>
+        <p className="muted">{run.now ? `Round ${run.now.round} · ${run.now.phase === "measuring" ? "Measuring" : "AI proposing"}` : "Measuring the original model"}</p>
       </div>
     );
   }
