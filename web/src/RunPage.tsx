@@ -105,7 +105,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
           </span>
           {pending.status === "failed" && pending.reason}
         </p>
-        <p className="muted">It starts as soon as the Mac is free. This page follows it on its own.</p>
+        <p className="muted">It starts as soon as the Mac is free. This page will update on its own.</p>
       </div>
     );
   }
