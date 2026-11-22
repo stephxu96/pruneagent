@@ -72,7 +72,7 @@ export function StartDialog({ open, model, cut, originalMb, layers, check, searc
           <dt>Target size</dt>
           <dd>
             {originalMb ? <>{mb(originalMb)} → under {mb(originalMb * (1 - cut))}</> : <>under {check ? mb(check.limit_mb) : "?"}</>}
-            <span className="muted"> · {Math.round(cut * 100)}% smaller</span>
+            <span className="muted"> ({Math.round(cut * 100)}% smaller)</span>
           </dd>
           <dt>Time</dt>
           <dd>
@@ -80,7 +80,7 @@ export function StartDialog({ open, model, cut, originalMb, layers, check, searc
               <>
                 {durationRange(time.minutes[0] + ck[0], time.minutes[1] + ck[1])}
                 {time.worst_minutes != null && time.worst_minutes > time.minutes[1] + 1 && (
-                  <span className="muted"> · up to {duration(time.worst_minutes + ck[1])}</span>
+                  <span className="muted"> (up to {duration(time.worst_minutes + ck[1])})</span>
                 )}
               </>
             ) : <span className="muted">Known after the feasibility check</span>}
@@ -92,7 +92,7 @@ export function StartDialog({ open, model, cut, originalMb, layers, check, searc
                 const pct = w.pct_per_call * calls;
                 return (
                   <span key={w.name}>
-                    {i > 0 && " · "}
+                    {i > 0 && ", "}
                     {w.name === "weekly" ? "weekly" : w.name} ~{pct < 1 ? pct.toFixed(1) : Math.ceil(pct)}%
                   </span>
                 );

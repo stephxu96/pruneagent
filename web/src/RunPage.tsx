@@ -116,7 +116,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         <a href="#/" className="back">← Past runs</a>
         <h1>{modelName(run.model)}{run.cut != null ? `, ${pct(run.cut)} smaller` : ""}</h1>
         <p className="status"><span className="badge running">Starting</span></p>
-        <p className="muted">{run.now ? `Round ${run.now.round} · ${run.now.phase === "measuring" ? "Measuring" : "AI proposing"}` : "Measuring the original model"}</p>
+        <p className="muted">{run.now ? `Round ${run.now.round}: ${run.now.phase === "measuring" ? "measuring" : "AI proposing"}` : "Measuring the original model"}</p>
       </div>
     );
   }
@@ -139,8 +139,8 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         <Settings run={run} orig={orig} />
         <p className="status">
           <span className={`badge ${run.state}`}>{stateText[run.state] ?? run.state}</span>
-          {run.rounds.length} rounds · {run.kept_steps} steps kept
-          {run.state === "running" && run.time_left && <> · {timeLeftText(run.time_left)}</>}
+          {run.rounds.length} rounds, {run.kept_steps} steps kept
+          {run.state === "running" && run.time_left && <>, {timeLeftText(run.time_left)}</>}
           {run.state === "running" && (
             <label className="follow">
               <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> follow live
@@ -241,7 +241,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         {round ? (
           <>
             <h2>
-              Round {round.round}{sweepLayer(run, round.round) != null && <> · layer {sweepLayer(run, round.round)}</>}: <span className={`outcome ${round.outcome?.toLowerCase()}`}>{outcomeText[round.outcome ?? ""] ?? "no change"}</span>
+              Round {round.round}{sweepLayer(run, round.round) != null && <> (layer {sweepLayer(run, round.round)})</>}: <span className={`outcome ${round.outcome?.toLowerCase()}`}>{outcomeText[round.outcome ?? ""] ?? "no change"}</span>
             </h2>
             {round.candidates.length > 0 ? (
               <ol className="ideas">
@@ -252,8 +252,8 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
                       Idea {c.id + 1}: {changesText(c.changes)}
                     </div>
                     <div className="idea-numbers">
-                      {c.error != null ? <>saves {mb(c.freed_mb)} · quality {c.rise != null ? (c.rise <= 0 ? "no worse" : `${pct(c.rise, 1)} worse this step`) : ""}</> : "not tested"}
-                      {c.rise != null && c.rise > 0.15 && <span className="warn"> · too much, over the 15% limit</span>}
+                      {c.error != null ? <>saves {mb(c.freed_mb)}, quality {c.rise != null ? (c.rise <= 0 ? "no worse" : `${pct(c.rise, 1)} worse this step`) : ""}</> : "not tested"}
+                      {c.rise != null && c.rise > 0.15 && <span className="warn"> (too much: over the 15% limit)</span>}
                     </div>
                     <details>
                       <summary>AI reasoning</summary>
@@ -337,7 +337,7 @@ export function ResultBars({ held }: { held: NonNullable<Results["heldout"]> }) 
           <span className="bar-val">{lossText(r.loss)}</span>
         </div>
       ))}
-      <p className="note">Quality lost vs. the original · shorter is better</p>
+      <p className="note">Quality lost vs. the original (shorter is better)</p>
     </div>
   );
 }
@@ -418,7 +418,7 @@ function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }
           <div className="g-label">Size</div>
           <div className="pv-big">{mb(now)} <span className="muted">→ under {mb(run.limit_mb)}</span></div>
           <div className="bar"><div className="fill" style={{ width: `${share * 100}%` }} /></div>
-          <div className="g-note">{share >= 1 ? "Target met ✓" : `${mb(now - run.limit_mb)} still to cut · ${Math.round(share * 100)}% of the way`}</div>
+          <div className="g-note">{share >= 1 ? "Target met ✓" : `${mb(now - run.limit_mb)} still to cut, ${Math.round(share * 100)}% of the way`}</div>
         </div>
         <div>
           <div className="g-label">Quality so far</div>
@@ -459,12 +459,12 @@ function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }
   );
 }
 
-/** "· this model: about 2 h 40 min left", from the test's own progress line (it tests the models one at a time). */
+/** " (this model: about 2 h 40 min left)", from the test's own progress line (it tests the models one at a time). */
 function testLeft(output: string): string {
   const m = [...output.matchAll(/(\d+)\/(\d+) \[[\d:]+<(\d+):(\d+)(?::(\d+))?/g)].pop();
   if (!m) return "";
   const [h, mm] = m[5] !== undefined ? [Number(m[3]), Number(m[4])] : [0, Number(m[3])];
-  return ` · this model: about ${duration(h * 60 + mm)} left`;
+  return ` (this model: about ${duration(h * 60 + mm)} left)`;
 }
 
 /** Your model (docs/APP_DESIGN.md §2.2 step 7): the smaller model to download, built by pruning's last step. */
@@ -490,7 +490,7 @@ function YourModel({ run, onChange }: { run: RunDetail; onChange: () => void }) 
       <div className="ym-card">
         <div>
           <div className="eval-title">{name}, {run.cut != null ? pct(run.cut) : ""} smaller</div>
-          <div className="muted">{mb(run.now_mb ?? 0)} instead of {mb(run.original_mb ?? 0)}{run.now_mb != null && run.now_mb <= run.limit_mb ? " · fits the target ✓" : ""}</div>
+          <div className="muted">{mb(run.now_mb ?? 0)} instead of {mb(run.original_mb ?? 0)}{run.now_mb != null && run.now_mb <= run.limit_mb ? " (fits the target ✓)" : ""}</div>
         </div>
         {run.has_model ? (
           <a className="primary" href={`/api/runs/${run.id}/download/model`} download>
@@ -623,7 +623,7 @@ function QuizResult({ acc }: { acc: NonNullable<Results["accuracy"]> }) {
           <span className="bar-val">{pct(x.r!.all_questions.acc, 1)} right</span>
         </div>
       ))}
-      <p className="note">Weighted by questions per set · longer is better</p>
+      <p className="note">Weighted by questions per set (longer is better)</p>
       <details className="sets">
         <summary>Each question set</summary>
         <table>
