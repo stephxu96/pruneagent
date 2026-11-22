@@ -31,6 +31,7 @@ from safetensors.torch import load_file, save_file
 
 C4_REPO = "allenai/c4"
 C4_SHARD = "en/c4-train.00000-of-01024.json.gz"
+C4_VALIDATION_SHARD = "en/c4-validation.00000-of-00008.json.gz"  # C4's validation split: no overlap with C4_SHARD
 WIKITEXT_REPO = "Salesforce/wikitext"
 WIKITEXT_CONFIG = "wikitext-2-raw-v1"
 WIKITEXT_JOIN = "\n\n"
@@ -59,6 +60,12 @@ def slug(model_id: str) -> str:
 
 def calib_name(model_id: str = DEFAULT_MODEL) -> str:
     return f"c4_calib__{slug(model_id)}"
+
+
+def c4_validation_name(model_id: str = DEFAULT_MODEL) -> str:
+    """128 x 2,048-token passages of C4's validation split: same source as the calibration text, never in it.
+    32 of them (evaluate.subset_indices) are the gate; the other 96 are the held-out web-text check."""
+    return f"c4_validation__{slug(model_id)}"
 
 
 def flap_calib_name(model_id: str = DEFAULT_MODEL) -> str:
@@ -288,6 +295,49 @@ def build_cache(
     log(f"  FLAP reference calibration {tuple(flap.shape)} from wikitext-2 train ({stream.shape[1]} tokens)")
 
     return read_manifest(out)
+
+
+def build_c4_validation(
+    model_id: str = DEFAULT_MODEL,
+    nsamples: int = 128,
+    seqlen: int = 2048,
+    seed: int = 0,
+    out: Path | None = None,
+    revision: str | None = None,
+    log: Callable[[str], None] = print,
+) -> dict:
+    """Download C4's first validation shard (~40 MB), sample passages as the calibration set is sampled, cache them."""
+    from datasets import load_dataset
+    from huggingface_hub import HfApi
+    from transformers import AutoTokenizer
+
+    out = out or cache_dir()
+    api = HfApi()
+    model_rev = revision or api.model_info(model_id).sha
+    c4_rev = api.dataset_info(C4_REPO).sha
+    tok = AutoTokenizer.from_pretrained(model_id, revision=model_rev)
+    log(f"C4 validation shard {C4_VALIDATION_SHARD}@{c4_rev[:8]}")
+    ds = load_dataset(C4_REPO, data_files={"validation": C4_VALIDATION_SHARD}, split="validation", revision=c4_rev)
+    ids = sample_calibration(_Column(ds, "text"), lambda t: tok(t)["input_ids"], nsamples, seqlen, seed)
+    entry = write_entry(
+        out,
+        c4_validation_name(model_id),
+        ids,
+        {
+            "source": {"repo": C4_REPO, "revision": c4_rev, "data_files": C4_VALIDATION_SHARD, "split": "validation"},
+            "params": {"nsamples": nsamples, "seqlen": seqlen, "seed": seed, "procedure": "wanda/sparsegpt get_c4"},
+            "tokenizer": {"id": model_id, "revision": model_rev},
+        },
+    )
+    log(f"  C4 validation {tuple(ids.shape)}")
+    return entry
+
+
+def ensure_c4_validation(model_id: str, out: Path | None = None, revision: str | None = None) -> torch.Tensor:
+    """The C4 validation passages, built on first use."""
+    if c4_validation_name(model_id) not in read_manifest(out or cache_dir())["entries"]:
+        build_c4_validation(model_id, out=out, revision=revision)
+    return load_tokens(c4_validation_name(model_id), out)
 
 
 class _Column(Sequence[str]):

@@ -5,7 +5,9 @@
 The search chooses every step on the 32 validation windows (the gate), so its score there is optimistic. This
 measures, for the unpruned model, the run's final plan and FLAP cut to the run's memory limit (same C4 scores):
 - the validation windows the gate never used, and
-- the full WikiText-2 test split (never seen by the search).
+- the full WikiText-2 test split (never seen by the search), and
+- web text: the C4 validation passages outside the 32 a C4 gate would use (same source as the calibration text,
+  never in it). No method chose on them, so this one favours neither side.
 Writes <run-dir>/heldout.json.
 """
 
@@ -43,6 +45,10 @@ def main() -> None:
     n_val = ev.windows(val, seqlen).shape[0]
     gate_idx = set(ev.subset_indices(n_val, run_cfg.gate_windows))
     unseen = [i for i in range(n_val) if i not in gate_idx]
+    c4 = d.ensure_c4_validation(run_cfg.model_id, data_dir, setup.revision)
+    n_c4 = ev.windows(c4, seqlen).shape[0]
+    c4_gate = set(ev.subset_indices(n_c4, run_cfg.gate_windows))
+    c4_unseen = [i for i in range(n_c4) if i not in c4_gate]
 
     target = baselines.flap_target_bytes(run_cfg.limit_bytes, final.weight_bytes)  # same size as the agent's
 
@@ -59,20 +65,25 @@ def main() -> None:
     out_path = run_dir / "heldout.json"
     old = json.loads(out_path.read_text()) if out_path.exists() else {}
     record = {"run": run_dir.name, "memory_limit_bytes": run_cfg.limit_bytes, "flap_target_bytes": target,
-              "unseen_val_windows": len(unseen), "results": {}}
+              "unseen_val_windows": len(unseen), "c4_unseen_windows": len(c4_unseen), "results": {}}
     if old.get("unseen_val_windows") == len(unseen):  # resume: keep what is already measured the same way
         record["results"] = {k: v for k, v in old.get("results", {}).items()
                              if k != "Baseline: FLAP" or old.get("flap_target_bytes", old.get("memory_limit_bytes")) == target}
     for name, build in builders.items():
-        if name in record["results"]:
+        have = record["results"].get(name)
+        if have and "c4_unseen_ppl" in have:
             continue
         model, nbytes = build()
         t = time.time()
-        v = ev.perplexity(model, val, seqlen, device, window_idx=unseen)
-        te = ev.perplexity(model, test, seqlen, device)
-        record["results"][name] = {"weight_bytes": nbytes, "val_unseen_ppl": v.ppl, "test_ppl": te.ppl,
-                                   "seconds": round(time.time() - t, 1)}
-        print(f"{name}: {nbytes / 1e6:,.1f} MB  unseen validation {v.ppl:.2f}  test {te.ppl:.2f}", flush=True)
+        if have is None:  # Wikipedia text not yet measured for this model
+            v = ev.perplexity(model, val, seqlen, device, window_idx=unseen)
+            te = ev.perplexity(model, test, seqlen, device)
+            have = {"weight_bytes": nbytes, "val_unseen_ppl": v.ppl, "test_ppl": te.ppl}
+        c = ev.perplexity(model, c4, seqlen, device, window_idx=c4_unseen)
+        have = {**have, "c4_unseen_ppl": c.ppl, "seconds": round(have.get("seconds", 0) + time.time() - t, 1)}
+        record["results"][name] = have
+        print(f"{name}: {nbytes / 1e6:,.1f} MB  unseen validation {have['val_unseen_ppl']:.2f}  "
+              f"test {have['test_ppl']:.2f}  web text {c.ppl:.2f}", flush=True)
         out_path.write_text(json.dumps(record, indent=2) + "\n")
         if model is not dense:
             del model
