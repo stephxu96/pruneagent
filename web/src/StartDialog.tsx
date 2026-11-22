@@ -44,7 +44,7 @@ export function StartDialog({ open, model, cut, originalMb, layers, check, searc
   const best = recommendedSearch(multi?.rounds, layers);
   // AI calls, the cost against the usage limits: fixed (one per layer) or growing with the cut
   const cost = search === "layer_by_layer"
-    ? (layers ? `${layers} AI calls, fixed` : "One AI call per layer, fixed")
+    ? (layers ? `${layers} AI calls, more if the pass ends above the target size` : "One AI call per layer, more if the pass ends above the target size")
     : multi
       ? `About ${Math.ceil(multi.rounds[0])}${Math.ceil(multi.rounds[1]) > Math.ceil(multi.rounds[0]) ? `–${Math.ceil(multi.rounds[1])}` : ""} AI calls, up to ${multi.max_rounds}`
       : "AI calls vary with the cut";
@@ -67,6 +67,7 @@ export function StartDialog({ open, model, cut, originalMb, layers, check, searc
                 </label>
               ))}
             </div>
+            <div className="sd-cost muted">{SEARCHES.find((s) => s.id === search)?.text}</div>
             <div className="sd-cost muted">{cost}</div>
           </dd>
           <dt>Target size</dt>

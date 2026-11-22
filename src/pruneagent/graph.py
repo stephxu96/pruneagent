@@ -84,6 +84,7 @@ from pruneagent.schema import (
     PastRound,
     Plan,
     PruneState,
+    Rules,
     RunConfig,
     SensitivityTable,
     StepRecord,
@@ -91,6 +92,7 @@ from pruneagent.schema import (
     Usage,
     normalize_reply,
 )
+from pruneagent.search import FOLLOW_ON, follow_on_rules
 from pruneagent.search import get as search_strategy
 
 if TYPE_CHECKING:  # the evaluator needs torch; the graph itself does not
@@ -339,12 +341,36 @@ def past_round(rec: StepRecord, accepted: list[AcceptedPlan], step_limit: float)
 SWEEP_DECIDED = ("ACCEPT", "ROLLBACK", "LEFT")  # a sweep round that decided its layer (INVALID asks again)
 
 
-def sweep_layer(run: RunConfig, state: dict) -> int | None:
-    """For a sweep strategy (search.py), the layer this round decides: one per decided round, first to last.
-    None for other strategies."""
+def sweep_end(run: RunConfig, state: dict) -> int | None:
+    """For a sweep strategy (search.py) that has decided every layer, the round that decided the last one: the
+    run then continues with `search.FOLLOW_ON` (several layers per step) until the memory limit is met. None while
+    the sweep is still going, and for other strategies."""
     if search_strategy(run.search).order != "sweep":
         return None
+    decided, n_layers = 0, len(state["plan"])
+    for r in state.get("history", []):
+        decided += r.outcome in SWEEP_DECIDED
+        if decided >= n_layers:
+            return r.round
+    return None
+
+
+def sweep_layer(run: RunConfig, state: dict) -> int | None:
+    """For a sweep strategy (search.py), the layer this round decides: one per decided round, first to last.
+    None for other strategies, and once every layer is decided (the run has moved on to `search.FOLLOW_ON`)."""
+    if search_strategy(run.search).order != "sweep" or sweep_end(run, state) is not None:
+        return None
     return sum(r.outcome in SWEEP_DECIDED for r in state.get("history", []))
+
+
+def active(run: RunConfig, state: dict) -> tuple[str, Rules, int]:
+    """The strategy in force this round, its rules, and the rounds before it began (0 unless the run has moved on
+    from a finished sweep to `search.FOLLOW_ON`, whose round and rounds-without-a-kept-step limits count from
+    there)."""
+    end = sweep_end(run, state)
+    if end is None:
+        return run.search, run.rules, 0
+    return FOLLOW_ON, follow_on_rules(run), end
 
 
 def agent_request(cfg, state: dict) -> AgentRequest:
@@ -359,9 +385,11 @@ def agent_request(cfg, state: dict) -> AgentRequest:
     n_layers, width, groups = P.shape(cfg)
     menu = {s: t for s, t in agent_round.strategy_menu(cfg).items() if s in P.AGENT_STRATEGIES}
     save = agent_round.step_savings(cfg)
-    rounds_left = max(0, min(run.rules.max_rounds - state["round"], run.max_agent_calls - state["usage"].calls))
-    return AgentRequest(objective=agent_round.OBJECTIVE, device=run.device, strategy_menu=menu, rules=run.rules,
-                        search=run.search, layer_at=sweep_layer(run, state),
+    search, rules, before = active(run, state)
+    rounds_left = max(0, min(rules.max_rounds - (state["round"] - before), run.max_agent_calls - state["usage"].calls))
+    since_kept = min(state["since_accept"], state["round"] - before)
+    return AgentRequest(objective=agent_round.OBJECTIVE, device=run.device, strategy_menu=menu, rules=rules,
+                        search=search, layer_at=sweep_layer(run, state), after_sweep=before > 0,
                         sensitivity=state["sensitivity"], plan=plan,
                         dense_weight_bytes=dense_est.weight_bytes, current_weight_bytes=est.weight_bytes,
                         limit_bytes=run.limit_bytes, est_decode_tok_s=est.est_decode_tok_s,
@@ -371,7 +399,7 @@ def agent_request(cfg, state: dict) -> AgentRequest:
                         n_layers=n_layers, n_groups=groups, mlp_width=width,
                         step_bytes={s: save[s] for s in P.AGENT_STRATEGIES}, dense_ppl=accepted[0].val_ppl,
                         rounds_left=rounds_left, max_agent_calls=run.max_agent_calls,
-                        since_kept=state["since_accept"], kept=accepted,
+                        since_kept=since_kept, kept=accepted,
                         past=[past_round(r, accepted, run.rules.step_limit) for r in history])
 
 
@@ -431,7 +459,7 @@ def build_graph(deps: Deps, checkpointer=None):
         prompt = deps.build_prompt(agent_request(cfg, state), state.get("feedback"))
         start = time.perf_counter()
         try:
-            schema = SWEEP_REPLY_SCHEMA if search_strategy(state["run"].search).order == "sweep" else REPLY_SCHEMA
+            schema = SWEEP_REPLY_SCHEMA if sweep_layer(run, state) is not None else REPLY_SCHEMA
             reply = deps.agent.propose(AC.AgentRequest(prompt, schema, tag=f"round {n}",
                                                        required=REPLY_REQUIRED))
         except AC.UsageLimitReached as e:  # also the API cost cap: pause; this round is replayed on resume
@@ -475,7 +503,7 @@ def build_graph(deps: Deps, checkpointer=None):
         else:
             sweep = layer is not None
             actions = V.ACTIONS if run.agent_extra_actions else V1_ACTIONS
-            ctx = V.Context(cfg, state["plan"], run.limit_bytes, run.rules,
+            ctx = V.Context(cfg, state["plan"], run.limit_bytes, active(run, state)[1],
                             tried=tuple(c.plan for c in state.get("candidates", [])),
                             n_accepted=len(state["accepted"]), strategies=P.AGENT_STRATEGIES,
                             actions=tuple(a for a in actions if a != "rollback") if sweep else actions,
@@ -580,20 +608,22 @@ def build_graph(deps: Deps, checkpointer=None):
         return {**out, **record(state, None, check=state["check"], reply=reply)}
 
     def stop_check(state: GraphState) -> dict:
-        run, rules = state["run"], state["run"].rules
-        # a sweep ends after its last layer: the rounds-without-a-kept-step and round limits don't apply
-        sweep = search_strategy(run.search).order == "sweep"
+        run = state["run"]
+        # a sweep has no round or rounds-without-a-kept-step limits; once it has decided every layer above the
+        # memory limit, the run continues with several layers per step (search.FOLLOW_ON), whose limits count
+        # from there
+        _, rules, before = active(run, state)
+        sweep = sweep_layer(run, state) is not None
+        rounds, since = state["round"] - before, min(state["since_accept"], state["round"] - before)
         reason = None
         if E.weight_bytes(cfg, state["plan"]) <= run.limit_bytes:
             reason = "memory limit met"
         elif state["invalid_in_row"] >= rules.max_invalid_in_row:
             reason = f"{state['invalid_in_row']} invalid replies in a row"
-        elif sweep and sweep_layer(run, state) >= len(state["plan"]):
-            reason = f"every layer decided ({len(state['plan'])} layers, first to last)"
-        elif not sweep and state["since_accept"] >= rules.max_rounds_without_accept:
-            reason = f"{state['since_accept']} rounds without an accepted step"
-        elif not sweep and state["round"] >= rules.max_rounds:
-            reason = f"{state['round']} rounds"
+        elif not sweep and since >= rules.max_rounds_without_accept:
+            reason = f"{since} rounds without an accepted step"
+        elif not sweep and rounds >= rules.max_rounds:
+            reason = f"{rounds} rounds" + (" after the pass through every layer" if before else "")
         elif state["usage"].calls >= run.max_agent_calls:
             reason = f"agent call cap reached ({run.max_agent_calls} calls)"
         store.set_now(None)  # between rounds
@@ -667,7 +697,9 @@ def _invoke(deps: Deps, start: dict, run_cfg: RunConfig) -> dict:
     the last checkpoint plus {"paused": reason, "resets_at": time}); or paused on any other exception (an
     interruption, an agent error) before it propagates."""
     steps_per_round = 6  # plan, validate, evaluate, gate, accept/rollback, stop_check
-    limit = steps_per_round * (run_cfg.rules.max_rounds + 2) + 20
+    # a sweep's rounds (one per layer) can be followed by up to max_rounds of several layers per step; every round
+    # but a cached one is an agent call
+    limit = steps_per_round * (run_cfg.rules.max_rounds + run_cfg.max_agent_calls + 2) + 20
     deps.store.set_status("running")
     try:
         state = build_graph(deps).invoke(start, {"recursion_limit": limit})

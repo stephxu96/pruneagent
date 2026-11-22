@@ -4,7 +4,7 @@ import { Neurons3D } from "./Neurons3D";
 import { PathChart } from "./PathChart";
 import { NeuronMap, StepGrid, type Removal } from "./StepsView";
 import {
-  api, changedLayers, changesText, duration, lossText, mb, modelName, outcomeText, pct, qualityLoss, stateText, sweepLayer, timeLeftText,
+  api, changedLayers, changesText, duration, lossText, mb, modelName, outcomeText, pct, qualityLoss, passEnd, stateText, sweepLayer, timeLeftText,
   type Results, type RunDetail,
 } from "./lib";
 import { StepBar, type Job } from "./parts";
@@ -410,6 +410,10 @@ function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }
     api(`/api/runs/${run.id}/${what}`, { method: "POST" }).then(onChange).catch(() => undefined).finally(() => setBusy(false));
   };
   const loss = run.now_error && run.original_error ? qualityLoss(run.now_error, run.original_error) : null;
+  const pend = passEnd(run);
+  // a finished run whose pass ended above the limit and went no further keeps showing the layers decided
+  const passEndRound = pend != null && (run.state !== "finished" || pend < run.round) ? pend : null;
+  const decided = run.rounds.filter((r) => ["ACCEPT", "ROLLBACK", "LEFT"].includes(r.outcome ?? "")).length;
   return (
     <section className="progress-view">
       <StepBar steps={STAGES.map((x) => x.label)} at={at + 1} />
@@ -426,10 +430,15 @@ function RunProgress({ run, onChange }: { run: RunDetail; onChange: () => void }
           <div className="g-note">vs. the original</div>
         </div>
         <div>
-          {run.search === "layer_by_layer" ? (
+          {run.search === "layer_by_layer" && passEndRound == null ? (
             <>
               <div className="g-label">Layers decided</div>
-              <div className="pv-big">{run.rounds.filter((r) => ["ACCEPT", "ROLLBACK", "LEFT"].includes(r.outcome ?? "")).length} <span className="muted">of {run.settings.max_rounds}</span></div>
+              <div className="pv-big">{decided} <span className="muted">of {run.settings.max_rounds}</span></div>
+            </>
+          ) : passEndRound != null ? (
+            <>
+              <div className="g-label">Rounds after the pass</div>
+              <div className="pv-big">{run.round - passEndRound} <span className="muted">of up to {run.settings.max_rounds_after}</span></div>
             </>
           ) : (
             <>

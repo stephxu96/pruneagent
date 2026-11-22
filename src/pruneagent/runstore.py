@@ -413,9 +413,11 @@ def time_estimate(rates: list[dict], to_free_mb: float, max_rounds: int, sweep_l
         return None
     if sweep_layers:
         paces = [r["minutes_per_round"] for r in rates]
+        # worst case: the pass ends above the limit and the run continues with several layers per step
+        worst = sweep_layers + max_rounds
         return {"minutes": [min(paces) * sweep_layers, max(paces) * sweep_layers],
-                "rounds": [sweep_layers, sweep_layers], "worst_minutes": max(paces) * sweep_layers,
-                "max_rounds": sweep_layers, "based_on_runs": len(rates)}
+                "rounds": [sweep_layers, sweep_layers], "worst_minutes": max(paces) * worst,
+                "max_rounds": worst, "based_on_runs": len(rates)}
     per_round = max(r["minutes_per_round"] for r in rates)
     worst = max_rounds * per_round
     return {"minutes": [min(min(r["minutes_per_mb"] for r in rates) * to_free_mb, worst),
@@ -447,13 +449,19 @@ def time_left(store: RunStore, rates: list[dict]) -> dict | None:
     left_mb = max(0.0, kept[-1].weight_bytes / 1e6 - limit_mb)
     recent = log[-RECENT_ROUNDS:]
     per_round = sum(r.llm_seconds + r.gpu_seconds for r in recent) / 60 / len(recent)
-    sweep = _sweep_layers(cfg, kept)
+    sweep, before = _sweep_layers(cfg, kept), 0
     if sweep:  # one round per layer: what's left is the layers not yet decided
-        decided = sum(r.outcome in ("ACCEPT", "ROLLBACK", "LEFT") for r in log)
-        rounds_left = max(0, sweep - decided)
-        return {"minutes": [rounds_left * per_round, rounds_left * per_round], "worst_minutes": rounds_left * per_round,
-                "rounds_left": rounds_left, "mb_left": left_mb}
-    rounds_left = max(0, cfg.rules.max_rounds - len(log))
+        decided = 0
+        for i, r in enumerate(log):
+            decided += r.outcome in ("ACCEPT", "ROLLBACK", "LEFT")
+            if decided >= sweep:  # the pass ended above the limit: several layers per step from here (search.py)
+                before = i + 1
+                break
+        else:
+            rounds_left = max(0, sweep - decided)
+            return {"minutes": [rounds_left * per_round, rounds_left * per_round],
+                    "worst_minutes": rounds_left * per_round, "rounds_left": rounds_left, "mb_left": left_mb}
+    rounds_left = max(0, cfg.rules.max_rounds - (len(log) - before))
     cap = rounds_left * per_round
     cut_mb = (kept[0].weight_bytes - kept[-1].weight_bytes) / 1e6
     paces = [r["minutes_per_mb"] for r in rates]

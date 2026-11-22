@@ -30,6 +30,7 @@ export type RunSummary = {
     ideas_per_round: number;
     max_drop_per_step: number;
     max_rounds: number;
+    max_rounds_after?: number;
     max_ai_calls: number;
     max_layers_removed: number;
     min_layer_width: number;
@@ -165,13 +166,29 @@ export const outcomeText: Record<string, string> = {
   LEFT: "Left as it is",
 };
 
+type SweepRun = { search: string; settings: { max_rounds: number }; rounds: { round: number; outcome: string | null }[] };
+const DECIDED = ["ACCEPT", "ROLLBACK", "LEFT"];
+
 /** One-layer-per-step runs go through the layers in order: the layer a round decided (rounds the AI had to redo
- * don't count), or null for other runs. */
-export function sweepLayer(run: { search: string; rounds: { round: number; outcome: string | null }[] }, round: number) {
+ * don't count), or null for other runs and for rounds after the pass. */
+export function sweepLayer(run: SweepRun, round: number) {
   if (run.search !== "layer_by_layer") return null;
   const r = run.rounds.find((x) => x.round === round);
   if (!r || r.outcome === "INVALID") return null;
-  return run.rounds.filter((x) => x.round < round && ["ACCEPT", "ROLLBACK", "LEFT"].includes(x.outcome ?? "")).length;
+  const layer = run.rounds.filter((x) => x.round < round && DECIDED.includes(x.outcome ?? "")).length;
+  return layer < run.settings.max_rounds ? layer : null;
+}
+
+/** For a one-layer-per-step run whose pass decided every layer above the target size: the round that decided the
+ * last layer (the run then continues with several layers per step). Null otherwise. */
+export function passEnd(run: SweepRun) {
+  if (run.search !== "layer_by_layer") return null;
+  let decided = 0;
+  for (const r of [...run.rounds].sort((a, b) => a.round - b.round)) {
+    if (DECIDED.includes(r.outcome ?? "")) decided += 1;
+    if (decided >= run.settings.max_rounds) return r.round;
+  }
+  return null;
 }
 
 /** Which layers changed between two kept steps (for highlighting). */
@@ -212,7 +229,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 /** Strategies (search strategies, src/pruneagent/search.py). The checks after a run are the same for both. */
 export const SEARCHES = [
   { id: "multi_layer", label: "Several layers per step", text: "Each step may cut any number of layers at once." },
-  { id: "layer_by_layer", label: "One layer per step", text: "One pass, first layer to last: for each layer the AI proposes up to 3 cut plans from a fixed bank, and the best is kept." },
+  { id: "layer_by_layer", label: "One layer per step", text: "One pass, first layer to last: for each layer the AI proposes up to 3 cut plans from a fixed bank, and the best is kept. If the pass ends above the target size, the run continues with several layers per step until it fits." },
 ] as const;
 
 /** The cheaper strategy in AI calls (the usage limits), from the feasibility check: one layer per step always takes

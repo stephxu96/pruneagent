@@ -306,6 +306,15 @@ def this_round_lines(req: AgentRequest) -> list[str]:
             *(textwrap.fill(b, WIDTH, subsequent_indent="  ", break_on_hyphens=False) for b in bank)]
 
 
+def after_sweep_lines(req: AgentRequest) -> list[str]:
+    """For a run that began as a sweep (search.py) and decided every layer above the memory limit: where it now
+    stands. The rest of the prompt is `search.FOLLOW_ON`'s."""
+    text = ("The pass through every layer, one layer per round, ended above the memory limit. "
+            "The run now continues with several layers per step until the limit is met: a candidate may change any "
+            "layers, including ones the pass decided.")
+    return [textwrap.fill(text, WIDTH, break_on_hyphens=False)]
+
+
 def build_prompt(req: AgentRequest, feedback: str | None = None, version: str = VERSION) -> str:
     """`graph.Deps.build_prompt`: the rendered instructions, the data for this round, and the reasons an
     unusable last reply was rejected."""
@@ -313,6 +322,8 @@ def build_prompt(req: AgentRequest, feedback: str | None = None, version: str = 
              *quick_test_lines(req), "", *measured_lines(req)]
     if req.layer_at is not None:
         parts += ["", *this_round_lines(req)]
+    if req.after_sweep:
+        parts += ["", *after_sweep_lines(req)]
     if feedback:
         parts += ["", "About your previous reply.", feedback]
     return "\n".join(parts) + "\n"
