@@ -114,7 +114,7 @@ export function ComparePage() {
             <div className="card-title">
               {modelName(r.model)}, {pct(r.cut)} smaller <span className="muted">({mb(r.agent.size_mb)}, {r.search_label.toLowerCase()})</span>
             </div>
-            <div className="m-label">Accuracy (more is better)</div>
+            <div className="m-label">Accuracy (higher is better)</div>
             {r.quiz?.agent != null && r.quiz.flap != null ? (
               <QuizBars quiz={r.quiz} />
             ) : (
