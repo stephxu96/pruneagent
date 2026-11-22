@@ -401,6 +401,10 @@ details > summary::before { font-size: 22px; width: 14px; color: var(--ink-2); f
 .pv-big { font-size: 22px; font-weight: 700; margin: 2px 0 6px; }
 .pv-big .muted { font-size: 15px; font-weight: 400; }
 .pv-size .bar { height: 10px; background: var(--gone); border-radius: 99px; overflow: hidden; margin: 4px 0 6px; }
+.starting { max-width: 420px; margin-top: 16px; }
+.starting-stage { margin-bottom: 8px; }
+.starting .bar { height: 10px; background: var(--gone); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+.starting .fill { height: 100%; background: var(--agent); border-radius: 99px; transition: width .6s ease; }
 .pv-size .fill { height: 100%; background: var(--agent); border-radius: 99px; transition: width .6s ease; }
 .pv-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 12px; }
 @media (max-width: 640px) { .pv-grid { grid-template-columns: 1fr; } }

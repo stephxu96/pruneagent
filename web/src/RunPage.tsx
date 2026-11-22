@@ -9,6 +9,34 @@ import {
 } from "./lib";
 import { StepBar, type Job } from "./parts";
 
+// a 1.7B run's start (load, measure the original model and FLAP, then the first round) took 6 to 7 min in the last
+// two runs (20261120-1922, 20261121-1226)
+const START_MINUTES = 7;
+
+/** The start of a run, before its first round is saved: a bar against the usual start time, the stage, and the
+ * minutes so far. Redrawn every few seconds. */
+function StartingBar({ created, now }: { created: string; now: RunDetail["now"] }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 5000);
+    return () => clearInterval(t);
+  }, []);
+  const minutes = Math.max(0, (Date.now() - Date.parse(created)) / 60000);
+  const stage = now
+    ? `Round 1: ${now.phase === "measuring" ? "measuring the AI's ideas" : "the AI is proposing cuts"}`
+    : "Measuring the original model and FLAP";
+  const share = Math.min(0.95, minutes / START_MINUTES);
+  return (
+    <div className="starting">
+      <div className="starting-stage">{stage}</div>
+      <div className="bar"><div className="fill" style={{ width: `${share * 100}%` }} /></div>
+      <div className="g-note">
+        {Math.floor(minutes)} min so far{minutes < START_MINUTES ? `, usually about ${START_MINUTES} min` : ", taking longer than usual"}
+      </div>
+    </div>
+  );
+}
+
 export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
   const [run, setRun] = useState<RunDetail | null>(null);
   const [results, setResults] = useState<Results | null>(null);
@@ -116,7 +144,7 @@ export function RunPage({ id, start = 0 }: { id: string; start?: number }) {
         <a href="#/" className="back">← Past runs</a>
         <h1>{modelName(run.model)}{run.cut != null ? `, ${pct(run.cut)} smaller` : ""}</h1>
         <p className="status"><span className="badge running">Starting</span></p>
-        <p className="muted">{run.now ? `Round ${run.now.round}: ${run.now.phase === "measuring" ? "measuring" : "AI proposing"}` : "Measuring the original model"}</p>
+        <StartingBar created={run.created} now={run.now} />
       </div>
     );
   }
