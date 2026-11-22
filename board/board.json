@@ -659,8 +659,11 @@
       ],
       "done_when": "Diff reviewed",
       "gpu": "",
-      "status": "todo",
-      "notes": "[2026-11-17] Neutrality enforced by the optimizer's constraints plus Steph's approval of each edit."
+      "status": "done",
+      "notes": [
+        "[2026-11-17] Neutrality enforced by the optimizer's constraints plus Steph's approval of each edit.",
+        "[2026-11-22 10:52] Closed: instructions frozen (method final, 2026-11-21); every instruction change was reviewed and approved by Steph."
+      ]
     },
     {
       "id": "3.3",
@@ -895,8 +898,11 @@
       ],
       "done_when": "All checks decided: go or fallback applied",
       "gpu": "",
-      "status": "todo",
-      "notes": "[2026-11-17] Architecture v0.8: task 3.4 (ShortGPT cut to the same memory limit) dropped and removed from the board; FLAP is the one primary baseline",
+      "status": "done",
+      "notes": [
+        "[2026-11-17] Architecture v0.8: task 3.4 (ShortGPT cut to the same memory limit) dropped and removed from the board; FLAP is the one primary baseline",
+        "[2026-11-22 10:52] Closed: all checks decided (3.1, 3.2, 3.3, 3.5, 3.6 done); method frozen 2026-11-21 with the keep-or-undo check on C4 passages (ADR-004)."
+      ],
       "checks": [
         {
           "label": "Instructions frozen at a tagged commit by end of D6",
@@ -919,8 +925,11 @@
       ],
       "done_when": "Plans saved; each fits its memory limit",
       "gpu": "A100",
-      "status": "todo",
-      "notes": "[2026-11-17] Architecture v0.8: was FLAP, uniform Wanda-sp and ShortGPT; now Baseline: FLAP at the memory limits of 4.2 and 4.3, with uniform Wanda-sp optional; ShortGPT dropped (task 3.4 removed)"
+      "status": "done",
+      "notes": [
+        "[2026-11-17] Architecture v0.8: was FLAP, uniform Wanda-sp and ShortGPT; now Baseline: FLAP at the memory limits of 4.2 and 4.3, with uniform Wanda-sp optional; ShortGPT dropped (task 3.4 removed)",
+        "[2026-11-22 10:52] Closed: FLAP is cut and scored automatically by every run's checks, at the agent's own size when a run ends over its limit (baselines.flap_target_bytes, 2026-11-21)."
+      ]
     },
     {
       "id": "4.2",
