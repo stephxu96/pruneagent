@@ -401,6 +401,7 @@ class AgentRequest(_Model):
     rules: Rules
     search: SearchName = "multi_layer"  # search strategy (search.py): what one candidate may change
     layer_at: NonNegativeInt | None = None  # sweep strategies: the one layer this round decides
+    after_sweep: bool = False  # a sweep decided every layer above the limit; the run continues (search.FOLLOW_ON)
     sensitivity: SensitivityTable
     plan: Plan
     dense_weight_bytes: PositiveInt

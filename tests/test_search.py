@@ -55,9 +55,17 @@ def test_prompt_states_the_strategy(tmp_path):
     assert 'To leave the layer as it is, answer {"candidates": [], "reason": "<why, naming the evidence>"}.' in flat and "You have 4 rounds left." in flat
 
 
+FOLLOW_ON = "The pass through every layer, one layer per round, ended above the memory limit."
+
+
+def after_pass(n, p):
+    """After the pass: several layers per step, two layers slimmed in one step."""
+    return v1_reply([(1, "narrow_mlp"), (2, "narrow_mlp")])
+
+
 def sweep(tmp_path, policy, **kw):
-    deps, backend = setup(tmp_path, policy, **kw)
-    # a limit within the rules' reach that these policies (at most 2 steps a layer) never reach
+    deps, backend = setup(tmp_path, lambda n, p: policy(n, p) if "This round:" in p else after_pass(n, p), **kw)
+    # a limit within the rules' reach that these policies (at most 2 steps a layer) don't reach in the pass
     return G.run(deps, run_config(search="layer_by_layer", limit_bytes=DENSE - 10 * NARROW)), backend
 
 
@@ -69,15 +77,37 @@ def test_sweep_decides_each_layer_once_in_order(tmp_path):
             return {"candidates": [], "reason": "layer 2's quick tests show high damage for every cut"}
         return v1_reply([(layer, "narrow_mlp")], [(layer, "narrow_mlp")] * 2)
     state, backend = sweep(tmp_path, policy)
-    assert len(backend.prompts) == 4  # exactly one decision per layer
-    assert outcomes(state) == ["ACCEPT", "ACCEPT", "LEFT", "ACCEPT"]
+    assert sum("This round:" in p for p in backend.prompts) == 4  # exactly one decision per layer
+    assert outcomes(state)[:4] == ["ACCEPT", "ACCEPT", "LEFT", "ACCEPT"]
     # the step log keeps why the layer was left
     assert state["history"][2].rationale == "layer 2's quick tests show high damage for every cut"
     assert backend.schemas[0] is G.SWEEP_REPLY_SCHEMA
-    assert state["stop_reason"] == "every layer decided (4 layers, first to last)"
     plans = [a.plan for a in state["accepted"]]
     changed = [[i for i in after if after[i] != before[i]] for before, after in itertools.pairwise(plans)]
-    assert changed == [[0], [1], [3]]
+    assert changed[:3] == [[0], [1], [3]]
+
+
+def test_sweep_ending_above_the_limit_continues_with_several_layers_per_step(tmp_path):
+    def policy(n, p):
+        layer = int(re.search(r"This round: layer (\d+)", p).group(1))
+        return v1_reply([(layer, "narrow_mlp")])
+    state, backend = sweep(tmp_path, policy)
+    assert outcomes(state)[:4] == ["ACCEPT"] * 4 and len(outcomes(state)) > 4
+    assert state["stop_reason"] == "memory limit met"
+    # round 5 is several layers per step: its rules, instructions and reply form, and no layer of its own
+    after = " ".join(backend.prompts[4].split())
+    assert FOLLOW_ON in after and "This round:" not in after
+    assert S.get("multi_layer").candidate_rule in after and "return to an earlier kept plan" in after
+    assert "Every choice in one candidate names the same layer." not in after
+    assert backend.schemas[4] is G.REPLY_SCHEMA
+    changed = [[i for i in b if b[i] != a[i]] for a, b in itertools.pairwise(a.plan for a in state["accepted"])]
+    assert changed[4] == [1, 2]  # two layers in one step
+
+
+def test_rules_after_the_pass_are_several_layers_per_step():
+    run = run_config(search="layer_by_layer", rules=Rules(step_limit=0.1))
+    after = S.follow_on_rules(run)
+    assert after.max_layers_per_candidate is None and after.max_same_steps == 2 and after.step_limit == 0.1
 
 
 def test_sweep_asks_again_when_a_layer_is_left_without_a_reason(tmp_path):
@@ -88,7 +118,7 @@ def test_sweep_asks_again_when_a_layer_is_left_without_a_reason(tmp_path):
                 {"candidates": [], "reason": "attention and feed-forward both measured fragile"}
         return v1_reply([(layer, "narrow_mlp")])
     state, _backend = sweep(tmp_path, policy)
-    assert outcomes(state) == ["ACCEPT", "INVALID", "LEFT", "ACCEPT", "ACCEPT"]
+    assert outcomes(state)[:5] == ["ACCEPT", "INVALID", "LEFT", "ACCEPT", "ACCEPT"]
     assert state["history"][2].rationale == "attention and feed-forward both measured fragile"
 
 
@@ -100,7 +130,7 @@ def test_sweep_refuses_other_layers_and_asks_again(tmp_path):
     assert outcomes(state)[:2] == ["INVALID", "ACCEPT"]
     assert "this round decides layer 0 only" in backend.prompts[1]
     assert "This round: layer 0 " in " ".join(backend.prompts[1].split())  # the same layer again
-    assert len([o for o in outcomes(state) if o != "INVALID"]) == 4
+    assert sum("This round:" in p for p in backend.prompts) == 5  # 4 layers, one asked again
 
 
 def test_sweep_stops_early_when_the_limit_is_met(tmp_path):
@@ -116,13 +146,15 @@ def test_sweep_time_estimate_is_one_round_per_layer():
     rates = [{"minutes_per_mb": 0.5, "rounds_per_mb": 0.1, "minutes_per_round": 2.0},
              {"minutes_per_mb": 0.3, "rounds_per_mb": 0.2, "minutes_per_round": 3.0}]
     t = R.time_estimate(rates, 238.0, 40, sweep_layers=28)
-    assert t["rounds"] == [28, 28] and t["minutes"] == [56.0, 84.0] and t["max_rounds"] == 28
+    assert t["rounds"] == [28, 28] and t["minutes"] == [56.0, 84.0]
+    assert t["max_rounds"] == 68 and t["worst_minutes"] == 68 * 3.0  # the pass, then up to 40 more rounds
     assert R.time_estimate(rates, 238.0, 40)["rounds"] != [28, 28]  # several layers per step: from MB cut
 
 
 def test_the_live_view_sees_the_round_phase(tmp_path):
     seen = []
-    deps, _ = setup(tmp_path, lambda n, p: v1_reply([(int(re.search(r"This round: layer (\d+)", p).group(1)), "narrow_mlp")]))
+    deps, _ = setup(tmp_path, lambda n, p: v1_reply([(int(re.search(r"This round: layer (\d+)", p).group(1)), "narrow_mlp")])
+                    if "This round:" in p else after_pass(n, p))
     real = deps.store.set_now
     deps.store.set_now = lambda now: (seen.append(now), real(now))
     G.run(deps, run_config(search="layer_by_layer", limit_bytes=DENSE - 10 * NARROW))

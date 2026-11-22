@@ -11,7 +11,10 @@ checks after the run and the reports. A new strategy is one more entry in `STRAT
 
 `layer_by_layer` is a sweep: round k decides layer k (first to last) from a bank of cuts for that layer (slim 1-7
 steps, remove 1-7 attention units, remove the layer, or leave it), up to 3 cut plans measured per round, the best
-kept by the shared gate. The run ends after the last layer (or earlier, when the memory limit is met).
+kept by the shared gate. It ends as soon as the memory limit is met. If the last layer is decided and the model is
+still above the limit (the gate refused the cuts it needed), the run continues with `FOLLOW_ON` (several layers per
+step, with that strategy's rules and instructions) until the limit is met or that strategy's stop rules end it,
+counting its rounds from there. So every strategy aims to reach the limit.
 """
 
 from __future__ import annotations
@@ -56,7 +59,8 @@ STRATEGIES: dict[str, SearchStrategy] = {
         name="layer_by_layer",
         label="One layer per step",
         summary=("One pass through the model, first layer to last: each round decides one layer. The AI proposes "
-                 "up to 3 cut plans for it from a fixed bank of cuts; code measures them and keeps the best."),
+                 "up to 3 cut plans for it from a fixed bank of cuts; code measures them and keeps the best. If the "
+                 "pass ends above the target size, the run continues with several layers per step until it fits."),
         candidate_rule=("This run goes through the layers in order, one layer per round (see \"This round\" "
                         "below). Each candidate is a cut plan for this round's layer only: a list of (layer, method) "
                         "choices that all name that layer, one fixed-size step per choice; repeat a method to cut "
@@ -74,6 +78,18 @@ STRATEGIES: dict[str, SearchStrategy] = {
         order="sweep",
     ),
 }
+
+
+FOLLOW_ON: SearchName = "multi_layer"  # what a sweep continues with when its pass ends above the memory limit
+
+
+def follow_on_rules(run):
+    """The rules after a finished sweep: the run's rules with the sweep's own changes (`SearchStrategy.rules`)
+    replaced by `FOLLOW_ON`'s, or by the defaults where it sets none."""
+    rules = run.rules
+    own = get(run.search).rules
+    then = get(FOLLOW_ON).rules
+    return rules.model_copy(update={k: then.get(k, type(rules).model_fields[k].default) for k in own})
 
 
 def get(name: str) -> SearchStrategy:
