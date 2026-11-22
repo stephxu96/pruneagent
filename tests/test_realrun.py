@@ -33,6 +33,7 @@ def make_data(path, model_id, calib_shape):
     meta = {"tokenizer": {"revision": None}}
     d.write_entry(path, d.calib_name(model_id), torch.randint(0, 97, calib_shape), meta)
     d.write_entry(path, d.wikitext_name("validation", model_id), torch.randint(0, 97, (1, 4000)), meta)
+    d.write_entry(path, d.c4_validation_name(model_id), torch.randint(0, 97, (1, 4000)), meta)  # the gate's text
     return path
 
 
@@ -210,3 +211,23 @@ def test_fresh_answers_keep_the_answer_cache_per_run():
     fresh_b = RR.make_agent(RunConfig(model_id="m", device=dev, agent_cache_scope="run"), "b")
     assert shared.cache.root == AC.DEFAULT_CACHE_DIR
     assert fresh_a.cache.root != fresh_b.cache.root != AC.DEFAULT_CACHE_DIR
+
+
+def test_new_runs_check_on_c4_passages_and_earlier_runs_read_as_they_ran(tmp_path):
+    from pruneagent import realrun as RR
+    from pruneagent.schema import RunConfig
+
+    cfg = Qwen3Config(vocab_size=97, hidden_size=64, intermediate_size=256, num_hidden_layers=N_LAYERS,
+                      num_attention_heads=8, num_key_value_heads=4, head_dim=16)
+    run_cfg = RR.make_run_config("m/tiny", cfg, "cpu", memory_cut=0.2, dtype="float32")
+    assert run_cfg.gate_text == "c4"
+    saved = json.loads(run_cfg.model_dump_json())
+    del saved["gate_text"]  # a run saved before the field existed
+    assert RunConfig.model_validate(saved).gate_text == "wikitext2"
+
+    wrong = tmp_path / "damage.json"
+    wrong.write_text(json.dumps({"data": d.wikitext_name("validation", "m/tiny")}))
+    with pytest.raises(RR.SetupError, match="set the model up again"):
+        RR._check_damage_text(run_cfg, wrong)
+    wrong.write_text(json.dumps({"data": d.c4_validation_name("m/tiny")}))
+    RR._check_damage_text(run_cfg, wrong)  # measured on the gate's own passages: fine

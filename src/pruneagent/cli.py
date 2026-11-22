@@ -1406,7 +1406,7 @@ def prepare_cmd(
     models.add(root, model)
     name = f"{RR._slug(model)}__{device}__{dtype}"
     scores, probes, damage = (RR.SCORES_DIR / f"{name}.safetensors", RR.PROBES_DIR / f"{name}.json",
-                              RR.DAMAGE_DIR / f"{name}.json")
+                              RR.DAMAGE_DIR / f"{name}{RR.DAMAGE_SUFFIX}")
     needed = [d.calib_name(model), d.flap_calib_name(model), d.wikitext_name("validation", model),
               d.wikitext_name("test", model)]
     # load the model (download it; a model already downloaded is reused), then generate the assets
@@ -1417,6 +1417,7 @@ def prepare_cmd(
     typer.echo("Step 2 of 4: sample text", err=True)
     if not all(n in d.read_manifest().get("entries", {}) for n in needed):
         d.build_cache(model, log=lambda m: typer.echo(m, err=True))
+    d.ensure_c4_validation(model)  # the gate's passages
     typer.echo("Step 3 of 4: part usage (neuron scores and quick tests)", err=True)
     probe_cmd(model=model, dtype=dtype, device=device, scores_path=scores, out=probes)
     typer.echo("Step 4 of 4: cut tests (damage table)", err=True)

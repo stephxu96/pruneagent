@@ -464,8 +464,8 @@ def build_graph(deps: Deps, checkpointer=None):
             # a sweep round may leave its layer as it is: no candidates, nothing to measure, but a reason
             if not (isinstance(raw.get("rationale"), str) and raw["rationale"].strip()):
                 check = CheckResult(ok=False, reasons=[
-                    f"Give the reason for leaving layer {layer} as it is: "
-                    '{"candidates": [], "reason": "<one sentence naming the evidence>"}.'])
+                    (f"Give the reason for leaving layer {layer} as it is: "
+                     '{"candidates": [], "reason": "<one sentence naming the evidence>"}.')])
                 return {"check": check, "action": None, "gate": None, "feedback": check.feedback(),
                         "invalid_in_row": state["invalid_in_row"] + 1, "since_accept": state["since_accept"] + 1,
                         **record(state, "INVALID", check=check)}

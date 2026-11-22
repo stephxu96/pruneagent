@@ -2,9 +2,9 @@
 
     scripts/mac_gpu.sh uv run python scripts/heldout_check.py runs/<run-id>
 
-The search chooses every step on the 32 validation windows (the gate), so its score there is optimistic. This
-measures, for the unpruned model, the run's final plan and FLAP cut to the run's memory limit (same C4 scores):
-- the validation windows the gate never used, and
+The search chooses every step on 32 passages (the gate: C4 validation from 2026-11-21, WikiText-2 validation
+before), so its score there is optimistic. This measures, for the unpruned model, the run's final plan and FLAP cut to the run's memory limit (same C4 scores):
+- the WikiText-2 validation windows the gate never used (all of them when the gate is on C4),
 - the full WikiText-2 test split (never seen by the search), and
 - web text: the C4 validation passages outside the 32 a C4 gate would use (same source as the calibration text,
   never in it). No method chose on them, so this one favours neither side.
@@ -43,7 +43,8 @@ def main() -> None:
     val = d.load_tokens(d.wikitext_name("validation", run_cfg.model_id), data_dir).reshape(-1)
     test = d.load_tokens(d.wikitext_name("test", run_cfg.model_id), data_dir).reshape(-1)
     n_val = ev.windows(val, seqlen).shape[0]
-    gate_idx = set(ev.subset_indices(n_val, run_cfg.gate_windows))
+    # the gate's passages are left out of whichever text it used (runs from 2026-11-21: C4; earlier: WikiText)
+    gate_idx = set(ev.subset_indices(n_val, run_cfg.gate_windows)) if run_cfg.gate_text == "wikitext2" else set()
     unseen = [i for i in range(n_val) if i not in gate_idx]
     c4 = d.ensure_c4_validation(run_cfg.model_id, data_dir, setup.revision)
     n_c4 = ev.windows(c4, seqlen).shape[0]

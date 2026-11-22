@@ -4,6 +4,9 @@
   the same procedure (and seed) as the Wanda and SparseGPT reference code, so their results reproduce.
   Every method calibrates on this one set (FLAP and Wanda-sp too, and the agent's scores), so compared methods
   see the same data, and it is a different source from the WikiText-2 evaluation text (decision of 2026-11-17).
+- Gate: the keep-or-undo check and the damage table measure on 32 of 128 passages of C4's validation split
+  (`c4_validation_name`): the calibration text's source, never in it. The other 96 are a held-out web-text check.
+  Runs before 2026-11-21 used WikiText-2 validation windows (decision of 2026-11-21, ADR-004).
 - Reference-only calibration sets, kept for the scripts that check our code against the authors' code at their
   published settings: Wanda-sp's 128 random 128-token C4 windows (`wanda_sp_reference_calib_name`), and FLAP's
   1,024 random 128-token windows of the WikiText-2 training split (`flap_reference_calib_name`, FLAP's
@@ -331,6 +334,27 @@ def build_c4_validation(
     )
     log(f"  C4 validation {tuple(ids.shape)}")
     return entry
+
+
+GATE_TEXTS = ("wikitext2", "c4")
+
+
+def gate_text_name(gate_text: str, model_id: str = DEFAULT_MODEL) -> str:
+    """The cached passages a run's keep-or-undo check (the gate) and the damage table measure on. "c4": C4
+    validation passages, the calibration text's source (from 2026-11-21); "wikitext2": WikiText-2 validation
+    (earlier runs), the source of the reported perplexity."""
+    if gate_text == "c4":
+        return c4_validation_name(model_id)
+    if gate_text == "wikitext2":
+        return wikitext_name("validation", model_id)
+    raise ValueError(f"no gate text {gate_text!r}; choose one of {', '.join(GATE_TEXTS)}")
+
+
+def gate_tokens(gate_text: str, model_id: str, out: Path | None = None, revision: str | None = None) -> torch.Tensor:
+    """The gate's passages as one token stream [N] (C4 validation built on first use)."""
+    if gate_text == "c4":
+        return ensure_c4_validation(model_id, out, revision).reshape(-1)
+    return load_tokens(gate_text_name(gate_text, model_id), out).reshape(-1)
 
 
 def ensure_c4_validation(model_id: str, out: Path | None = None, revision: str | None = None) -> torch.Tensor:

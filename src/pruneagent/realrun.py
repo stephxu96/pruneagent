@@ -49,6 +49,7 @@ PROMPT_BUILDER = "pruneagent.instructions:build_prompt"  # the v1 instructions (
 SCORES_DIR = Path("checkpoints/scores")
 PROBES_DIR = Path("results/probes")
 DAMAGE_DIR = Path("results/damage_table")
+DAMAGE_SUFFIX = "__c4.json"  # damage tables measured on the C4 gate passages (the WikiText ones end in plain .json)
 DEVICES_DIR = Path("results/speed/devices")
 TARGET_FOR_DEVICE = {"mps": "m4", "cuda": "t4", "cpu": "m4"}  # the device target whose speed estimate applies
 DRY_DENSE_PPL, DRY_FLAP_PPL = 10.0, 11.0  # stand-ins in a dry run's prompt (nothing is measured)
@@ -113,7 +114,7 @@ def make_setup(model_id: str, device: str, dtype: str = "float16", data_dir: Pat
     entry = d.read_manifest(data_dir)["entries"].get(d.calib_name(model_id), {})
     scores = scores or SCORES_DIR / f"{_slug(model_id)}__{device}__{dtype}.safetensors"
     probes = probes or _find(PROBES_DIR, model_id, device, dtype, ".json")
-    damage = damage or _find(DAMAGE_DIR, model_id, device, dtype, ".json")
+    damage = damage or _find(DAMAGE_DIR, model_id, device, dtype, DAMAGE_SUFFIX)
     return Setup(device=device, scores=str(Path(scores).resolve()), probes=str(Path(probes).resolve()),
                  damage=str(Path(damage).resolve()), data_dir=str(data_dir.resolve()),
                  revision=(entry.get("tokenizer") or {}).get("revision"), prompt_builder=prompt_builder)
@@ -148,7 +149,7 @@ def make_run_config(model_id: str, config, device: str, *, memory_limit_mb: floa
     rules = Rules(max_rounds=max_rounds) if max_rounds else Rules()
     agent = {"agent_model": AC.CODEX_MODEL, "agent_reasoning_effort": AC.CODEX_REASONING_EFFORT}
     return RunConfig(model_id=model_id, device=dev, rules=rules, agent_backend=backend, dtype=dtype, gpu=device,
-                     **{**agent, **kw})
+                     **{"gate_text": "c4", **agent, **kw})
 
 
 # ------------------------------------------------------------------------------------------------ parts
@@ -235,6 +236,20 @@ def _check_calibration(run_cfg: RunConfig, manifest: dict, model_id: str) -> Non
                          f"{c.n_samples} x {c.seqlen}")
 
 
+def _check_damage_text(run_cfg: RunConfig, damage: Path) -> None:
+    """The damage table the agent sees must be measured on the gate's own passages."""
+    from pruneagent import data as d
+
+    if run_cfg.gate_text == "wikitext2":  # earlier runs: kept as they ran
+        return
+    want = d.gate_text_name(run_cfg.gate_text, run_cfg.model_id)
+    if not damage.exists():  # load_sensitivity warns; the app only starts models whose table exists
+        return
+    got = json.loads(damage.read_text()).get("data")
+    if got != want:
+        raise SetupError(f"the damage table at {damage} was measured on {got}, not {want}; set the model up again")
+
+
 @dataclass
 class Built:
     """The parts of a run, for the report and the dry run."""
@@ -258,6 +273,7 @@ def build(run_cfg: RunConfig, setup: Setup, run_id: str | None, *, dry_run: bool
         check_gpu_lock(device)
     notes: list[str] = []
 
+    _check_damage_text(run_cfg, Path(setup.damage))
     table = load_sensitivity(Path(setup.probes), Path(setup.damage), notify)
     notes.append(f"quick tests: {setup.probes}")
     builder = prompt_builder(setup.prompt_builder, notify)
@@ -265,7 +281,7 @@ def build(run_cfg: RunConfig, setup: Setup, run_id: str | None, *, dry_run: bool
 
     notify(f"Loading {run_cfg.model_id} in {run_cfg.dtype} on {device} ...")
     dense = ev.load_model(run_cfg.model_id, setup.revision, run_cfg.dtype, device)
-    ids = d.load_tokens(d.wikitext_name("validation", run_cfg.model_id), data_dir).reshape(-1)
+    ids = d.gate_tokens(run_cfg.gate_text, run_cfg.model_id, data_dir, setup.revision)
     seqlen = run_cfg.calibration.seqlen
 
     from pruneagent.cli import _scores
