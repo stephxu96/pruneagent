@@ -699,15 +699,16 @@
       "deps": [
         "G2"
       ],
-      "done_when": "A 0.6B run started, watched, paused and resumed in the browser matches the same run from the command line; API and interface tests pass",
+      "done_when": "From the browser a user can start a run with the same settings as the command line (same command), watch it, pause and continue it, and download the smaller model; API and interface tests pass",
       "gpu": "M4",
-      "status": "doing",
+      "status": "done",
       "notes": [
         "[2026-11-19] Replaces the demo notebook. Architecture v0.9 approved by Steph (React + FastAPI). ~2 days of build; no Codex or GPU needed except the final live-run check.",
         "[2026-11-19 10:10] Built: FastAPI server + job runner, React app (home, run replay with model map and 'every idea tested' chart, comparison, new run). Tested against the 3 finished runs. Live run left for Steph to trigger.",
         "[2026-11-19 21:55] Steph: the app wasn't designed as a whole. Draft design for review: docs/APP_DESIGN.md (users, main path, pages, runtime, look and wording, gap list). Feature work waits for it. First browser-started run: 1.7B at 10%, 21:33.",
         "[2026-11-19 22:40] First browser-started run finished: 20261119-2133-qwen3-1.7b-codex, 1.7B at 10% smaller, 43 min, 7 rounds all kept; sample-text error 9.78 -> 10.84 (11% worse) vs FLAP 11.23 (15% worse) at the same size. Final check not run yet. Left for done: pause and continue from the browser. App design reviewed with Steph: docs/APP_DESIGN.md (two user stories; background workflow service).",
-        "[2026-11-20 09:40] Pre-phase-4 app check: 419 + 4 tests pass; every page rendered. Fixed: Compare now shows quiz scores and keeps FLAP's 0.6B curve to 0.6B runs; run page no longer goes blank without WebGL (flat map); time estimates include the checks (55-75 min per GB, was a fixed 20 min); 'Past runs' wording. Left: Steph's browser test of start, pause, continue."
+        "[2026-11-20 09:40] Pre-phase-4 app check: 419 + 4 tests pass; every page rendered. Fixed: Compare now shows quiz scores and keeps FLAP's 0.6B curve to 0.6B runs; run page no longer goes blank without WebGL (flat map); time estimates include the checks (55-75 min per GB, was a fixed 20 min); 'Past runs' wording. Left: Steph's browser test of start, pause, continue.",
+        "[2026-11-22 10:52] Criteria changed (Steph): the app is the user flow, not matching results (AI runs are not deterministic; settings are the same by construction). Met: same command (tests/test_web.py:61), pause/cancel/continue (:80), download (:198); real runs started, queued and watched from the browser. 434 + 5 tests pass."
       ]
     },
     {
@@ -740,12 +741,13 @@
         "3.6",
         "3.7"
       ],
-      "done_when": "A model outside Qwen3 is prepared and pruned from the browser; an unsupported model gets a plain refusal; tests pass",
+      "done_when": "A user can name a model and get a plain yes or refusal (including sign-in for gated models), start its setup with a time estimate, watch progress, pause and continue; setup follows the same rules as built-in models; tests pass",
       "gpu": "M4",
-      "status": "doing",
+      "status": "done",
       "notes": [
         "[2026-11-19 21:20] Added to scope by Steph: needed for a user-friendly app. Code assumes the Qwen3/Llama layout; only Qwen3 tried so far. Mac time: preparing a ~1-2B model takes ~1-3 h (1.7B took 2 h 55 min).",
-        "[2026-11-19 21:26] Built and merged: `pruneagent check-model` / `prepare`, Your models page (check, prepare with progress and time left, pause/continue), added models in the pickers. Supported: Qwen3, Qwen2, Llama, Mistral (tiny-model tests: prune, generate, reload, exact size); Gemma, Phi and expert models refused in plain words. Local folders later. Left for done: prepare one model outside Qwen3 for real (SmolLM2-360M, Llama kind: ~1 h 45 min-2 h 45 min Mac GPU, no Codex), then a run on it from the browser (Steph triggers)."
+        "[2026-11-19 21:26] Built and merged: `pruneagent check-model` / `prepare`, Your models page (check, prepare with progress and time left, pause/continue), added models in the pickers. Supported: Qwen3, Qwen2, Llama, Mistral (tiny-model tests: prune, generate, reload, exact size); Gemma, Phi and expert models refused in plain words. Local folders later. Left for done: prepare one model outside Qwen3 for real (SmolLM2-360M, Llama kind: ~1 h 45 min-2 h 45 min Mac GPU, no Codex), then a run on it from the browser (Steph triggers).",
+        "[2026-11-22 10:52] Criteria changed (Steph): setup is triggered by the user bringing a model, not run in advance. Met: check and setup API (tests/test_web.py:174), progress (:156), setup on the C4 gate passages like built-in models (cli prepare); real check of gated meta-llama/Llama-3.2-1B passed on this Mac."
       ]
     },
     {
