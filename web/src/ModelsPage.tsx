@@ -157,12 +157,12 @@ function ModelList({ rows, latest, onOpen }: { rows: ModelRow[]; latest: Map<str
         return (
           <div key={r.id} className="model-line">
             <span className="ml-name">{modelName(r.id)}</span>
-            <span className="muted">{mb(r.size_mb)}{r.built_in ? "" : " · added by you"}</span>
+            <span className="muted">{mb(r.size_mb)}{r.built_in ? "" : " (added by you)"}</span>
             <span className="ml-state">
               {r.ready ? (
                 <><span className="badge done">Ready ✓</span><a href={`#/new?model=${encodeURIComponent(r.id)}`}>Prune it →</a></>
               ) : active ? (
-                <><span className="badge running">Setting up · {Math.round((job.progress?.share ?? 0) * 100)}%</span>
+                <><span className="badge running">Setting up ({Math.round((job.progress?.share ?? 0) * 100)}%)</span>
                   <button className="small" onClick={() => onOpen(r.id)}>Show</button></>
               ) : (
                 <><span className="badge stopped">{paused ? "Setup paused" : "Not set up"}</span>
@@ -266,7 +266,7 @@ function PrepareStep({ id, job, onPause, onContinue }: {
         <div className="prep-status">
           <span className="muted">
             {job.status === "queued" ? "Waiting for the computer's graphics chip to be free"
-              : active ? `${Math.round((p?.share ?? 0) * 100)}% done${left ? ` · ${left}` : ""}`
+              : active ? `${Math.round((p?.share ?? 0) * 100)}% done${left ? `, ${left}` : ""}`
               : job.status === "failed" ? "Stopped with an error. See the system logs below."
               : "Paused. Continuing picks up where it stopped."}
           </span>

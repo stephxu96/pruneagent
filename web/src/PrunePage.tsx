@@ -136,7 +136,7 @@ function WhereItRuns({ m, model, device, setDevice }: {
         <label>
           <span className="m-label">Device</span>
           <select value={device.id} onChange={(e) => pick(e.target.value)}>
-            <option value="this">This computer: {m.machine.name} · {m.machine.chip.replace("Apple ", "")}</option>
+            <option value="this">This computer: {m.machine.name} ({m.machine.chip.replace("Apple ", "")})</option>
             {DEVICES.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
             <option value="custom">Custom</option>
           </select>
@@ -188,7 +188,7 @@ function Answer({ model, fit, device, onBack, onStart }: {
   const [slider, setSlider] = useState(10);
   const [checked, setChecked] = useState<number | null>(null);
   const cut = fit.kind === "cut" ? fit.cut : fit.kind === "fits" ? checked : null;
-  const where = device.id === "this" ? "this computer" : DEVICES.find((x) => x.id === device.id)?.label.split(" · ")[0] ?? "this device";
+  const where = device.id === "this" ? "this computer" : DEVICES.find((x) => x.id === device.id)?.label.split(", ")[0] ?? "this device";
 
   // the feasibility check runs on its own for this model and size
   // (a check from the last hour for the same model and size is reused)

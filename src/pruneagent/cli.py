@@ -1417,13 +1417,15 @@ def prepare_cmd(
     typer.echo("Step 2 of 4: sample text", err=True)
     if not all(n in d.read_manifest().get("entries", {}) for n in needed):
         d.build_cache(model, log=lambda m: typer.echo(m, err=True))
-    d.ensure_c4_validation(model)  # the gate's passages
+    # the passages the keep-or-undo check and the damage table measure on: C4 validation, the calibration text's
+    # source (ADR-004, 2026-11-21); the same for built-in and added models
+    d.ensure_c4_validation(model, revision=d.read_manifest()["entries"][d.calib_name(model)]["tokenizer"]["revision"])
     typer.echo("Step 3 of 4: part usage (neuron scores and quick tests)", err=True)
     probe_cmd(model=model, dtype=dtype, device=device, scores_path=scores, out=probes)
     typer.echo("Step 4 of 4: cut tests (damage table)", err=True)
     subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2] / "scripts" / "damage_table.py"),
                     "--model", model, "--device", device, "--dtype", dtype, "--windows", "32",
-                    "--scores", str(scores), "--quick-tests", str(probes), "--out", str(damage)], check=True)
+                    "--text", "c4", "--scores", str(scores), "--quick-tests", str(probes), "--out", str(damage)], check=True)
     typer.echo(f"Set up {model}: ready for pruning.", err=True)
 
 

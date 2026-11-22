@@ -34,11 +34,11 @@ export type Machine = {
 
 // other devices are rough examples: memory only, as sold
 export const DEVICES: { id: string; label: string; memory_gb: number }[] = [
-  { id: "mac-mini", label: "Mac mini · 16 GB", memory_gb: 16 },
-  { id: "laptop-8", label: "Laptop · 8 GB", memory_gb: 8 },
-  { id: "phone", label: "Phone · 8 GB", memory_gb: 8 },
-  { id: "pi", label: "Raspberry Pi · 4 GB", memory_gb: 4 },
-  { id: "pi2", label: "Small board · 2 GB", memory_gb: 2 },
+  { id: "mac-mini", label: "Mac mini, 16 GB", memory_gb: 16 },
+  { id: "laptop-8", label: "Laptop, 8 GB", memory_gb: 8 },
+  { id: "phone", label: "Phone, 8 GB", memory_gb: 8 },
+  { id: "pi", label: "Raspberry Pi, 4 GB", memory_gb: 4 },
+  { id: "pi2", label: "Small board, 2 GB", memory_gb: 2 },
 ];
 
 export type Live = { memory_used_pct: number | null; gpu_busy_pct: number | null; gpu_memory_mb: number | null };
@@ -167,7 +167,7 @@ export function jobTitle(j: Job): string {
 
 export function jobOutcome(j: Job): string {
   if (j.kind === "precheck" && j.result) return j.result.feasible ? "Feasible ✓" : "Not feasible";
-  if (j.kind === "prepare" && j.status === "running" && j.progress) return `Running · ${Math.round(j.progress.share * 100)}%`;
+  if (j.kind === "prepare" && j.status === "running" && j.progress) return `Running (${Math.round(j.progress.share * 100)}%)`;
   return { queued: "Waiting", running: "Running", done: "Finished", failed: "Didn't finish", stopped: "Paused",
            cancelled: "Cancelled", lost: "Interrupted" }[j.status] ?? j.status;
 }

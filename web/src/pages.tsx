@@ -83,7 +83,7 @@ function ActiveCard({ job, run }: { job: Job; run?: RunSummary }) {
       <div className={`badge ${job.status === "stopped" ? "paused" : job.status === "queued" ? "" : "running"}`}>{status}</div>
       <div className="bar"><div className="fill" style={{ width: `${Math.round((step === "run" ? share : 1) * 100)}%` }} /></div>
       <div className="muted">
-        {run?.now_mb != null ? `${mb(run.now_mb)} now · target under ${mb(run.limit_mb)}` : "Not started yet"}
+        {run?.now_mb != null ? `${mb(run.now_mb)} now, target under ${mb(run.limit_mb)}` : "Not started yet"}
       </div>
       <span className="go">Watch →</span>
     </a>
@@ -112,9 +112,9 @@ export function ComparePage() {
         {data.runs.map((r) => (
           <div key={r.id} className="card static">
             <div className="card-title">
-              {modelName(r.model)}, {pct(r.cut)} smaller <span className="muted">({mb(r.agent.size_mb)} · {r.search_label.toLowerCase()})</span>
+              {modelName(r.model)}, {pct(r.cut)} smaller <span className="muted">({mb(r.agent.size_mb)}, {r.search_label.toLowerCase()})</span>
             </div>
-            <div className="m-label">Quiz questions (more is better)</div>
+            <div className="m-label">Accuracy (more is better)</div>
             {r.quiz?.agent != null && r.quiz.flap != null ? (
               <QuizBars quiz={r.quiz} />
             ) : (
