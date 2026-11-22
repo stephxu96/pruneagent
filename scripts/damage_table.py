@@ -6,7 +6,8 @@
 
 For each of the 28 layers and each of the 4 strategies, starting from the unpruned model, apply ONE step (§4.2
 sizes, `plan.step`) to that layer alone, rebuild the model from the cached scores (`pruner.prune`, never
-recomputing scores) and measure validation perplexity on the gate's 32-window subset (`subset_perplexity`). Also
+recomputing scores) and measure perplexity on the gate's 32-passage subset (`subset_perplexity`) of the gate text
+(`--text`: C4 validation passages by default, the calibration text's source; `wikitext2` reproduces earlier tables). Also
 the unpruned model's perplexity on the same windows and, per entry, the rise over it and the weight memory freed
 (`estimate.weight_bytes`). Each result is written to the JSON as soon as it is measured; a restart resumes from it.
 
@@ -47,6 +48,7 @@ def main() -> None:
     ap.add_argument("--device", default="mps")
     ap.add_argument("--seqlen", type=int, default=2048)
     ap.add_argument("--windows", type=int, default=ev.GATE_WINDOWS)
+    ap.add_argument("--text", choices=d.GATE_TEXTS, default="c4", help="The gate's passages (data.gate_text_name).")
     ap.add_argument("--scores", type=Path, required=True, help="Cached scores; never recomputed.")
     ap.add_argument("--data-dir", type=Path, default=None)
     ap.add_argument("--quick-tests", type=Path, default=ROOT / "results/probes/qwen3-0.6b-base__cuda__float16.json")
@@ -55,7 +57,8 @@ def main() -> None:
     args = ap.parse_args()
 
     slug = d.slug(args.model)
-    out = args.out or ROOT / f"results/damage_table/{slug}__{args.device}__{args.dtype}.json"
+    suffix = "__c4.json" if args.text == "c4" else ".json"  # realrun.DAMAGE_SUFFIX
+    out = args.out or ROOT / f"results/damage_table/{slug}__{args.device}__{args.dtype}{suffix}"
     manifest = d.read_manifest(args.data_dir)
     calib = d.calib_name(args.model)
     revision = manifest["entries"][calib]["tokenizer"]["revision"]
@@ -63,8 +66,9 @@ def main() -> None:
     if scores.meta.get("calib_sha256") != manifest["entries"][calib]["sha256"]:
         raise SystemExit(f"{args.scores} was not computed on {calib}; refusing to use it (scores are never "
                          "recomputed here)")
-    val = d.wikitext_name("validation", args.model)
-    ids = d.load_tokens(val, args.data_dir).reshape(-1)
+    val = d.gate_text_name(args.text, args.model)
+    ids = d.gate_tokens(args.text, args.model, args.data_dir, revision)
+    manifest = d.read_manifest(args.data_dir)  # again: gate_tokens may have just added the C4 passages
     n_total = ids.numel() // args.seqlen
 
     net = ev.load_model(args.model, revision, args.dtype, args.device)

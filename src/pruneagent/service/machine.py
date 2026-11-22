@@ -95,13 +95,14 @@ def live() -> dict:
 
 
 def ready(model_id: str, device: str = "mps", dtype: str = "float16") -> bool:
-    """Whether the model has been prepared for a run on this machine: its quick tests exist (a run stops without
-    them; see `realrun.make_setup`). `pruneagent prepare` makes them."""
+    """Whether the model has been prepared for a run on this machine: its quick tests and its damage table on the
+    gate's passages exist (a run stops without them; see `realrun.make_setup`). `pruneagent prepare` makes them."""
     from pathlib import Path
 
     from pruneagent import realrun as RR
 
     try:
-        return Path(RR.make_setup(model_id, device, dtype).probes).exists()
+        setup = RR.make_setup(model_id, device, dtype)
+        return Path(setup.probes).exists() and Path(setup.damage).exists()
     except (OSError, KeyError, ValueError):
         return False

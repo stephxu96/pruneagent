@@ -85,6 +85,9 @@ class RunConfig(_Model):
     # how much one candidate may change (search.py, ADR-009); sets its rules unless `rules` sets them explicitly
     search: SearchName = "multi_layer"
     gate_windows: PositiveInt = 32  # validation windows used by the gate
+    # the gate's passages (data.gate_text_name): new runs "c4" (make_run_config); runs saved before 2026-11-21 have
+    # no value and read as the WikiText-2 validation windows they used
+    gate_text: Literal["wikitext2", "c4"] = "wikitext2"
     # per kept layer, added to each token's estimated time when ranking plans and checking a minimum speed (G1);
     # None: the value fitted for the M4 or the T4 (`estimate.LAYER_COST_S`), 0 for other devices
     layer_cost_s: NonNegativeFloat | None = None
