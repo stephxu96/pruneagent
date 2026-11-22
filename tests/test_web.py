@@ -71,6 +71,8 @@ def test_requests_become_workflows_of_fixed_commands(finished_run, tmp_path):
     assert api.post("/api/runs", json={"cut": 5}).status_code == 422
     held = api.post("/api/runs/r1/checks/heldout").json()
     assert argv_of(store, held["id"]).endswith("python scripts/heldout_check.py runs/r1")
+    mmlu = api.post("/api/runs/r1/checks/mmlu").json()  # the knowledge check, started on its own
+    assert argv_of(store, mmlu["id"]).endswith("python scripts/mmlu_check.py runs/r1")
     assert api.post("/api/runs/r1/checks/rm").status_code == 404
     assert api.post("/api/runs/r1/resume").status_code == 409  # finished runs are not resumed
     assert api.post("/api/runs/r1/pause").status_code == 409

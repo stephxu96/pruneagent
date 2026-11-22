@@ -101,7 +101,7 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | N
             wf = store.submit("pruning", {"run_id": params["run_id"], "resume": True}, release)
         elif kind == "save":
             wf = store.submit("save", {"run_id": params["run_id"]}, release)
-        elif kind in ("heldout", "accuracy"):
+        elif kind in J.CHECK_SCRIPTS:
             wf = store.submit("check", {"run_id": params["run_id"], "check": kind}, release)
         elif kind == "prepare":
             wf = store.submit("setup", {"model": params["model"]}, release)
@@ -247,7 +247,7 @@ def create_app(root: Path = REPO / "runs", repo: Path = REPO, store: W.Store | N
 
     @app.post("/api/runs/{run_id}/checks/{kind}")
     def check(run_id: str, kind: str) -> dict:
-        if kind not in ("heldout", "accuracy"):
+        if kind not in J.CHECK_SCRIPTS:  # mmlu: not part of every run, started on its own
             raise HTTPException(404, "unknown check")
         if store_or_404(run_id).info().state != "finished":
             raise HTTPException(409, "checks run on finished runs")

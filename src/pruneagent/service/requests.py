@@ -61,12 +61,13 @@ def command(kind: str, params: dict, known: tuple[str, ...] | list[str] = MODELS
         return [*GPU, "caffeinate", "-i", *UV, "pruneagent", "resume", _run_id(params.get("run_id", ""))]
     if kind == "save":
         return [*UV, "pruneagent", "save", _run_id(params.get("run_id", ""))]
-    if kind in ("heldout", "accuracy"):
-        script = {"heldout": "scripts/heldout_check.py", "accuracy": "scripts/accuracy_check.py"}[kind]
+    if kind in CHECK_SCRIPTS:
+        script = f"scripts/{CHECK_SCRIPTS[kind]}"
         return [*GPU, *UV, "python", script, f"runs/{_run_id(params.get('run_id', ''))}"]
     raise JobError(f"unknown job kind: {kind}")
 
 
+CHECK_SCRIPTS = {"heldout": "heldout_check.py", "accuracy": "accuracy_check.py", "mmlu": "mmlu_check.py"}
 PREPARE_STEPS = 4
 _STEP = re.compile(r"Step (\d+) of (\d+): (.+)")
 _ENTRY = re.compile(r"\[(\d+)/(\d+)\]")

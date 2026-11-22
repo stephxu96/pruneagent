@@ -87,7 +87,7 @@ def test_sweep_asks_again_when_a_layer_is_left_without_a_reason(tmp_path):
             return {"candidates": []} if "Give the reason for leaving layer 1" not in p else \
                 {"candidates": [], "reason": "attention and feed-forward both measured fragile"}
         return v1_reply([(layer, "narrow_mlp")])
-    state, backend = sweep(tmp_path, policy)
+    state, _backend = sweep(tmp_path, policy)
     assert outcomes(state) == ["ACCEPT", "INVALID", "LEFT", "ACCEPT", "ACCEPT"]
     assert state["history"][2].rationale == "attention and feed-forward both measured fragile"
 

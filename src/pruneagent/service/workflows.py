@@ -138,7 +138,9 @@ def _run_step_outcome(ctx: StepCtx) -> tuple[str, str | None]:
 
 
 def _check_step(kind: str) -> StepDef:
-    script = {"heldout": "heldout_check.py", "accuracy": "accuracy_check.py"}[kind]
+    from pruneagent.service.requests import CHECK_SCRIPTS
+
+    script = CHECK_SCRIPTS[kind]
     return StepDef(kind, True, lambda c: [*c.tools.script(script), f"runs/{c.params['run_id']}"])
 
 

@@ -979,8 +979,10 @@
       ],
       "done_when": "Scores recorded",
       "gpu": "A100",
-      "status": "todo",
-      "notes": ""
+      "status": "doing",
+      "notes": [
+        "[2026-11-22 11:44] Steph: MMLU stays, for the final 1.7B run (4.2) only. Built: knowledge check (scripts/mmlu_check.py, 'Knowledge check' job; POST /api/runs/<id>/checks/mmlu): original, agent and FLAP at the same size, 57 subjects, no examples in the prompt, question-weighted overall and per group. Smoke test 0.6B original, 2 questions per subject: 51.8% (guessing 25%). Perplexity and the 7 sets already run after every run."
+      ]
     },
     {
       "id": "4.5",
