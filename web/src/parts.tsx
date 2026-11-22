@@ -153,6 +153,7 @@ export const JOB_KIND: Record<string, string> = {
   resume: "Run resume",
   heldout: "Perplexity check",
   accuracy: "Accuracy check",
+  mmlu: "Knowledge check",
   prepare: "Model setup",
 };
 
