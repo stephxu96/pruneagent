@@ -148,3 +148,15 @@ def test_only_the_reference_check_uses_flap_wikitext2_calibration():
     users = sorted(p.relative_to(root).as_posix() for p in [*root.glob("src/**/*.py"), *root.glob("scripts/*.py")]
                    if "flap_reference_calib_name(" in p.read_text() and p.name != "data.py")
     assert users == ["scripts/check_flap_reference.py"]
+
+
+def test_c4_validation_is_a_different_split_from_the_calibration_text():
+    assert d.C4_VALIDATION_SHARD != d.C4_SHARD and "validation" in d.C4_VALIDATION_SHARD
+    assert d.c4_validation_name("Qwen/Qwen3-1.7B-Base") == "c4_validation__qwen3-1.7b-base"
+
+
+def test_c4_validation_is_read_from_the_cache_when_present(tmp_path, monkeypatch):
+    ids = torch.arange(4 * 8).reshape(4, 8)
+    d.write_entry(tmp_path, d.c4_validation_name("m/x"), ids, {})
+    monkeypatch.setattr(d, "build_c4_validation", lambda *a, **k: pytest.fail("no download when cached"))
+    assert torch.equal(d.ensure_c4_validation("m/x", tmp_path), ids)
