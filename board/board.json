@@ -984,10 +984,11 @@
       ],
       "done_when": "Scores recorded",
       "gpu": "A100",
-      "status": "doing",
+      "status": "done",
       "notes": [
         "[2026-11-22 11:44] Steph: MMLU stays, for the final 1.7B run (4.2) only. Built: knowledge check (scripts/mmlu_check.py, 'Knowledge check' job; POST /api/runs/<id>/checks/mmlu): original, agent and FLAP at the same size, 57 subjects, no examples in the prompt, question-weighted overall and per group. Smoke test 0.6B original, 2 questions per subject: 51.8% (guessing 25%). Perplexity and the 7 sets already run after every run.",
-        "[2026-11-22 21:44] Knowledge check (MMLU) started for run 20261122-1608 (job 21): original, agent, FLAP at the same size."
+        "[2026-11-22 21:44] Knowledge check (MMLU) started for run 20261122-1608 (job 21): original, agent, FLAP at the same size.",
+        "[2026-11-23 09:27] Knowledge check (MMLU, 14,042 questions, zero-shot) finished 23:44 for run 20261122-1608: original 60.6%, agent 22.9%, FLAP same size 23.1% (±0.35); guessing is 25%. Both pruned models lose all measurable knowledge at 20% smaller without retraining; no difference between methods. Every group (humanities, social sciences, STEM, other) 21-24% for both."
       ]
     },
     {
