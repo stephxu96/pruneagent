@@ -943,14 +943,15 @@
       ],
       "done_when": "Run complete; log and plan saved",
       "gpu": "A100",
-      "status": "doing",
+      "status": "done",
       "notes": [
         "[2026-11-20 19:22] Steph started it from the app: Qwen3-1.7B, 20% smaller, several layers per step (run 20261120-1922-qwen3-1.7b-codex, release aecf2b55b882, instructions v1). Queued behind the 0.6B run's quiz check; starts ~19:45. Instructions as of this release count as frozen for it.",
         "[2026-11-21 08:35] Run 20261120-1922 finished 23:44 (14 rounds, all kept, 2,752.3 MB). Unseen text: agent 15.27, FLAP 29.51, unpruned 9.89. Accuracy (question-weighted): agent 45.0%, FLAP 45.5%: FLAP equal or ahead on 5 of 7 sets, winogrande 53.6 vs 58.7. First result where the agent does not lead on accuracy.",
         "[2026-11-21 19:50] Run 20261121-1226 (Steph, one layer per step) ended 62 MB over the limit (2,815.3 MB vs 2,752.9 MB): every layer decided, last rounds refused by the 15% gate. FLAP re-scored at the agent's size (2,810.6 MB). Unseen text: agent 13.80, FLAP 24.00 (FLAP at the limit 29.51). Accuracy (question-weighted): agent 47.1%, FLAP 46.6% (FLAP at the limit 45.5%); agent ahead on hellaswag, boolq, winogrande, FLAP on the 4 smaller sets.",
         "[2026-11-21 21:45] Unseen web text (96 C4 validation passages no method chose on): run 1226 agent 18.18 vs FLAP 20.61 (unpruned 13.38); run 1922 agent 19.64 vs FLAP 22.14. The WikiText gap (13.8 vs 24.0) was mostly home ground from the WikiText keep-or-undo check; the agent still leads on neutral text. Keep-or-undo check and damage table moved to C4 passages (ADR-004, 2026-11-21); damage tables rebuilding (jobs 18-19).",
         "[2026-11-22 13:08] One layer per step no longer ends short: if the pass ends above the limit, the run continues with several layers per step until it fits (ADR-009 revised). Final run still to be started by Steph.",
-        "[2026-11-22 16:08] Steph started the final run from the app: Qwen3-1.7B, 20% smaller (limit 2,752.9 MB), several layers per step, keep-or-undo check on C4 passages, C4 damage table (run 20261122-1608-qwen3-1.7b-codex, job 20, release be76b83). Then the automatic checks, then the knowledge check (4.4)."
+        "[2026-11-22 16:08] Steph started the final run from the app: Qwen3-1.7B, 20% smaller (limit 2,752.9 MB), several layers per step, keep-or-undo check on C4 passages, C4 damage table (run 20261122-1608-qwen3-1.7b-codex, job 20, release be76b83). Then the automatic checks, then the knowledge check (4.4).",
+        "[2026-11-22 21:45] Done. Run 20261122-1608 finished 18:12: memory limit met, 17 rounds (14 kept, 1 rollback), 2,750.7 MB. Unseen web text (96 C4 validation passages): agent 19.92, FLAP same size 22.14, unpruned 13.38. Wikipedia unseen: 15.40 vs 29.03. Accuracy (question-weighted, 18,904 questions): agent 45.2%, FLAP 45.5% (±0.35): about even; agent ahead on arc_easy and arc_challenge, FLAP on winogrande (54.2 vs 58.7) and boolq."
       ]
     },
     {
@@ -985,7 +986,8 @@
       "gpu": "A100",
       "status": "doing",
       "notes": [
-        "[2026-11-22 11:44] Steph: MMLU stays, for the final 1.7B run (4.2) only. Built: knowledge check (scripts/mmlu_check.py, 'Knowledge check' job; POST /api/runs/<id>/checks/mmlu): original, agent and FLAP at the same size, 57 subjects, no examples in the prompt, question-weighted overall and per group. Smoke test 0.6B original, 2 questions per subject: 51.8% (guessing 25%). Perplexity and the 7 sets already run after every run."
+        "[2026-11-22 11:44] Steph: MMLU stays, for the final 1.7B run (4.2) only. Built: knowledge check (scripts/mmlu_check.py, 'Knowledge check' job; POST /api/runs/<id>/checks/mmlu): original, agent and FLAP at the same size, 57 subjects, no examples in the prompt, question-weighted overall and per group. Smoke test 0.6B original, 2 questions per subject: 51.8% (guessing 25%). Perplexity and the 7 sets already run after every run.",
+        "[2026-11-22 21:44] Knowledge check (MMLU) started for run 20261122-1608 (job 21): original, agent, FLAP at the same size."
       ]
     },
     {
